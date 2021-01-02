@@ -1,0 +1,31 @@
+# These are the directories and files we will ignore
+.cproject
+.directory
+.project
+.settings
+.tup
+.vscode
+img
+org.kde.konsole.desktop
+p1
+sysroot
+Tuprules.inc
+tuprules.inc
+
+# now some generic files that will be ignored
+*.log
+*.o
+*.old
+*.elf
+*.a
+*.dmp
+targets/**/grub.cfg
+targets/**/cfg-file*
+
+targets/**/inc/constants.*
+targets/**/config
+targets/**/debug
+targets/**/inc/debug.h
+targets/**/bin/usr/include/*.h
+
+

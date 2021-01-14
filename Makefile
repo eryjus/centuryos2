@@ -2,7 +2,9 @@
 ##
 ##  Makefile -- This is the core makefile for creating the Century OS for any of the supported architectures
 ##
-##        Copyright (c)  2017-2020 -- Adam Clark; See LICENSE.md
+##        Copyright (c)  2017-2021 -- Adam Clark; See LICENSE.md
+##        Licensed under "THE BEER-WARE LICENSE"
+##        See License.md for details.
 ##
 ##  The basic folder layout here is going to be as follows:
 ##
@@ -111,22 +113,14 @@ all: init
 ## -- This rule will make sure that up is initialized and that we have created all the proper variants
 ##    ------------------------------------------------------------------------------------------------
 .PHONY: init
-init: tuprules.inc
+init: TupRules.inc
 	if [ ! -f .tup/db ]; then `tup init`; fi;
-
-
-##
-## -- Rebuild the toolchain is requested
-##    ----------------------------------
-.PHONY: toolchain
-toolchain:
-	cd util && ./toolchain.sh
 
 
 ##
 ## -- we need to know the current base folder
 ##    ---------------------------------------
-tuprules.inc: Makefile
+TupRules.inc: Makefile
 	echo WS = `pwd` > $@
 	echo X86_64_LDFLAGS = $(dir $(X86_64-LIB)) >> $@
 

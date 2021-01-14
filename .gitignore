@@ -1,3 +1,7 @@
+# -- Specific files to ignore
+TupRules.inc
+
+
 # These are the directories and files we will ignore
 .cproject
 .directory
@@ -9,8 +13,6 @@ img
 org.kde.konsole.desktop
 p1
 sysroot
-Tuprules.inc
-tuprules.inc
 
 # now some generic files that will be ignored
 *.log

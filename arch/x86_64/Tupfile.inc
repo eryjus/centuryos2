@@ -19,9 +19,10 @@
 ## -- These are the commands that will be used to build for that arm architecture
 ##    ---------------------------------------------------------------------------
 AS = nasm
-#CC = clang
-CC = x86_64-elf-gcc
+CC = clang
 LD = ld.lld
+#CC = x86_64-elf-gcc
+#LD = ld
 
 
 ##
@@ -29,6 +30,11 @@ LD = ld.lld
 ##    -----------------------------
 CFLAGS += -mno-red-zone
 CFLAGS += -fno-pic
+CFLAGS += -ffreestanding
+CFLAGS += -mcmodel=large
+CFLAGS += -mno-mmx
+CFLAGS += -mno-sse
+CFLAGS += -mno-sse2
 
 
 ##

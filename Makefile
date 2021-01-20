@@ -98,6 +98,7 @@
 
 .SILENT:
 
+#X86_64-LIB = $(shell clang --print-libgcc-file-name)
 X86_64-LIB = $(shell x86_64-elf-gcc --print-libgcc-file-name)
 
 

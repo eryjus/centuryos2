@@ -19,6 +19,10 @@
 
 #include "types.h"
 
+//#define USE_SERIAL
+
+#ifdef USE_SERIAL
+
 
 //
 // -- function prototypes
@@ -30,3 +34,14 @@ extern "C" {
     void SerialPutHex64(uint64_t h);
     void SerialPutHex32(uint32_t h);
 }
+
+
+#else
+
+#define SerialOpen(...)
+#define SerialPutChar(...)
+#define SerialPutString(...)
+#define SerialPutHex64(...)
+#define SerialPutHex32(...)
+
+#endif

@@ -18,6 +18,7 @@
 #include "types.h"
 #include "mmu.h"
 #include "mboot.h"
+#include "serial.h"
 
 
 //
@@ -193,6 +194,8 @@ static Addr_t MBootGetMb1Kernel(void)
 
     if (!mbData) return 0;
 
+    SerialPutString("MB1\n");
+
     if (!MmuIsMapped(mbData)) {
         MmuMapPage(mbData, mbData >> 12, false);
     }
@@ -234,6 +237,8 @@ static Addr_t MBootGetMb2Kernel(void)
 
     if (!mbData) return 0;
 
+    SerialPutString("MB2\n");
+
     if (!MmuIsMapped(mbData)) {
         MmuMapPage(mbData, mbData >> 12, false);
     }
@@ -271,6 +276,10 @@ next:
 Addr_t MBootGetKernel(void)
 {
     extern uint32_t mbSig;
+
+    SerialPutString("Checking MB Sig ");
+    SerialPutHex32(mbSig);
+    SerialPutChar('\n');
 
     if (mbSig == MB1SIG) return MBootGetMb1Kernel();
     if (mbSig == MB2SIG) return MBootGetMb2Kernel();

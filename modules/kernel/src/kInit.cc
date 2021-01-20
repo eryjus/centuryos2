@@ -10,44 +10,33 @@
 //
 //     Date      Tracker  Version  Pgmr  Description
 //  -----------  -------  -------  ----  ---------------------------------------------------------------------------
-//  2021-Jan-03  Initial  v0.0.1   ADCL  Initial version
+//  2021-Jan-19  Initial  v0.0.2   ADCL  Initial version
 //
 //===================================================================================================================
 
 
 #include "types.h"
-#include "elf.h"
-#include "mboot.h"
+#include "idt.h"
 #include "serial.h"
-
-
-extern "C" {
-    void kInit(void);
-    void JumpKernel(Addr_t entry);
-}
+#include "printf.h"
 
 
 //
-// -- Complete the initialization
-//    ---------------------------
+// -- local prototype
+//    ---------------
+extern "C" void kInit(void);
+
+
+//
+// -- Perform the kernel initialization
+//    ---------------------------------
 void kInit(void)
 {
     SerialOpen();
-    SerialPutString("Hello\n");
+    IdtInstall();
 
-    Addr_t kernel = MBootGetKernel();
-
-    SerialPutString("Kernel image at ");
-    SerialPutHex32(kernel);
-    SerialPutChar('\n');
-
-    if (kernel != 0) {
-        Addr_t entry = ElfLoadKernel(kernel);
-
-        SerialPutString("Jumping!\n");
-
-        JumpKernel(entry);
-    }
+    kprintf("Welcome!\n");
+    kprintf("%p", *(Addr_t *)0x123456);
 
     while (true) {}
 }

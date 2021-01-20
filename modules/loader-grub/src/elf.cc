@@ -183,7 +183,6 @@ Addr_t ElfLoadKernel(Addr_t location)
                     f = (earlyFrame ++) >> 12;
                 }
 
-                asm("xchg %ebx,%ebx");
                 MmuMapPage(virt, f, pHdr[i].pType & PF_W);
 
                 virt += 4096;

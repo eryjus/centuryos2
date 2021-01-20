@@ -41,6 +41,9 @@ include_rules
 ## -- The rules to build the objects
 ##    ------------------------------
 : foreach  $(WS)/modules/$(MODULE)/arch/$(ARCH)/*.s                             |> !as |>
+: foreach  $(WS)/modules/$(MODULE)/arch/$(ARCH)/*.cc                            |> !cc |>
 
-#: foreach  $(WS)/modules/$(MODULE)/src/*.cc                                     |> !cc |>
+: foreach  $(WS)/modules/$(MODULE)/platform/$(PLAT)/*.cc                        |> !cc |>
+
+: foreach  $(WS)/modules/$(MODULE)/src/*.cc                                     |> !cc |>
 

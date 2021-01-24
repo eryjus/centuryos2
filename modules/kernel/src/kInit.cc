@@ -18,6 +18,7 @@
 #include "types.h"
 #include "idt.h"
 #include "serial.h"
+#include "internal.h"
 #include "printf.h"
 
 
@@ -34,9 +35,9 @@ void kInit(void)
 {
     SerialOpen();
     IdtInstall();
+    InternalInit();
 
     kprintf("Welcome!\n");
-    kprintf("%p", *(Addr_t *)0x123456);
 
     while (true) {}
 }

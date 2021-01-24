@@ -17,6 +17,9 @@
 
 
 #pragma once
+#ifndef _PRINTF_H__
+#define __PRINTF_H__
+
 
 #include "types.h"
 
@@ -28,4 +31,6 @@ extern "C" {
     int kprintf(const char *fmt, ...);
 }
 
+
+#endif
 

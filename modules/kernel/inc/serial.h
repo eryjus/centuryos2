@@ -16,6 +16,9 @@
 
 
 #pragma once
+#ifndef __SERIAL_H__
+#define __SERIAL_H__
+
 
 #include "types.h"
 
@@ -41,5 +44,7 @@ extern "C" {
 #define SerialPutString(...)
 #define SerialHex64(...)
 #define SerialHex32(...)
+
+#endif
 
 #endif

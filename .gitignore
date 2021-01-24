@@ -29,5 +29,5 @@ targets/**/config
 targets/**/debug
 targets/**/inc/debug.h
 targets/**/bin/usr/include/*.h
-
+targets/**/usr/include/kernel/*.h
 

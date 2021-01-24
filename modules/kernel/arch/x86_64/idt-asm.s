@@ -16,8 +16,11 @@
 
 
                 global      IdtGenericEntry
+                global      InternalTarget
 
                 extern      IdtGenericHandler
+                extern      maxHandlers
+                extern      internalTable
 
 
                 section     .text
@@ -27,7 +30,6 @@
 ;; -- This is the entry point for the generic IDT handler
 ;;    ---------------------------------------------------
 IdtGenericEntry:
-                mov         eax,0x12345678
                 push        rax
                 push        rbx
                 push        rcx
@@ -60,5 +62,91 @@ IdtGenericEntry:
                 mov         rdi,rsp                     ;; the pionter to the stack containing the variables
                 sub         rdi,8
                 call        IdtGenericHandler
+
+                pop         rax                         ;; gs
+                pop         rax                         ;; fs
+                pop         rax                         ;; es
+                pop         rax                         ;; ds
+
+                pop         r15
+                pop         r14
+                pop         r13
+                pop         r12
+                pop         r11
+                pop         r10
+                pop         r9
+                pop         r8
+                pop         rdi
+                pop         rsi
+                pop         rbp
+                pop         rdx
+                pop         rcx
+                pop         rbx
+                pop         rax
+
                 iret
+
+
+;;
+;; -- This is the intenral function handler entry point
+;;    -------------------------------------------------
+InternalTarget:
+                push        rax
+                push        rbx
+                push        rcx
+                push        rdx
+                push        rbp
+                push        rsi
+                push        rdi
+                push        r8
+                push        r9
+                push        r10
+                push        r11
+                push        r12
+                push        r13
+                push        r14
+                push        r15
+
+                mov         r15,[maxHandlers]
+                cmp         rdi,0
+                jl          .invalid
+
+                cmp         rdi,r15
+                jge         .invalid
+
+                mov         rbp,internalTable
+                mov         rbp,[rbp + (rdi * 8)]
+
+                cmp         rbp,0
+                je          .none
+
+                call        rbp
+                jmp         .out
+
+.invalid:
+                mov         eax,-22
+                jmp         .out
+
+.none:
+                mov         eax,-12
+
+.out:
+                pop         r15
+                pop         r14
+                pop         r13
+                pop         r12
+                pop         r11
+                pop         r10
+                pop         r9
+                pop         r8
+                pop         rdi
+                pop         rsi
+                pop         rbp
+                pop         rdx
+                pop         rcx
+                pop         rbx
+                sub         rsp,8
+
+                iret
+
 

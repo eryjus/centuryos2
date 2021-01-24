@@ -23,7 +23,7 @@
 ARCH=x86_64
 PLAT=pc
 TARGET=$(ARCH)-$(PLAT)
-MODULE=kernel
+MODULE=internal-funcs
 
 
 NFLAGS+=-I ../../../../../modules/$(MODULE)/inc
@@ -50,7 +50,4 @@ include_rules
 : foreach  $(WS)/modules/$(MODULE)/arch/$(ARCH)/*.s                             |> !as |>
 : foreach  $(WS)/modules/$(MODULE)/arch/$(ARCH)/*.cc    | $(DEPS)                        |> !cc |>
 
-: foreach  $(WS)/modules/$(MODULE)/platform/$(PLAT)/*.cc     | $(DEPS)                   |> !cc |>
-
-: foreach  $(WS)/modules/$(MODULE)/src/*.cc      | $(DEPS)                               |> !cc |>
 

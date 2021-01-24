@@ -21,8 +21,6 @@
 AS = nasm
 CC = clang
 LD = ld.lld
-#CC = x86_64-elf-gcc
-#LD = ld
 
 
 ##

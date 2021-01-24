@@ -12,7 +12,7 @@
 ##
 ##     Date      Tracker  Version  Pgmr  Description
 ##  -----------  -------  -------  ----  ---------------------------------------------------------------------------
-##  2021-Jan-03  Initial  v0.0.1   ADCL  Initial version
+##  2021-Jan-22  Initial  v0.0.3   ADCL  Initial version
 ##
 #####################################################################################################################
 
@@ -23,18 +23,6 @@
 ARCH=x86_64
 PLAT=pc
 TARGET=$(ARCH)-$(PLAT)
-MODULE=kernel
-
-
-NFLAGS+=-I ../../../../../modules/$(MODULE)/inc
-CFLAGS+=-I ../../../../../modules/$(MODULE)/inc
-CFLAGS+=-I ../../../usr/include/kernel
-CFLAGS+=-I ../../../../../arch/$(ARCH)/inc
-
-
-DEPS+=../../../usr/include/kernel/internal-bits.h
-DEPS+=../../../usr/include/kernel/types.h
-DEPS+=../../../usr/include/errno.h
 
 
 ##
@@ -47,10 +35,5 @@ include_rules
 ##
 ## -- The rules to build the objects
 ##    ------------------------------
-: foreach  $(WS)/modules/$(MODULE)/arch/$(ARCH)/*.s                             |> !as |>
-: foreach  $(WS)/modules/$(MODULE)/arch/$(ARCH)/*.cc    | $(DEPS)                        |> !cc |>
-
-: foreach  $(WS)/modules/$(MODULE)/platform/$(PLAT)/*.cc     | $(DEPS)                   |> !cc |>
-
-: foreach  $(WS)/modules/$(MODULE)/src/*.cc      | $(DEPS)                               |> !cc |>
+: $(WS)/modules/kernel/inc/errno.h |> cp %f %o |> errno.h
 

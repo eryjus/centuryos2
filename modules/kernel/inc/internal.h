@@ -1,6 +1,6 @@
 //====================================================================================================================
 //
-//  types.h -- Foundational types for CenturyOS
+//  internal.h -- handling internal interrupts (as in not user-facing)
 //
 //        Copyright (c)  2017-2021 -- Adam Clark
 //        Licensed under "THE BEER-WARE LICENSE"
@@ -10,31 +10,37 @@
 //
 //     Date      Tracker  Version  Pgmr  Description
 //  -----------  -------  -------  ----  ---------------------------------------------------------------------------
-//  2021-Jan-14  Initial  v0.0.2   ADCL  Initial version
+//  2021-Jan-20  Initial  v0.0.3   ADCL  Initial version
 //
 //===================================================================================================================
 
 
 #pragma once
+#ifndef __INTERNAL_H__
+#define __INTERNAL_H__
 
-#include <cstdint>
-#include <cstddef>
 
+#include "types.h"
+#include "idt.h"
+#include "internal-bits.h"
 
-#define USE_SERIAL
 
 
 //
-// -- Foundational Types
+// -- define some function prototypes
+//    -------------------------------
+extern "C" {
+    void InternalInit(void);
+    int InternalGetHandler(int i);
+    int InternalSetHandler(int i, InternalHandler_t handler);
+}
+
+
+
+//
+// -- The function table
 //    ------------------
-typedef uint64_t Frame_t;
-typedef uint64_t Addr_t;
+extern IdtHandlerFunc_t InternalTarget;
 
 
-//
-// -- This is the type definition of a handler function
-//    -------------------------------------------------
-typedef void (*IdtHandlerFunc_t)(Addr_t *);
-
-
-
+#endif

@@ -1,6 +1,6 @@
 //====================================================================================================================
 //
-//  idt.h -- Interface points with the IDT
+//  internal-bits.h -- this is the interface for internal functions
 //
 //        Copyright (c)  2017-2021 -- Adam Clark
 //        Licensed under "THE BEER-WARE LICENSE"
@@ -10,28 +10,27 @@
 //
 //     Date      Tracker  Version  Pgmr  Description
 //  -----------  -------  -------  ----  ---------------------------------------------------------------------------
-//  2021-Jan-19  Initial  v0.0.2   ADCL  Initial version
+//  2021-Jan-22  Initial  v0.0.3   ADCL  Initial version
 //
 //===================================================================================================================
 
 
 #pragma once
-#ifndef __IDT_H__
-#define __IDT_H__
 
-
-#include "types.h"
 
 
 //
-// -- Function prototypes
-//    -------------------
-extern "C" {
-    void IdtInstall(void);
-    Addr_t IdtGetHandler(int i);
-    void IdtSetHandler(int i, uint16_t sec, IdtHandlerFunc_t *handler, int ist, int dpl);
-}
+// -- these are the internal functions provided by the kernel
+//    -------------------------------------------------------
+enum {
+    INT_GET_HANDLER,
+    INT_SET_HANDLER,
+    INT_SPIN_LOCK,
+    INT_SPIN_UNLOCK,
+    INT_SPIN_TEST,
+};
 
 
-#endif
+
+
 

@@ -18,6 +18,7 @@
 #include "types.h"
 #include "printf.h"
 #include "serial.h"
+#include "internal.h"
 #include "idt.h"
 
 
@@ -132,6 +133,8 @@ void IdtInstall(void)
     idtr.limit = sizeof(idtTable) - 1;
 
     __asm__("lidt %0" : : "m"(idtr));
+
+    IdtSetHandler(0xe0, 8, &InternalTarget, 0, 0);
 }
 
 

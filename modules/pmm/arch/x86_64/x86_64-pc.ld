@@ -1,6 +1,6 @@
 /*******************************************************************************************************************/
 /*                                                                                                                 */
-/*  kernel.ld -- This is the linker script for locating the sections in the target binary                          */
+/*  x86_64-pc.ld -- This is the linker script for locating the sections in the target binary                       */
 /*                                                                                                                 */
 /*  Copyright (C) 2014-2019 Free Software Foundation, Inc.                                                         */
 /*  Copying and distribution of this script, with or without modification,                                         */
@@ -11,19 +11,19 @@
 /*                                                                                                                 */
 /*     Date      Tracker  Version  Pgmr  Description                                                               */
 /*  -----------  -------  -------  ----  ------------------------------------------------------------------------  */
-/*  2021-Jan-03  Initial  v0.0.1   ADCL  Initial version                                                           */
+/*  2021-Jan-30  Initial  v0.0.4   ADCL  Initial version                                                           */
 /*                                                                                                                 */
 /*******************************************************************************************************************/
 
 OUTPUT_FORMAT("elf64-x86-64", "elf64-x86-64", "elf64-x86-64")
 OUTPUT_ARCH(i386:x86-64)
-ENTRY(entry)
+ENTRY(header)
 
 SEARCH_DIR("=/usr/local/lib");
 SEARCH_DIR("=/lib");
 SEARCH_DIR("=/usr/lib");
 
-CODE_VIRT  = 0xffff800000000000;
+CODE_VIRT  = 0xffffa00000000000;
 
 SECTIONS
 {

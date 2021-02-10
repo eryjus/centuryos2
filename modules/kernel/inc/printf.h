@@ -24,12 +24,17 @@
 #include "types.h"
 
 
+
 //
 // -- This function operates like printf()
 //    ------------------------------------
+#ifdef USE_SERIAL
 extern "C" {
     int kprintf(const char *fmt, ...);
 }
+#else
+#define kprintf(...)
+#endif
 
 
 #endif

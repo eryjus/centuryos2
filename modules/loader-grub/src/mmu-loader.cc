@@ -1,6 +1,6 @@
 //===================================================================================================================
 //
-//  serial.h -- Functions related to Serial Output
+//  mmu-loader.cc -- Trivial memory management function
 //
 //        Copyright (c)  2017-2021 -- Adam Clark
 //        Licensed under "THE BEER-WARE LICENSE"
@@ -10,38 +10,23 @@
 //
 //     Date      Tracker  Version  Pgmr  Description
 //  -----------  -------  -------  ----  ---------------------------------------------------------------------------
-//  2021-Jan-13  Initial  v0.0.1   ADCL  Initial version
+//  2021-Feb-03  Initial  v0.0.4   ADCL  Initial version
 //
 //===================================================================================================================
 
 
-#pragma once
-
 #include "types.h"
+#include "serial.h"
+#include "mmu.h"
 
-//#define USE_SERIAL
-
-#ifdef USE_SERIAL
 
 
 //
-// -- function prototypes
-//    -------------------
-extern "C" {
-    void SerialOpen(void);
-    void SerialPutChar(uint8_t ch);
-    void SerialPutString(const char *s);
-    void SerialPutHex64(uint64_t h);
-    void SerialPutHex32(uint32_t h);
+// -- allocate a new frame
+//    --------------------
+Frame_t MmuGetTable(void)
+{
+    extern Frame_t earlyFrame;
+    return earlyFrame ++;
 }
 
-
-#else
-
-#define SerialOpen(...)
-#define SerialPutChar(...)
-#define SerialPutString(...)
-#define SerialPutHex64(...)
-#define SerialPutHex32(...)
-
-#endif

@@ -34,7 +34,7 @@ InternalDispatch2:
 InternalDispatch3:
 InternalDispatch4:
 InternalDispatch5:
-                int     0xc8
+                int     0xe0
                 ret
 
 

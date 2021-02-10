@@ -1,6 +1,6 @@
-//===================================================================================================================
+//====================================================================================================================
 //
-//  mmu.h -- Functions related to managing the Paging Tables
+//  early-pmm.cc -- An early frame allocator before the PMM is put in charge
 //
 //        Copyright (c)  2017-2021 -- Adam Clark
 //        Licensed under "THE BEER-WARE LICENSE"
@@ -10,21 +10,21 @@
 //
 //     Date      Tracker  Version  Pgmr  Description
 //  -----------  -------  -------  ----  ---------------------------------------------------------------------------
-//  2021-Jan-03  Initial  v0.0.1   ADCL  Initial version
+//  2021-Jan-30  Initial  v0.0.4   ADCL  Initial version
 //
 //===================================================================================================================
 
 
-#pragma once
-
 #include "types.h"
+#include "idt.h"
 
 
 //
-// -- function prototypes
-//    -------------------
-extern "C" {
-    bool MmuIsMapped(Addr_t a);
-    void MmuUnmapPage(Addr_t a);
-    void MmuMapPage(Addr_t a, Frame_t f, bool writable);
+// -- Allocate an early frame from the pool
+//    -------------------------------------
+Frame_t PmmEarlyFrame(void)
+{
+    extern Frame_t earlyFrame;
+    return earlyFrame++;
 }
+

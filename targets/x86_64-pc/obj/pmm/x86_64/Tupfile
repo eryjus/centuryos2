@@ -12,7 +12,7 @@
 ##
 ##     Date      Tracker  Version  Pgmr  Description
 ##  -----------  -------  -------  ----  ---------------------------------------------------------------------------
-##  2021-Jan-02  Initial  v0.0.1   ADCL  Initial version
+##  2021-Jan-29  Initial  v0.0.4   ADCL  Initial version
 ##
 #####################################################################################################################
 
@@ -23,6 +23,11 @@
 ARCH=x86_64
 PLAT=pc
 TARGET=$(ARCH)-$(PLAT)
+MODULE=pmm
+
+
+NFLAGS+=-I ../../../../../modules/$(MODULE)/inc
+CFLAGS+=-I ../../../../../modules/$(MODULE)/inc
 
 
 ##
@@ -31,31 +36,11 @@ TARGET=$(ARCH)-$(PLAT)
 include_rules
 
 
-##
-## -- Some additional linker flags
-##    ----------------------------
-LDFLAGS += -L $(X86_64_LDFLAGS)
-LDFLAGS += -L $(WS)/targets/$(TARGET)/lib
-LIB += -l gcc
-LIB += -l k
-LIB2 += -l internal
-
-
-DEPS += $(WS)/targets/$(TARGET)/lib/libk.a
-DEPS += $(WS)/targets/$(TARGET)/lib/libinternal.a
-
-
-##
-## -- These are the linker scripts
-##    ----------------------------
-LOADER_GRUB_LS=$(WS)/modules/loader-grub/arch/$(ARCH)/$(TARGET).ld
-KERNEL_LS=$(WS)/modules/kernel/arch/$(ARCH)/$(TARGET).ld
-PMM_LS=$(WS)/modules/pmm/arch/$(ARCH)/$(TARGET).ld
-
 
 ##
 ## -- The rules to build the objects
 ##    ------------------------------
-: ../../obj/loader-grub/$(ARCH)/*.o     | $(LOADER_GRUB_LS) $(DEPS)     |> $(LD) -T $(LOADER_GRUB_LS) $(LDFLAGS) -o %o %f $(LIB);   |> loader-grub.elf
-: ../../obj/kernel/$(ARCH)/*.o          | $(KERNEL_LS) $(DEPS)          |> $(LD) -T $(KERNEL_LS) $(LDFLAGS) -o %o %f $(LIB) $(LIB2);|> kernel.elf
-: ../../obj/pmm/$(ARCH)/*.o             | $(PMM_LS) $(DEPS)             |> $(LD) -T $(PMM_LS) $(LDFLAGS) -o %o %f $(LIB) $(LIB2);   |> pmm.elf
+: foreach  $(WS)/modules/$(MODULE)/arch/$(ARCH)/*.s                             |> !as |>
+
+: foreach  $(WS)/modules/$(MODULE)/src/*.cc                                     |> !cc |>
+

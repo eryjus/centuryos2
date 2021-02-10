@@ -16,9 +16,14 @@
 
 
 #include "types.h"
+
+#ifndef USE_SERIAL
+#define USE_SERIAL
+#endif
+
 #include "serial.h"
 
-#ifdef USE_SERIAL
+
 
 //
 // -- Some local variables
@@ -134,4 +139,3 @@ void SerialPutHex32(uint32_t h)
     SerialPutChar(digits[(h>> 0) & 0xf]);
 }
 
-#endif

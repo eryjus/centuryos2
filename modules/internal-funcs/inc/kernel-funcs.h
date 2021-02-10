@@ -41,6 +41,7 @@ inline int GetInternalHandler(int number) { return InternalDispatch1(INT_GET_HAN
 inline int SetInternalHandler(int number, Addr_t handlerAddr) {
     return InternalDispatch2(INT_SET_HANDLER, (Addr_t)number, (Addr_t)handlerAddr);
 }
+inline Frame_t PmmAlloc(void) { return InternalDispatch0(INT_PMM_ALLOC); }
 
 
 

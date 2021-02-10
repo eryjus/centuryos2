@@ -64,6 +64,7 @@ void InternalInit(void)
 
     internalTable[INT_GET_HANDLER] = (InternalHandler_t)InternalGetHandler;
     internalTable[INT_SET_HANDLER] = (InternalHandler_t)InternalSetHandler;
+    internalTable[INT_PMM_ALLOC] = (InternalHandler_t)PmmEarlyFrame;
 }
 
 

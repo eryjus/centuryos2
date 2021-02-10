@@ -15,6 +15,8 @@
 //===================================================================================================================
 
 
+//#define USE_SERIAL
+
 #include "types.h"
 #include "serial.h"
 #include "mmu.h"
@@ -49,6 +51,9 @@ PageEntry_t *GetPML4Entry(Addr_t a)
 {
     PageEntry_t *t = (PageEntry_t *)0xfffffffffffff000;
     uint64_t idx = (a >> 39) & 0x1ff;
+    SerialPutString("PML4 idx = ");
+    SerialPutHex64(idx);
+    SerialPutChar('\n');
     return &t[idx];
 }
 
@@ -57,6 +62,9 @@ PageEntry_t *GetPDPTEntry(Addr_t a)
 {
     PageEntry_t *t = (PageEntry_t *)0xffffffffffe00000;
     uint64_t idx = (a >> 30) & 0x3ffff;
+    SerialPutString("PDPT idx = ");
+    SerialPutHex64(idx);
+    SerialPutChar('\n');
     return &t[idx];
 }
 
@@ -65,6 +73,9 @@ PageEntry_t *GetPDEntry(Addr_t a)
 {
     PageEntry_t *t = (PageEntry_t *)0xffffffffc0000000;
     uint64_t idx = (a >> 21) & 0x7ffffff;
+    SerialPutString("PD idx = ");
+    SerialPutHex64(idx);
+    SerialPutChar('\n');
     return &t[idx];
 }
 
@@ -73,6 +84,9 @@ PageEntry_t *GetPTEntry(Addr_t a)
 {
     PageEntry_t *t = (PageEntry_t *)0xffffff8000000000;
     uint64_t idx = (a >> 12) & 0xfffffffff;
+    SerialPutString("PT idx = ");
+    SerialPutHex64(idx);
+    SerialPutChar('\n');
     return &t[idx];
 }
 
@@ -84,24 +98,24 @@ static inline void INVLPG(Addr_t a) { __asm("invlpg (%0)" :: "r"(a)); }
 
 
 //
-// -- Get a new Table
-//    ---------------
-Frame_t MmuGetTable(void)
-{
-    extern Frame_t earlyFrame;
-    return earlyFrame ++;
-}
-
-
-//
 // -- Check if an address is mapped
 //    -----------------------------
 bool MmuIsMapped(Addr_t a)
 {
+    INVLPG((Addr_t)GetPML4Entry(a));
+    INVLPG((Addr_t)GetPDPTEntry(a));
+    INVLPG((Addr_t)GetPDEntry(a));
+    INVLPG((Addr_t)GetPTEntry(a));
+
+    SerialPutString("mapped? PML4\n");
     if (!GetPML4Entry(a)->p) return false;
+    SerialPutString("mapped? PDPT\n");
     if (!GetPDPTEntry(a)->p) return false;
+    SerialPutString("mapped? PD\n");
     if (!GetPDEntry(a)->p) return false;
+    SerialPutString("mapped? PT\n");
     if (!GetPTEntry(a)->p) return false;
+    SerialPutString("mapped.\n");
     return true;
 }
 
@@ -133,10 +147,16 @@ void MmuMapPage(Addr_t a, Frame_t f, bool writable)
     SerialPutHex64(f);
     SerialPutChar('\n');
 
+    SerialPutString("Checking if the page is mapped\n");
     if (MmuIsMapped(a)) MmuUnmapPage(a);
+    SerialPutString(".. Done -- guaranteed unmapped\n");
+
 
     Frame_t t;
     PageEntry_t *ent = GetPML4Entry(a);
+    SerialPutString(".. PML4 @ ");
+    SerialPutHex64((Addr_t)ent);
+    SerialPutChar('\n');
     if (!ent->p) {
         t = MmuGetTable();
         ent->frame = t;
@@ -145,6 +165,9 @@ void MmuMapPage(Addr_t a, Frame_t f, bool writable)
     }
 
     ent = GetPDPTEntry(a);
+    SerialPutString(".. PDPT @ ");
+    SerialPutHex64((Addr_t)ent);
+    SerialPutChar('\n');
     if (!ent->p) {
         t = MmuGetTable();
         ent->frame = t;
@@ -153,6 +176,9 @@ void MmuMapPage(Addr_t a, Frame_t f, bool writable)
     }
 
     ent = GetPDEntry(a);
+    SerialPutString(".. PD @ ");
+    SerialPutHex64((Addr_t)ent);
+    SerialPutChar('\n');
     if (!ent->p) {
         t = MmuGetTable();
         ent->frame = t;
@@ -161,6 +187,9 @@ void MmuMapPage(Addr_t a, Frame_t f, bool writable)
     }
 
     ent = GetPTEntry(a);
+    SerialPutString(".. PT @ ");
+    SerialPutHex64((Addr_t)ent);
+    SerialPutChar('\n');
     ent->frame = f;
     ent->rw = writable;
     ent->p = 1;

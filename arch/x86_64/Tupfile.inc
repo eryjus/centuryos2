@@ -21,6 +21,7 @@
 AS = nasm
 CC = clang
 LD = ld.lld
+#LD = x86_64-elf-ld
 
 
 ##
@@ -33,6 +34,9 @@ CFLAGS += -mcmodel=large
 CFLAGS += -mno-mmx
 CFLAGS += -mno-sse
 CFLAGS += -mno-sse2
+
+
+# LDFLAGS += --verbose=1
 
 
 ##

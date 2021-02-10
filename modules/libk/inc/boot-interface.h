@@ -1,6 +1,6 @@
 //===================================================================================================================
 //
-//  types.h -- Foundational types for CenturyOS
+//  boot-interface.h -- Communication structures between the loader and kernel
 //
 //        Copyright (c)  2017-2021 -- Adam Clark
 //        Licensed under "THE BEER-WARE LICENSE"
@@ -10,31 +10,31 @@
 //
 //     Date      Tracker  Version  Pgmr  Description
 //  -----------  -------  -------  ----  ---------------------------------------------------------------------------
-//  2021-Jan-03  Initial  v0.0.1   ADCL  Initial version
+//  2021-Feb-01  Initial  v0.0.4   ADCL  Initial version
 //
 //===================================================================================================================
 
 
 #pragma once
 
-#include <cstdint>
-#include <cstddef>
 
-
-//#define USE_SERIAL
+#include "types.h"
 
 
 //
-// -- The Multiboot signatures
-//    ------------------------
-#define MB1SIG                          0x2badb002
-#define MB2SIG                          0x36d76289
+// -- set the limit to the number of modules we can handle
+//    ----------------------------------------------------
+#define MAX_MODS    25
 
 
 //
-// -- Foundational Types
-//    ------------------
-typedef uint64_t Frame_t;
-typedef uint64_t Addr_t;
+// -- This structure passes information between the loader and the kernel
+//    -------------------------------------------------------------------
+typedef struct BootInterface_t {
+    Frame_t nextEarlyFrame;
+    int modCount;
+    Addr_t modAddr[MAX_MODS];
+} BootInterface_t;
+
 
 

@@ -15,6 +15,10 @@
 //===================================================================================================================
 
 
+#ifndef USE_SERIAL
+#define USE_SERIAL
+#endif
+
 #include "types.h"
 #include "printf.h"
 #include "serial.h"
@@ -22,11 +26,25 @@
 #include "idt.h"
 
 
+#if __has_include("tss.h")
+#include "tss.h"
+
+Tss_t tss[MAX_CPU] = { { 0 } };
+
+#else
+
+#define TssInit()
+
+#endif
+
+
+
 
 //
 // -- Prototypes
 //    ----------
 extern IdtHandlerFunc_t IdtGenericEntry;
+extern IdtHandlerFunc_t IdtGenericEntryNoErr;
 
 extern "C" {
     void IdtGenericHandler(Addr_t *);
@@ -101,7 +119,7 @@ void __attribute__((noreturn)) IdtGenericHandler(Addr_t *stack)
         SS  = 25,
     };
 
-    kprintf("An unknown error has occurred\n");
+    kprintf("An unknown error has occurred (Error Code %p)\n", stack[ERR]);
     kprintf("  RAX: %p\tR8 : %p\n", stack[RAX], stack[R8]);
     kprintf("  RBX: %p\tR9 : %p\n", stack[RBX], stack[R9]);
     kprintf("  RCX: %p\tR10: %p\n", stack[RCX], stack[R10]);
@@ -126,7 +144,20 @@ void __attribute__((noreturn)) IdtGenericHandler(Addr_t *stack)
 void IdtInstall(void)
 {
     for (int i = 0; i < 256; i ++) {
-        IdtSetHandler(i, 8, &IdtGenericEntry, 0, 0);
+        switch (i) {
+        case 8:
+        case 10:
+        case 11:
+        case 12:
+        case 13:
+        case 14:
+            IdtSetHandler(i, 8, &IdtGenericEntry, 0, 0);
+            break;
+
+        default:
+            IdtSetHandler(i, 8, &IdtGenericEntryNoErr, 0, 0);
+            break;
+        }
     }
 
     idtr.loc = (Addr_t)idtTable;
@@ -135,6 +166,8 @@ void IdtInstall(void)
     __asm__("lidt %0" : : "m"(idtr));
 
     IdtSetHandler(0xe0, 8, &InternalTarget, 0, 0);
+
+    TssInit();
 }
 
 

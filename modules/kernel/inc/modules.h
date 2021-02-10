@@ -1,6 +1,6 @@
-//====================================================================================================================
+//===================================================================================================================
 //
-//  idt.h -- Interface points with the IDT
+//  modules.h -- Interface for loading modules
 //
 //        Copyright (c)  2017-2021 -- Adam Clark
 //        Licensed under "THE BEER-WARE LICENSE"
@@ -10,29 +10,20 @@
 //
 //     Date      Tracker  Version  Pgmr  Description
 //  -----------  -------  -------  ----  ---------------------------------------------------------------------------
-//  2021-Jan-19  Initial  v0.0.2   ADCL  Initial version
+//  2021-Feb-02  Initial  v0.0.4   ADCL  Initial version
 //
 //===================================================================================================================
 
 
 #pragma once
-#ifndef __IDT_H__
-#define __IDT_H__
-
 
 #include "types.h"
 
 
 //
-// -- Function prototypes
+// -- function prototypes
 //    -------------------
 extern "C" {
-    void IdtInstall(void);
-    Addr_t IdtGetHandler(int i);
-    void IdtSetHandler(int i, uint16_t sec, IdtHandlerFunc_t *handler, int ist, int dpl);
-    Frame_t PmmEarlyFrame(void);
+    void ModuleEarlyInit(void);
 }
-
-
-#endif
 

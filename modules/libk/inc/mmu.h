@@ -1,6 +1,6 @@
 //===================================================================================================================
 //
-//  serial.h -- Functions related to Serial Output
+//  mmu.h -- Functions related to managing the Paging Tables
 //
 //        Copyright (c)  2017-2021 -- Adam Clark
 //        Licensed under "THE BEER-WARE LICENSE"
@@ -10,41 +10,22 @@
 //
 //     Date      Tracker  Version  Pgmr  Description
 //  -----------  -------  -------  ----  ---------------------------------------------------------------------------
-//  2021-Jan-13  Initial  v0.0.1   ADCL  Initial version
+//  2021-Jan-03  Initial  v0.0.1   ADCL  Initial version
 //
 //===================================================================================================================
 
 
 #pragma once
-#ifndef __SERIAL_H__
-#define __SERIAL_H__
-
 
 #include "types.h"
-
-#ifdef USE_SERIAL
 
 
 //
 // -- function prototypes
 //    -------------------
 extern "C" {
-    void SerialOpen(void);
-    void SerialPutChar(uint8_t ch);
-    void SerialPutString(const char *s);
-    void SerialPutHex64(uint64_t h);
-    void SerialPutHex32(uint32_t h);
+    Frame_t MmuGetTable(void);
+    bool MmuIsMapped(Addr_t a);
+    void MmuUnmapPage(Addr_t a);
+    void MmuMapPage(Addr_t a, Frame_t f, bool writable);
 }
-
-
-#else
-
-#define SerialOpen(...)
-#define SerialPutChar(...)
-#define SerialPutString(...)
-#define SerialHex64(...)
-#define SerialHex32(...)
-
-#endif
-
-#endif

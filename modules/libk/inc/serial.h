@@ -1,6 +1,6 @@
 //===================================================================================================================
 //
-//  kInit.cc -- Complete the initialization
+//  serial.h -- Functions related to Serial Output
 //
 //        Copyright (c)  2017-2021 -- Adam Clark
 //        Licensed under "THE BEER-WARE LICENSE"
@@ -10,45 +10,45 @@
 //
 //     Date      Tracker  Version  Pgmr  Description
 //  -----------  -------  -------  ----  ---------------------------------------------------------------------------
-//  2021-Jan-03  Initial  v0.0.1   ADCL  Initial version
+//  2021-Jan-13  Initial  v0.0.1   ADCL  Initial version
 //
 //===================================================================================================================
 
 
+#pragma once
+#ifndef __SERIAL_H__
+#define __SERIAL_H__
+
+
 #include "types.h"
-#include "elf.h"
-#include "mboot.h"
-#include "serial.h"
 
 
 extern "C" {
-    void kInit(void);
-    void JumpKernel(Addr_t entry);
+    void SerialOpen(void);
 }
+
+
+#ifdef USE_SERIAL
 
 
 //
-// -- Complete the initialization
-//    ---------------------------
-void kInit(void)
-{
-    SerialOpen();
-    SerialPutString("Hello\n");
-
-    Addr_t kernel = MBootGetKernel();
-
-    SerialPutString("Kernel image at ");
-    SerialPutHex32(kernel);
-    SerialPutChar('\n');
-
-    if (kernel != 0) {
-        Addr_t entry = ElfLoadKernel(kernel);
-
-        SerialPutString("Jumping!\n");
-
-        JumpKernel(entry);
-    }
-
-    while (true) {}
+// -- function prototypes
+//    -------------------
+extern "C" {
+    void SerialPutChar(uint8_t ch);
+    void SerialPutString(const char *s);
+    void SerialPutHex64(uint64_t h);
+    void SerialPutHex32(uint32_t h);
 }
 
+
+#else
+
+#define SerialPutChar(ch) ((void)(ch))
+#define SerialPutString(s) ((void)(s))
+#define SerialPutHex64(h) ((void)(h))
+#define SerialPutHex32(h) ((void)(h))
+
+#endif
+
+#endif

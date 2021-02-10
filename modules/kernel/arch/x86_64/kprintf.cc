@@ -18,6 +18,10 @@
 //===================================================================================================================
 
 
+#ifndef USE_SERIAL
+#define USE_SERIAL
+#endif
+
 #include "types.h"
 #include "serial.h"
 #include "printf.h"

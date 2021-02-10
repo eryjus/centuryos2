@@ -16,6 +16,7 @@
 
 
                 global      IdtGenericEntry
+                global      IdtGenericEntryNoErr
                 global      InternalTarget
 
                 extern      IdtGenericHandler
@@ -23,12 +24,15 @@
                 extern      internalTable
 
 
+                cpu         x64
                 section     .text
 
 
 ;;
 ;; -- This is the entry point for the generic IDT handler
 ;;    ---------------------------------------------------
+IdtGenericEntryNoErr:
+                push        qword 0
 IdtGenericEntry:
                 push        rax
                 push        rbx
@@ -84,7 +88,9 @@ IdtGenericEntry:
                 pop         rbx
                 pop         rax
 
-                iret
+                add         rsp,8                       ;; skip the error code
+
+                iretq
 
 
 ;;
@@ -107,7 +113,8 @@ InternalTarget:
                 push        r14
                 push        r15
 
-                mov         r15,[maxHandlers]
+                mov         rax,maxHandlers
+                mov         r15,[rax]
                 cmp         rdi,0
                 jl          .invalid
 
@@ -145,8 +152,8 @@ InternalTarget:
                 pop         rdx
                 pop         rcx
                 pop         rbx
-                sub         rsp,8
+                add         rsp,8
 
-                iret
+                iretq
 
 

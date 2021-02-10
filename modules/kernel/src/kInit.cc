@@ -15,11 +15,18 @@
 //===================================================================================================================
 
 
+#ifndef USE_SERIAL
+#define USE_SERIAL
+#endif
+
+
 #include "types.h"
 #include "idt.h"
 #include "serial.h"
 #include "internal.h"
 #include "printf.h"
+#include "boot-interface.h"
+#include "modules.h"
 
 
 //
@@ -33,9 +40,18 @@ extern "C" void kInit(void);
 //    ---------------------------------
 void kInit(void)
 {
+    extern Frame_t earlyFrame;
+    extern BootInterface_t *loaderInterface;
+
     SerialOpen();
+
+    earlyFrame = loaderInterface->nextEarlyFrame;
+    kprintf("kInit(): Next Early Frame: %p\n", earlyFrame);
+
     IdtInstall();
     InternalInit();
+//    ServiceInit();            // similar to InternalInit();
+    ModuleEarlyInit();
 
     kprintf("Welcome!\n");
 

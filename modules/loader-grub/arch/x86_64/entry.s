@@ -29,12 +29,13 @@
                 global      mbSig
                 global      mbData
                 global      JumpKernel
+                global      kernelInterface
 
 
 ;;
 ;; -- declare some external symbols
 ;;    -----------------------------
-                extern      kInit
+                extern      lInit
 
 
 ;;
@@ -137,6 +138,10 @@ earlyFrame:     dd          (4 * 1024)                      ;; we start allocati
                 dd          0                               ;; for when we use uint64_t...
 
 
+kernelInterface:
+                dq          0                               ;; the address of the interface structure
+
+
 ;;
 ;; -- we will use these variables to keep track of the paging tables
 ;;    --------------------------------------------------------------
@@ -164,9 +169,9 @@ mbData:         dd          0
                 align       8
 
 gdt64:
-                dq          0                   ; GDT entry 0x00
-                dq          0x00a09a0000000000  ; GDT entry 0x08
-                dq          0x00a0920000000000  ; GDT entry 0x10
+                dq          0                   ; GDT entry 0x00 (NULL)
+                dq          0x00a09a0000000000  ; GDT entry 0x08 (KERNEL CODE)
+                dq          0x00a0920000000000  ; GDT entry 0x10 (KERNEL DATA)
 gdt64End:
 
 gdtr64:                                     ; this is the GDT to jump into long mode
@@ -271,6 +276,9 @@ entry:
                 mov         eax,0x100103                    ;; set this loader address and flags
                 mov         [ebx + (256*8)],eax             ;; set the page
 
+                add         eax,0x1000                      ;; next frame
+                mov         [ebx + (257*8)],eax             ;; set the page
+
 
 ;; -- take care of some additional mappings now
                 mov         eax,0xb0103                     ;; video output
@@ -363,13 +371,16 @@ LongMode:
                 mov         ss,ax
                 mov         rsp,rbx
 
-                jmp         kInit
+                jmp         lInit
 
 
 ;;
 ;; -- function to jump to the kernel proper
 ;;    -------------------------------------
 JumpKernel:
-                jmp         rdi
+                mov         rax,rdi
+                mov         rdi,[kernelInterface]
+                mov         rsp,rsi
+                jmp         rax
 
 

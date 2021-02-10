@@ -24,6 +24,6 @@
 // -- function prototypes
 //    -------------------
 extern "C" {
-    Addr_t ElfLoadKernel(Addr_t location);
+    Addr_t ElfLoadImage(Addr_t location);
 }
 

@@ -24,7 +24,12 @@
 #include <cstddef>
 
 
-#define USE_SERIAL
+//
+// -- Some constants for the compile
+//    ------------------------------
+
+// -- !!!DANGER!!! -- has static coding impications; check GDT before modifying
+#define MAX_CPU 4
 
 
 //

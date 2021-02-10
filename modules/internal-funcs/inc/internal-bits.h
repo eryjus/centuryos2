@@ -23,11 +23,12 @@
 // -- these are the internal functions provided by the kernel
 //    -------------------------------------------------------
 enum {
-    INT_GET_HANDLER,
-    INT_SET_HANDLER,
-    INT_SPIN_LOCK,
-    INT_SPIN_UNLOCK,
-    INT_SPIN_TEST,
+    INT_GET_HANDLER     = 0,
+    INT_SET_HANDLER     = 1,
+    INT_SPIN_LOCK       = 2,
+    INT_SPIN_UNLOCK     = 3,
+    INT_SPIN_TEST       = 4,
+    INT_PMM_ALLOC       = 10,
 };
 
 

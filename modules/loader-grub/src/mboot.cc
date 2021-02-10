@@ -19,6 +19,10 @@
 #include "mmu.h"
 #include "mboot.h"
 #include "serial.h"
+#include "boot-interface.h"
+
+
+extern BootInterface_t *kernelInterface;
 
 
 //
@@ -31,7 +35,7 @@
 typedef struct Mb1Mods_t {
     uint32_t modStart;
     uint32_t modEnd;
-    char *modIdent;
+    uint32_t modIdent;
     uint32_t modReserved;
 } __attribute__((packed)) Mb1Mods_t;
 
@@ -189,6 +193,7 @@ static Addr_t MBootGetMb1Kernel(void)
 {
     extern uint32_t mbData;
     uint64_t mbd = mbData;
+    Addr_t rv = 0;
 
     MB1_t *mb1 = (MB1_t *)mbd;
 
@@ -204,25 +209,37 @@ static Addr_t MBootGetMb1Kernel(void)
         uint64_t mAddr = mb1->modAddr;
         Mb1Mods_t *mods = (Mb1Mods_t *)mAddr;
 
+        SerialPutString("Module loaded at Address ");
+        SerialPutHex64(mAddr);
+        SerialPutChar('\n');
+
         for (unsigned int i = 0; i < mb1->modCount; i ++) {
-            char *name = mods[i].modIdent;
+            char *name = (char *)((Addr_t)mods[i].modIdent);
 
             if (!MmuIsMapped((Addr_t)name)) {
                 MmuMapPage((Addr_t)name, ((Addr_t)name) >> 12, false);
             }
 
-            if (name[0] != 'k') continue;
-            if (name[1] != 'e') continue;
-            if (name[2] != 'r') continue;
-            if (name[3] != 'n') continue;
-            if (name[4] != 'e') continue;
-            if (name[5] != 'l') continue;
+            SerialPutString(".. ");
+            SerialPutString(name);
+            SerialPutString(" @ ");
+            SerialPutHex64(mods[i].modStart);
+            SerialPutChar('\n');
 
-            return mods->modStart;
+            if (name[0] == 'k' &&
+                    name[1] == 'e' &&
+                    name[2] == 'r' &&
+                    name[3] == 'n' &&
+                    name[4] == 'e' &&
+                    name[5] == 'l') {
+                rv = mods->modStart;
+            } else {
+                kernelInterface->modAddr[kernelInterface->modCount ++] = mods[i].modStart;
+            }
         }
     }
 
-    return 0;
+    return rv;
 }
 
 
@@ -234,6 +251,7 @@ static Addr_t MBootGetMb2Kernel(void)
     extern uint32_t mbData;
     uint32_t locn = (Addr_t)mbData + sizeof(Mb2Fixed_t);
     bool lastTag = false;
+    Addr_t rv = 0;
 
     if (!mbData) return 0;
 
@@ -249,24 +267,25 @@ static Addr_t MBootGetMb2Kernel(void)
         if (tag->type == 3) {
             Mb2Module_t *m = (Mb2Module_t *)(Addr_t)locn;
 
-            if (m->name[0] != 'k') goto next;
-            if (m->name[1] != 'e') goto next;
-            if (m->name[2] != 'r') goto next;
-            if (m->name[3] != 'n') goto next;
-            if (m->name[4] != 'e') goto next;
-            if (m->name[5] != 'l') goto next;
-
-            return m->modStart;
+            if (m->name[0] == 'k' &&
+                    m->name[1] == 'e' &&
+                    m->name[2] == 'r' &&
+                    m->name[3] == 'n' &&
+                    m->name[4] == 'e' &&
+                    m->name[5] == 'l') {
+                rv = m->modStart;
+            } else {
+                kernelInterface->modAddr[kernelInterface->modCount ++] = m->modStart;
+            }
         } else if (tag->type == 0) {
             lastTag = true;
         }
 
-next:
         locn += (tag->size + (~(tag->size - 1) & 0x7));
     }
 
 
-    return 0;
+    return rv;
 }
 
 

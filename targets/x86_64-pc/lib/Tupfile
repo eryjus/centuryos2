@@ -41,5 +41,6 @@ LIB = -l gcc
 ##
 ## -- The rules to build the objects
 ##    ------------------------------
-: ../obj/internal-funcs/$(ARCH)/*.o |> x86_64-elf-ar cr %o %f; |> libinteral.a
+: ../obj/internal-funcs/$(ARCH)/*.o |> x86_64-elf-ar cr %o %f; |> libinternal.a
+: ../obj/libk/$(ARCH)/*.o |> x86_64-elf-ar cr %o %f; |> libk.a
 

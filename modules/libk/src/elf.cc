@@ -15,6 +15,9 @@
 //===================================================================================================================
 
 
+//#define USE_SERIAL
+
+
 #include "types.h"
 #include "mmu.h"
 #include "serial.h"
@@ -46,6 +49,23 @@ enum {
     ELFDATA_NONE        = 0,    // Invalid
     ELFDATA_LSB         = 1,    // Binary values are in little endian order
     ELFDATA_MSB         = 2,    // Binary values are in big endian order
+};
+
+
+
+//
+// -- these are the program header types
+//    ----------------------------------
+enum {
+    PT_NULL = 0,
+    PT_LOAD = 1,
+    PT_DYNAMIC = 2,
+    PT_INTERP = 3,
+    PT_NOTE = 4,
+    PT_SHLIB = 5,
+    PT_PHDR = 6,
+    PT_LOPROC = 0x70000000,
+    PT_HIPROC = 0x7fffffff,
 };
 
 
@@ -153,7 +173,10 @@ static bool ElfValidateHeader(Addr_t location)
 }
 
 
-Addr_t ElfLoadKernel(Addr_t location)
+//
+// -- Load the kernel address
+//    -----------------------
+Addr_t ElfLoadImage(Addr_t location)
 {
     extern Frame_t earlyFrame;
     Addr_t rv = 0;
@@ -167,28 +190,34 @@ Addr_t ElfLoadKernel(Addr_t location)
         Elf64PHdr_t *pHdr = (Elf64PHdr_t *)(location + eHdr->ePhOff);
 
         for (unsigned int i = 0; i < eHdr->ePhNum; i ++) {
-            Addr_t phys = location + pHdr[i].pOffset;
-            Addr_t virt = pHdr[i].pVAddr;
-            int64_t fSize = pHdr[i].pFileSz;
-            int64_t mSize = pHdr[i].pMemSz;
+            if (pHdr[i].pType == PT_LOAD) {
+                Addr_t phys = location + pHdr[i].pOffset;
+                Addr_t virt = pHdr[i].pVAddr;
+                int64_t fSize = pHdr[i].pFileSz;
+                int64_t mSize = pHdr[i].pMemSz;
 
-            while (mSize >= 0) {
-                SerialPutString(".. mapping elf; mSize = ");
-                SerialPutHex64(mSize);
+                SerialPutString(".. type = ");
+                SerialPutHex32(pHdr[i].pType);
                 SerialPutChar('\n');
 
-                Frame_t f = phys >> 12;
+                while (mSize >= 0) {
+                    SerialPutString(".. mapping elf; mSize = ");
+                    SerialPutHex64(mSize);
+                    SerialPutChar('\n');
 
-                if (fSize <= 0) {
-                    f = (earlyFrame ++) >> 12;
+                    Frame_t f = phys >> 12;
+
+                    if (fSize <= 0) {
+                        f = (earlyFrame ++);
+                    }
+
+                    MmuMapPage(virt, f, pHdr[i].pType & PF_W);
+
+                    virt += 4096;
+                    phys += 4096;
+                    mSize -= 4096;
+                    fSize -= 4096;
                 }
-
-                MmuMapPage(virt, f, pHdr[i].pType & PF_W);
-
-                virt += 4096;
-                phys += 4096;
-                mSize -= 4096;
-                fSize -= 4096;
             }
         }
 

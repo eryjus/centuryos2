@@ -32,7 +32,11 @@
 extern "C" {
     void InternalInit(void);
     int InternalGetHandler(int i);
-    int InternalSetHandler(int i, InternalHandler_t handler);
+    int InternalSetHandler(int i, InternalHandler_t handler, Addr_t cr3);
+    void ServiceInit(void);
+    int ServiceGetHandler(int i);
+    int ServiceSetHandler(int i, ServiceHandler_t handler, Addr_t cr3);
+    void InternalTableDump(void);
 }
 
 

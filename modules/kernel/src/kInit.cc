@@ -40,20 +40,21 @@ extern "C" void kInit(void);
 //    ---------------------------------
 void kInit(void)
 {
-    extern Frame_t earlyFrame;
+    extern Frame_t kEarlyFrame;
     extern BootInterface_t *loaderInterface;
 
     SerialOpen();
 
-    earlyFrame = loaderInterface->nextEarlyFrame;
-    kprintf("kInit(): Next Early Frame: %p\n", earlyFrame);
+    kprintf("kInit(): Next Early Frame: %p\n", loaderInterface->nextEarlyFrame);
 
     IdtInstall();
     InternalInit();
-//    ServiceInit();            // similar to InternalInit();
+    ServiceInit();            // similar to InternalInit();
     ModuleEarlyInit();
 
     kprintf("Welcome!\n");
+
+//    InternalTableDump();
 
     while (true) {}
 }

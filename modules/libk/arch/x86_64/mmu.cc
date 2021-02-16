@@ -51,9 +51,9 @@ PageEntry_t *GetPML4Entry(Addr_t a)
 {
     PageEntry_t *t = (PageEntry_t *)0xfffffffffffff000;
     uint64_t idx = (a >> 39) & 0x1ff;
-    SerialPutString("PML4 idx = ");
-    SerialPutHex64(idx);
-    SerialPutChar('\n');
+//    SerialPutString("PML4 idx = ");
+//    SerialPutHex64(idx);
+//    SerialPutChar('\n');
     return &t[idx];
 }
 
@@ -62,9 +62,9 @@ PageEntry_t *GetPDPTEntry(Addr_t a)
 {
     PageEntry_t *t = (PageEntry_t *)0xffffffffffe00000;
     uint64_t idx = (a >> 30) & 0x3ffff;
-    SerialPutString("PDPT idx = ");
-    SerialPutHex64(idx);
-    SerialPutChar('\n');
+//    SerialPutString("PDPT idx = ");
+//    SerialPutHex64(idx);
+//    SerialPutChar('\n');
     return &t[idx];
 }
 
@@ -73,9 +73,9 @@ PageEntry_t *GetPDEntry(Addr_t a)
 {
     PageEntry_t *t = (PageEntry_t *)0xffffffffc0000000;
     uint64_t idx = (a >> 21) & 0x7ffffff;
-    SerialPutString("PD idx = ");
-    SerialPutHex64(idx);
-    SerialPutChar('\n');
+//    SerialPutString("PD idx = ");
+//    SerialPutHex64(idx);
+//    SerialPutChar('\n');
     return &t[idx];
 }
 
@@ -84,9 +84,9 @@ PageEntry_t *GetPTEntry(Addr_t a)
 {
     PageEntry_t *t = (PageEntry_t *)0xffffff8000000000;
     uint64_t idx = (a >> 12) & 0xfffffffff;
-    SerialPutString("PT idx = ");
-    SerialPutHex64(idx);
-    SerialPutChar('\n');
+//    SerialPutString("PT idx = ");
+//    SerialPutHex64(idx);
+//    SerialPutChar('\n');
     return &t[idx];
 }
 
@@ -94,7 +94,7 @@ PageEntry_t *GetPTEntry(Addr_t a)
 //
 // -- Some assembly CPU instructions
 //    ------------------------------
-static inline void INVLPG(Addr_t a) { __asm("invlpg (%0)" :: "r"(a)); }
+static inline void INVLPG(Addr_t a) { __asm("invlpg (%0)" :: "r"(a) : "memory"); }
 
 
 //
@@ -102,20 +102,41 @@ static inline void INVLPG(Addr_t a) { __asm("invlpg (%0)" :: "r"(a)); }
 //    -----------------------------
 bool MmuIsMapped(Addr_t a)
 {
+    SerialPutString("Checking if address ");
+    SerialPutHex64(a);
+    SerialPutString(" is mapped\n");
+
     INVLPG((Addr_t)GetPML4Entry(a));
     INVLPG((Addr_t)GetPDPTEntry(a));
     INVLPG((Addr_t)GetPDEntry(a));
     INVLPG((Addr_t)GetPTEntry(a));
 
-    SerialPutString("mapped? PML4\n");
+    SerialPutString("Mapped? PML4 at ");
+    SerialPutHex64((Addr_t)GetPML4Entry(a));
+    SerialPutChar('\n');
+
     if (!GetPML4Entry(a)->p) return false;
-    SerialPutString("mapped? PDPT\n");
+
+    SerialPutString("mapped? PDPT at ");
+    SerialPutHex64((Addr_t)GetPDPTEntry(a));
+    SerialPutChar('\n');
+
     if (!GetPDPTEntry(a)->p) return false;
-    SerialPutString("mapped? PD\n");
+
+    SerialPutString("mapped? PD at ");
+    SerialPutHex64((Addr_t)GetPDEntry(a));
+    SerialPutChar('\n');
+
     if (!GetPDEntry(a)->p) return false;
-    SerialPutString("mapped? PT\n");
+
+    SerialPutString("mapped? PT at ");
+    SerialPutHex64((Addr_t)GetPTEntry(a));
+    SerialPutChar('\n');
+
     if (!GetPTEntry(a)->p) return false;
+
     SerialPutString("mapped.\n");
+
     return true;
 }
 
@@ -154,40 +175,50 @@ void MmuMapPage(Addr_t a, Frame_t f, bool writable)
 
     Frame_t t;
     PageEntry_t *ent = GetPML4Entry(a);
-    SerialPutString(".. PML4 @ ");
+    INVLPG((Addr_t)ent);
+    SerialPutString(".. Mapping PML4 @ ");
     SerialPutHex64((Addr_t)ent);
     SerialPutChar('\n');
     if (!ent->p) {
+        SerialPutChar('.');
         t = MmuGetTable();
         ent->frame = t;
         ent->rw = 1;
         ent->p = 1;
     }
 
+    SerialPutChar('.');
     ent = GetPDPTEntry(a);
-    SerialPutString(".. PDPT @ ");
+    INVLPG((Addr_t)ent);
+    SerialPutString(".. Mapping PDPT @ ");
     SerialPutHex64((Addr_t)ent);
     SerialPutChar('\n');
     if (!ent->p) {
+        SerialPutChar('.');
         t = MmuGetTable();
         ent->frame = t;
         ent->rw = 1;
         ent->p = 1;
     }
 
+    SerialPutChar('.');
     ent = GetPDEntry(a);
-    SerialPutString(".. PD @ ");
+    INVLPG((Addr_t)ent);
+    SerialPutString(".. Mapping PD @ ");
     SerialPutHex64((Addr_t)ent);
     SerialPutChar('\n');
     if (!ent->p) {
+        SerialPutChar('.');
         t = MmuGetTable();
         ent->frame = t;
         ent->rw = 1;
         ent->p = 1;
     }
 
+    SerialPutChar('.');
     ent = GetPTEntry(a);
-    SerialPutString(".. PT @ ");
+    INVLPG((Addr_t)ent);
+    SerialPutString(".. Mapping PT @ ");
     SerialPutHex64((Addr_t)ent);
     SerialPutChar('\n');
     ent->frame = f;

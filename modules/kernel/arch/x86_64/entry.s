@@ -149,7 +149,6 @@ TssInit:
 ;; -- Load the new cr3, returning the old value
 ;;    -----------------------------------------
 LoadCr3:
-                xchg        edx,edx
                 mov         rax,cr3
                 mov         cr3,rdi
                 ret

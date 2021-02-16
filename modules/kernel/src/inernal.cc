@@ -15,8 +15,12 @@
 //===================================================================================================================
 
 
+//#define USE_SERIAL
+
 #include "types.h"
 #include "spinlock.h"
+#include "printf.h"
+#include "mmu.h"
 #include "internal.h"
 
 
@@ -28,9 +32,25 @@ int maxHandlers = MAX_HANDLERS;
 
 
 //
-// -- The internal handler table
+// -- The internal handler tables
+//    ---------------------------
+typedef struct InternalFunctions_t {
+    InternalHandler_t handler;
+    Addr_t cr3;
+} InternalFunctions_t;
+
+InternalFunctions_t internalTable[MAX_HANDLERS] = { { 0 } };
+
+
+//
+// -- The service handler tables
 //    --------------------------
-InternalHandler_t internalTable[MAX_HANDLERS] = {0};
+typedef struct ServiceFunctions_t {
+    ServiceHandler_t handler;
+    Addr_t cr3;
+} ServiceFunctions_t;
+
+ServiceFunctions_t serviceTable[MAX_HANDLERS] = { { 0 } };
 
 
 
@@ -40,17 +60,41 @@ InternalHandler_t internalTable[MAX_HANDLERS] = {0};
 int InternalGetHandler(int i)
 {
     if (i < 0 || i >= maxHandlers) return -EINVAL;
-    return (int)internalTable[i];
+    return (int)internalTable[i].handler;
 }
 
 
 //
 // -- Set an internal function handler address in the table
 //    -----------------------------------------------------
-int InternalSetHandler(int i, InternalHandler_t handler)
+int InternalSetHandler(int i, InternalHandler_t handler, Addr_t cr3)
 {
     if (i < 0 || i >= maxHandlers) return -EINVAL;
-    internalTable[i] = handler;
+    kprintf("Setting internal handler %d to %p from %p\n", i, handler, cr3);
+    internalTable[i].handler = handler;
+    internalTable[i].cr3 = cr3;
+    return 0;
+}
+
+
+//
+// -- Read an service function handler address from the table
+//    -------------------------------------------------------
+int InternalGetService(int i)
+{
+    if (i < 0 || i >= maxHandlers) return -EINVAL;
+    return (int)serviceTable[i].handler;
+}
+
+
+//
+// -- Set an service function handler address in the table
+//    ----------------------------------------------------
+int InternalSetService(int i, ServiceHandler_t service, Addr_t cr3)
+{
+    if (i < 0 || i >= maxHandlers) return -EINVAL;
+    serviceTable[i].handler = service;
+    serviceTable[i].cr3 = cr3;
     return 0;
 }
 
@@ -60,11 +104,41 @@ int InternalSetHandler(int i, InternalHandler_t handler)
 //    -------------------------------------
 void InternalInit(void)
 {
-    for (int i = 0; i < MAX_HANDLERS; i ++) internalTable[i] = (InternalHandler_t)NULL;
+    for (int i = 0; i < MAX_HANDLERS; i ++) {
+        internalTable[i].handler = (InternalHandler_t)NULL;
+        internalTable[i].cr3 = 0;
+    }
 
-    internalTable[INT_GET_HANDLER] = (InternalHandler_t)InternalGetHandler;
-    internalTable[INT_SET_HANDLER] = (InternalHandler_t)InternalSetHandler;
-    internalTable[INT_PMM_ALLOC] = (InternalHandler_t)PmmEarlyFrame;
+    internalTable[INT_GET_HANDLER].handler = (InternalHandler_t)InternalGetHandler;
+    internalTable[INT_SET_HANDLER].handler = (InternalHandler_t)InternalSetHandler;
+    internalTable[INT_GET_SERVICE].handler = (InternalHandler_t)InternalGetService;
+    internalTable[INT_SET_SERVICE].handler = (InternalHandler_t)InternalSetService;
+    internalTable[INT_MMU_MAP].handler = (InternalHandler_t)MmuMapPage;
+    internalTable[INT_MMU_UNMAP].handler = (InternalHandler_t)MmuUnmapPage;
+    internalTable[INT_PMM_ALLOC].handler = (InternalHandler_t)PmmEarlyFrame;
 }
 
+
+//
+// -- Initialize the service handler table
+//    ------------------------------------
+void ServiceInit(void)
+{
+    for (int i = 0; i < MAX_HANDLERS; i ++) serviceTable[i].handler = (ServiceHandler_t)NULL;
+}
+
+
+//
+// -- Dump the contents of the Internal Functions Table
+//    -------------------------------------------------
+void InternalTableDump(void)
+{
+    kprintf("Internal Table Contents:\n");
+
+    for (int i = 0; i < MAX_HANDLERS; i ++) {
+        if (internalTable[i].handler != 0 || internalTable[i].cr3 != 0) {
+            kprintf("  %d: %p from context %p\n", i, internalTable[i].handler, internalTable[i].cr3);
+        }
+    }
+}
 

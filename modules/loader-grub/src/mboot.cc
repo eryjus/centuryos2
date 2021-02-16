@@ -187,6 +187,22 @@ typedef struct Mb2Module_t {
 
 
 //
+// -- Memory Map
+//    ----------
+typedef struct Mb2MemMap_t {
+    Mb2BasicTag_t tag;         // type == 6
+    uint32_t entrySize;
+    uint32_t entryVersion;
+    struct {
+        uint64_t baseAddr;
+        uint64_t length;
+        uint32_t type;
+        uint32_t reserved;
+    } entries [0];
+} __attribute__((packed)) Mb2MemMap_t;
+
+
+//
 // -- When booted by MB1, get the kernel image location
 //    -------------------------------------------------
 static Addr_t MBootGetMb1Kernel(void)
@@ -205,6 +221,8 @@ static Addr_t MBootGetMb1Kernel(void)
         MmuMapPage(mbData, mbData >> 12, false);
     }
 
+
+    // -- Handle module information (3)
     if (mb1->flags & (1<<3)) {
         uint64_t mAddr = mb1->modAddr;
         Mb1Mods_t *mods = (Mb1Mods_t *)mAddr;
@@ -239,6 +257,25 @@ static Addr_t MBootGetMb1Kernel(void)
         }
     }
 
+
+    // -- Handle memory map inforation (6)
+    if (mb1->flags & (1<<6)) {
+        uint32_t size = mb1->mmapLen;
+        int cnt = 0;
+        Mb1MmapEntry_t *entry = (Mb1MmapEntry_t *)(((Addr_t)mb1->mmapAddr));
+        while (size) {
+            if (entry->mmapType == 1 && cnt < MAX_MEM) {
+                kernelInterface->memBlocks[cnt].start = entry->mmapAddr;
+                kernelInterface->memBlocks[cnt].end = entry->mmapLength + entry->mmapLength;
+                cnt ++;
+            }
+
+            size -= (entry->mmapSize + 4);
+            entry = (Mb1MmapEntry_t *)(((Addr_t)entry) + entry->mmapSize + 4);
+        }
+    }
+
+
     return rv;
 }
 
@@ -264,7 +301,8 @@ static Addr_t MBootGetMb2Kernel(void)
     while (!lastTag) {
         Mb2BasicTag_t *tag = (Mb2BasicTag_t *)(Addr_t)locn;
 
-        if (tag->type == 3) {
+        switch (tag->type) {
+        case 3: {            // -- modules
             Mb2Module_t *m = (Mb2Module_t *)(Addr_t)locn;
 
             if (m->name[0] == 'k' &&
@@ -277,8 +315,30 @@ static Addr_t MBootGetMb2Kernel(void)
             } else {
                 kernelInterface->modAddr[kernelInterface->modCount ++] = m->modStart;
             }
-        } else if (tag->type == 0) {
+
+            break;
+        }
+
+
+        case 6: {           // -- memory map
+            Mb2MemMap_t *mmap = (Mb2MemMap_t *)(Addr_t)locn;
+            uint32_t s = tag->size / mmap->entrySize;
+            int cnt = 0;
+            for (uint32_t i = 0; i < s; i ++) {
+                if (mmap->entries[i].type == 1 && cnt < MAX_MEM) {
+                    kernelInterface->memBlocks[cnt].start = mmap->entries[i].baseAddr;
+                    kernelInterface->memBlocks[cnt].end = mmap->entries[i].length + mmap->entries[i].baseAddr;
+                    cnt ++;
+                }
+            }
+
+            break;
+        }
+
+
+        case 0:             // -- last block processed
             lastTag = true;
+            break;
         }
 
         locn += (tag->size + (~(tag->size - 1) & 0x7));

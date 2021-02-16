@@ -25,6 +25,12 @@
 
 
 //
+// -- No need to duplicate a function -- just call the MmuGetTable() function since it is exactly the same thing
+//    ----------------------------------------------------------------------------------------------------------
+static inline Frame_t PmmGetFrame(void) { return MmuGetTable(); }
+
+
+//
 // -- The number of identifying bytes
 //    -------------------------------
 #define ELF_NIDENT      16
@@ -208,7 +214,7 @@ Addr_t ElfLoadImage(Addr_t location)
                     Frame_t f = phys >> 12;
 
                     if (fSize <= 0) {
-                        f = (earlyFrame ++);
+                        f = PmmGetFrame();
                     }
 
                     MmuMapPage(virt, f, pHdr[i].pType & PF_W);

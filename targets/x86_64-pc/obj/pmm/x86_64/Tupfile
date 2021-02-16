@@ -28,6 +28,18 @@ MODULE=pmm
 
 NFLAGS+=-I ../../../../../modules/$(MODULE)/inc
 CFLAGS+=-I ../../../../../modules/$(MODULE)/inc
+CFLAGS+=-I ../../../usr/include/kernel
+CFLAGS+=-I ../../../../../arch/$(ARCH)/inc
+
+
+DEPS+=../../../usr/include/kernel/internal-bits.h
+DEPS+=../../../usr/include/kernel/kernel-funcs.h
+DEPS+=../../../usr/include/kernel/types.h
+DEPS+=../../../usr/include/kernel/elf.h
+DEPS+=../../../usr/include/kernel/mmu.h
+DEPS+= ../../../usr/include/kernel/serial.h
+DEPS+= ../../../usr/include/kernel/boot-interface.h
+DEPS+=../../../usr/include/errno.h
 
 
 ##
@@ -42,5 +54,5 @@ include_rules
 ##    ------------------------------
 : foreach  $(WS)/modules/$(MODULE)/arch/$(ARCH)/*.s                             |> !as |>
 
-: foreach  $(WS)/modules/$(MODULE)/src/*.cc                                     |> !cc |>
+: foreach  $(WS)/modules/$(MODULE)/src/*.cc                 | $(DEPS)           |> !cc |>
 

@@ -16,6 +16,8 @@
 
 
 #include "types.h"
+#include "boot-interface.h"
+#include "printf.h"
 #include "idt.h"
 
 
@@ -24,7 +26,10 @@
 //    -------------------------------------
 Frame_t PmmEarlyFrame(void)
 {
-    extern Frame_t earlyFrame;
-    return earlyFrame++;
+    extern BootInterface_t *loaderInterface;
+
+    kprintf(".. (new early frame)\n");
+
+    return loaderInterface->nextEarlyFrame ++;
 }
 

@@ -15,8 +15,11 @@
 //===================================================================================================================
 
 
+//#define USE_SERIAL
+
 #include "types.h"
 #include "kernel-funcs.h"
+#include "serial.h"
 #include "mmu.h"
 
 
@@ -25,6 +28,13 @@
 //    ---------------
 Frame_t MmuGetTable(void)
 {
-    return PmmAlloc();
+    SerialPutString("Getting a frame...\n");
+    Frame_t rv = PmmAlloc();
+
+    SerialPutString("New table at frame ");
+    SerialPutHex64(rv);
+    SerialPutChar('\n');
+
+    return rv;
 }
 

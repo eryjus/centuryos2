@@ -39,14 +39,19 @@ void lInit(void)
 {
     extern BootInterface_t *kernelInterface;
     extern Frame_t earlyFrame;
+    const Addr_t interfaceLocation = 0xffff9ffffffff000;
 
     SerialOpen();
     SerialPutString("Hello\n");
 
     Frame_t fr = earlyFrame ++;
-    MmuMapPage(fr << 12, fr, true);
-    kernelInterface = (BootInterface_t *)(fr << 12);
+    MmuMapPage(interfaceLocation, fr, true);
+    kernelInterface = (BootInterface_t *)interfaceLocation;
     kernelInterface->modCount = 0;
+
+    for (int i = 0; i < MAX_MEM; i ++) {
+        kernelInterface->memBlocks[i].start = kernelInterface->memBlocks[i].end = 0;
+    }
 
     Addr_t kernel = MBootGetKernel();
 

@@ -22,9 +22,10 @@
 
 
 //
-// -- set the limit to the number of modules we can handle
-//    ----------------------------------------------------
+// -- set the limit to the number of stuff we can handle
+//    --------------------------------------------------
 #define MAX_MODS    25
+#define MAX_MEM     10
 
 
 //
@@ -34,7 +35,19 @@ typedef struct BootInterface_t {
     Frame_t nextEarlyFrame;
     int modCount;
     Addr_t modAddr[MAX_MODS];
+    struct {
+        uint64_t start;
+        uint64_t end;
+    } memBlocks[MAX_MEM];
 } BootInterface_t;
 
+
+
+//
+// -- Some additional prototypes
+//    --------------------------
+extern "C" {
+    Addr_t GetPageTables(void);
+}
 
 

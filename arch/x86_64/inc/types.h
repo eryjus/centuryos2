@@ -50,6 +50,7 @@ typedef void (*IdtHandlerFunc_t)(Addr_t *);
 //    (each function has its own parameter list)
 //    -----------------------------------------------------------------
 typedef Addr_t InternalHandler_t;
+typedef Addr_t ServiceHandler_t;
 
 
 //
@@ -68,6 +69,8 @@ typedef struct Spinlock_t {
 //    -----------------------------------------
 #include "cpu.h"
 #include "errno.h"
+#include "atomic.h"
+#include "lists.h"
 
 
 #endif

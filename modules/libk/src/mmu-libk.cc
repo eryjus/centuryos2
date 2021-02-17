@@ -18,9 +18,15 @@
 //#define USE_SERIAL
 
 #include "types.h"
-#include "kernel-funcs.h"
 #include "serial.h"
 #include "mmu.h"
+
+
+
+extern "C" {
+    Frame_t PmmAlloc(void);
+}
+
 
 
 //
@@ -37,4 +43,6 @@ Frame_t MmuGetTable(void)
 
     return rv;
 }
+
+
 

@@ -144,7 +144,7 @@ bool MmuIsMapped(Addr_t a)
 //
 // -- Safely Unmap a page
 //    -------------------
-void MmuUnmapPage(Addr_t a)
+void krn_MmuUnmapPage(Addr_t a)
 {
     SerialPutString("Unmapping ");
     SerialPutHex64(a);
@@ -160,7 +160,7 @@ void MmuUnmapPage(Addr_t a)
 //
 // -- Map a page to a frame
 //    ---------------------
-void MmuMapPage(Addr_t a, Frame_t f, bool writable)
+void krn_MmuMapPage(Addr_t a, Frame_t f, bool writable)
 {
     SerialPutString("Mapping ");
     SerialPutHex64(a);
@@ -169,7 +169,7 @@ void MmuMapPage(Addr_t a, Frame_t f, bool writable)
     SerialPutChar('\n');
 
     SerialPutString("Checking if the page is mapped\n");
-    if (MmuIsMapped(a)) MmuUnmapPage(a);
+    if (MmuIsMapped(a)) krn_MmuUnmapPage(a);
     SerialPutString(".. Done -- guaranteed unmapped\n");
 
 

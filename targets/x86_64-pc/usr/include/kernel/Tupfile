@@ -35,8 +35,7 @@ include_rules
 ##
 ## -- The rules to build the objects
 ##    ------------------------------
-: $(WS)/modules/internal-funcs/inc/internal-bits.h |> cp %f %o |> internal-bits.h
-: $(WS)/modules/internal-funcs/inc/kernel-funcs.h |> cp %f %o |> kernel-funcs.h
+: $(WS)/modules/libk/inc/kernel-funcs.h |> cp %f %o |> kernel-funcs.h
 : $(WS)/modules/libk/inc/boot-interface.h |> cp %f %o |> boot-interface.h
 : $(WS)/modules/libk/inc/elf.h |> cp %f %o |> elf.h
 : $(WS)/modules/libk/inc/mmu.h |> cp %f %o |> mmu.h

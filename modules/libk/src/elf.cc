@@ -17,11 +17,19 @@
 
 //#define USE_SERIAL
 
-
 #include "types.h"
 #include "mmu.h"
 #include "serial.h"
 #include "elf.h"
+
+
+//
+// -- Some local function prototypes
+//    ------------------------------
+extern "C" {
+    void MmuMapPage(Addr_t a, Frame_t f, bool writable);
+    void MmuUnmapPage(Addr_t a);
+}
 
 
 //

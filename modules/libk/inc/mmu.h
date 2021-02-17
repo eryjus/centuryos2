@@ -17,8 +17,6 @@
 
 #pragma once
 
-#include "types.h"
-
 
 //
 // -- function prototypes
@@ -26,6 +24,6 @@
 extern "C" {
     Frame_t MmuGetTable(void);
     bool MmuIsMapped(Addr_t a);
-    void MmuUnmapPage(Addr_t a);
-    void MmuMapPage(Addr_t a, Frame_t f, bool writable);
+    void krn_MmuUnmapPage(Addr_t a);
+    void krn_MmuMapPage(Addr_t a, Frame_t f, bool writable);
 }

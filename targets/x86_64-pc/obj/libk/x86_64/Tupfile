@@ -37,7 +37,6 @@ DEPS+= ../../../usr/include/kernel/elf.h
 DEPS+= ../../../usr/include/kernel/mmu.h
 DEPS+= ../../../usr/include/kernel/serial.h
 DEPS+= ../../../usr/include/kernel/kernel-funcs.h
-DEPS+= ../../../usr/include/kernel/internal-bits.h
 
 
 ##

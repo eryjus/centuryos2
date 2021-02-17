@@ -121,7 +121,7 @@ void ModuleEarlyInit()
 
         // -- create a new page table structure
         modInternal[i].cr3Frame = PmmAlloc();
-        MmuMapPage(modInternal[i].cr3Frame << 12, modInternal[i].cr3Frame, true);
+        krn_MmuMapPage(modInternal[i].cr3Frame << 12, modInternal[i].cr3Frame, true);
 
         uint64_t *t = (uint64_t *)(modInternal[i].cr3Frame << 12);
         for (int j = 0; j < 512; j ++) {
@@ -150,7 +150,7 @@ void ModuleEarlyInit()
         kprintf("Loading Module located at %p\n", moduleAddr);
 
         kprintf(".. Old CR3: %p; New: %p\n", oldCr3, modInternal[i].cr3Frame << 12);
-        MmuMapPage(moduleAddr, moduleAddr >> 12, false);
+        krn_MmuMapPage(moduleAddr, moduleAddr >> 12, false);
         kprintf(".. Preparing to map the loaderInterface struct\n");
         kprintf(".. Image header mapped\n");
         modInternal[i].entries = ElfLoadImage(moduleAddr);

@@ -32,7 +32,6 @@ CFLAGS+=-I ../../../usr/include/kernel
 CFLAGS+=-I ../../../../../arch/$(ARCH)/inc
 
 
-DEPS+=../../../usr/include/kernel/internal-bits.h
 DEPS+=../../../usr/include/kernel/kernel-funcs.h
 DEPS+=../../../usr/include/kernel/types.h
 DEPS+=../../../usr/include/kernel/elf.h

@@ -91,8 +91,8 @@ Frame_t nextFrame;
 //    ------------------------------------------------
 int PmmInitEarly(BootInterface_t *loaderInterface)
 {
-    InternalMmuMap(tempMap, 0, false);              // -- this needs to be mapped to allocate new tables
-    InternalMmuUnmap(tempMap);                      // -- unmap immediately -- tables created
+    MmuMapPage(tempMap, 0, false);              // -- this needs to be mapped to allocate new tables
+    MmuUnmapPage(tempMap);                      // -- unmap immediately -- tables created
 
     for (int i = 0; i < MAX_MEM; i ++) {
         Addr_t start = loaderInterface->memBlocks[i].start;
@@ -105,7 +105,7 @@ int PmmInitEarly(BootInterface_t *loaderInterface)
 
         Addr_t size = (end - start) >> 12;
 
-        InternalMmuMap(tempMap, start >> 12, true);
+        MmuMapPage(tempMap, start >> 12, true);
 
         PmmFrameInfo_t *info = (PmmFrameInfo_t *)tempMap;
         info->count = (end - start) >> 12;
@@ -120,14 +120,14 @@ int PmmInitEarly(BootInterface_t *loaderInterface)
             pmm.scrubStack->prev = info->frame;
             info->next = pmm.scrubStack->frame;
 
-            InternalMmuUnmap((Addr_t)pmm.scrubStack);
-            InternalMmuMap((Addr_t)pmm.scrubStack, info->frame, true);
+            MmuUnmapPage((Addr_t)pmm.scrubStack);
+            MmuMapPage((Addr_t)pmm.scrubStack, info->frame, true);
         } else {
-            InternalMmuMap((Addr_t)scrubStack, info->frame, true);
+            MmuMapPage((Addr_t)scrubStack, info->frame, true);
             pmm.scrubStack = (PmmFrameInfo_t *)scrubStack;
         }
 
-        InternalMmuUnmap(tempMap);
+        MmuUnmapPage(tempMap);
     }
 
     nextFrame = loaderInterface->nextEarlyFrame;

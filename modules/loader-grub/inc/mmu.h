@@ -1,39 +1,31 @@
 //===================================================================================================================
 //
-//  spinlock.h -- Structures for spinlock management
+//  mmu.h -- Functions related to managing the Paging Tables
 //
 //        Copyright (c)  2017-2021 -- Adam Clark
 //        Licensed under "THE BEER-WARE LICENSE"
 //        See License.md for details.
 //
-// ------------------------------------------------------------------------------------------------------------------
+//  -----------------------------------------------------------------------------------------------------------------
 //
 //     Date      Tracker  Version  Pgmr  Description
 //  -----------  -------  -------  ----  ---------------------------------------------------------------------------
-//  2021-Jan-20  Initial   0.0.3   ADCL  Initial version
+//  2021-Feb-16  Initial  v0.0.6   ADCL  Initial version
 //
 //===================================================================================================================
 
 
 #pragma once
-#ifndef __SPINLOCK_H__
-#define __SPINLOCK_H__
-
 
 #include "types.h"
-#include "cpu.h"
 
 
 //
-// -- Function prototypes
+// -- function prototypes
 //    -------------------
 extern "C" {
-    int krn_SpinLock(Spinlock_t *lock);
-    int krn_SpinUnlock(Spinlock_t *lock);
-    int krn_SpinTry(Spinlock_t *lock, size_t timeout);
+    Frame_t MmuGetTable(void);
+    bool MmuIsMapped(Addr_t a);
+    void MmuUnmapPage(Addr_t a);
+    void MmuMapPage(Addr_t a, Frame_t f, bool writable);
 }
-
-
-
-#endif
-

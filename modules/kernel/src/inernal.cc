@@ -21,6 +21,7 @@
 #include "spinlock.h"
 #include "printf.h"
 #include "mmu.h"
+#include "kernel-funcs.h"
 #include "internal.h"
 
 
@@ -57,7 +58,7 @@ ServiceFunctions_t serviceTable[MAX_HANDLERS] = { { 0 } };
 //
 // -- Read an internal function handler address from the table
 //    --------------------------------------------------------
-int InternalGetHandler(int i)
+int krn_GetFunctionHandler(int i)
 {
     if (i < 0 || i >= maxHandlers) return -EINVAL;
     return (int)internalTable[i].handler;
@@ -67,7 +68,7 @@ int InternalGetHandler(int i)
 //
 // -- Set an internal function handler address in the table
 //    -----------------------------------------------------
-int InternalSetHandler(int i, InternalHandler_t handler, Addr_t cr3)
+int krn_SetFunctionHandler(int i, InternalHandler_t handler, Addr_t cr3)
 {
     if (i < 0 || i >= maxHandlers) return -EINVAL;
     kprintf("Setting internal handler %d to %p from %p\n", i, handler, cr3);
@@ -80,7 +81,7 @@ int InternalSetHandler(int i, InternalHandler_t handler, Addr_t cr3)
 //
 // -- Read an service function handler address from the table
 //    -------------------------------------------------------
-int InternalGetService(int i)
+int krn_GetOsService(int i)
 {
     if (i < 0 || i >= maxHandlers) return -EINVAL;
     return (int)serviceTable[i].handler;
@@ -90,7 +91,7 @@ int InternalGetService(int i)
 //
 // -- Set an service function handler address in the table
 //    ----------------------------------------------------
-int InternalSetService(int i, ServiceHandler_t service, Addr_t cr3)
+int krn_SetOsService(int i, ServiceHandler_t service, Addr_t cr3)
 {
     if (i < 0 || i >= maxHandlers) return -EINVAL;
     serviceTable[i].handler = service;
@@ -109,13 +110,16 @@ void InternalInit(void)
         internalTable[i].cr3 = 0;
     }
 
-    internalTable[INT_GET_HANDLER].handler = (InternalHandler_t)InternalGetHandler;
-    internalTable[INT_SET_HANDLER].handler = (InternalHandler_t)InternalSetHandler;
-    internalTable[INT_GET_SERVICE].handler = (InternalHandler_t)InternalGetService;
-    internalTable[INT_SET_SERVICE].handler = (InternalHandler_t)InternalSetService;
-    internalTable[INT_MMU_MAP].handler = (InternalHandler_t)MmuMapPage;
-    internalTable[INT_MMU_UNMAP].handler = (InternalHandler_t)MmuUnmapPage;
-    internalTable[INT_PMM_ALLOC].handler = (InternalHandler_t)PmmEarlyFrame;
+    internalTable[INT_GET_HANDLER].handler =    (InternalHandler_t)krn_GetFunctionHandler;
+    internalTable[INT_SET_HANDLER].handler =    (InternalHandler_t)krn_SetFunctionHandler;
+    internalTable[INT_GET_SERVICE].handler =    (InternalHandler_t)krn_GetOsService;
+    internalTable[INT_SET_SERVICE].handler =    (InternalHandler_t)krn_SetOsService;
+    internalTable[INT_MMU_MAP].handler =        (InternalHandler_t)krn_MmuMapPage;
+    internalTable[INT_MMU_UNMAP].handler =      (InternalHandler_t)krn_MmuUnmapPage;
+    internalTable[INT_PMM_ALLOC].handler =      (InternalHandler_t)PmmEarlyFrame;
+    internalTable[INT_SPIN_LOCK].handler =      (InternalHandler_t)krn_SpinLock;
+    internalTable[INT_SPIN_TRY].handler =       (InternalHandler_t)krn_SpinTry;
+    internalTable[INT_SPIN_UNLOCK].handler =    (InternalHandler_t)krn_SpinUnlock;
 }
 
 

@@ -22,7 +22,6 @@
 
 #include "types.h"
 #include "idt.h"
-#include "internal-bits.h"
 
 
 
@@ -31,8 +30,8 @@
 //    -------------------------------
 extern "C" {
     void InternalInit(void);
-    int InternalGetHandler(int i);
-    int InternalSetHandler(int i, InternalHandler_t handler, Addr_t cr3);
+    int krn_GetFunctionHandler(int i);
+    int krn_SetFunctionHandler(int i, InternalHandler_t handler, Addr_t cr3);
     void ServiceInit(void);
     int ServiceGetHandler(int i);
     int ServiceSetHandler(int i, ServiceHandler_t handler, Addr_t cr3);

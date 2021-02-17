@@ -38,11 +38,9 @@ LDFLAGS += -L $(X86_64_LDFLAGS)
 LDFLAGS += -L $(WS)/targets/$(TARGET)/lib
 LIB += -l gcc
 LIB += -l k
-LIB2 += -l internal
 
 
 DEPS += $(WS)/targets/$(TARGET)/lib/libk.a
-DEPS += $(WS)/targets/$(TARGET)/lib/libinternal.a
 
 
 ##
@@ -57,5 +55,5 @@ PMM_LS=$(WS)/modules/pmm/arch/$(ARCH)/$(TARGET).ld
 ## -- The rules to build the objects
 ##    ------------------------------
 : ../../obj/loader-grub/$(ARCH)/*.o     | $(LOADER_GRUB_LS) $(DEPS)     |> $(LD) -T $(LOADER_GRUB_LS) $(LDFLAGS) -o %o %f $(LIB);   |> loader-grub.elf
-: ../../obj/kernel/$(ARCH)/*.o          | $(KERNEL_LS) $(DEPS)          |> $(LD) -T $(KERNEL_LS) $(LDFLAGS) -o %o %f $(LIB) $(LIB2);|> kernel.elf
-: ../../obj/pmm/$(ARCH)/*.o             | $(PMM_LS) $(DEPS)             |> $(LD) -T $(PMM_LS) $(LDFLAGS) -o %o %f $(LIB) $(LIB2);   |> pmm.elf
+: ../../obj/kernel/$(ARCH)/*.o          | $(KERNEL_LS) $(DEPS)          |> $(LD) -T $(KERNEL_LS) $(LDFLAGS) -o %o %f $(LIB);        |> kernel.elf
+: ../../obj/pmm/$(ARCH)/*.o             | $(PMM_LS) $(DEPS)             |> $(LD) -T $(PMM_LS) $(LDFLAGS) -o %o %f $(LIB);           |> pmm.elf

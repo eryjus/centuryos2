@@ -65,7 +65,7 @@ extern BootInterface_t *loaderInterface;
 //    -----------------------------------------------------------------------
 typedef struct ModuleInternal_t {
     Addr_t entries;
-    Frame_t cr3Frame;
+    Frame_t cr3Addr;
     bool loaded;
 } ModuleInternal_t;
 
@@ -101,6 +101,8 @@ Module_t *ModuleCheck(Addr_t addr)
     if (rv->earlyInit == 0) return NULL;
     if (rv->intCnt + rv->internalCnt + rv->osCnt == 0) return NULL;
 
+    kprintf(".. valid!\n");
+
     // -- we have a good module
     return rv;
 }
@@ -113,17 +115,23 @@ void ModuleEarlyInit()
 {
     uint64_t *cr3 = (uint64_t *)0xfffffffffffff000;
 
-    kprintf("Checking recursive mapping %p\n", cr3[511]);
-    kprintf("Checking kernel mapping %p\n", cr3[0x100]);
+//    kprintf("Checking recursive mapping %p\n", cr3[511]);
+//    kprintf("Checking kernel mapping %p\n", cr3[0x100]);
 
     for (int i = 0; i < loaderInterface->modCount; i ++) {
-        kprintf("Module %d located at %p\n", i, loaderInterface->modAddr[i]);
+//        kprintf("Module %d located at %p\n", i, loaderInterface->modAddr[i]);
 
         // -- create a new page table structure
-        modInternal[i].cr3Frame = PmmAlloc();
-        krn_MmuMapPage(modInternal[i].cr3Frame << 12, modInternal[i].cr3Frame, true);
+        Frame_t cr3Frame = PmmAlloc();
+        modInternal[i].cr3Addr = cr3Frame << 12;
 
-        uint64_t *t = (uint64_t *)(modInternal[i].cr3Frame << 12);
+//        kprintf("Preparing to map address %p to frame %p\n", modInternal[i].cr3Addr, cr3Frame);
+
+        MmuMapPage(modInternal[i].cr3Addr, cr3Frame, true);
+
+        kprintf("Mapping the kernel\n");
+
+        uint64_t *t = (uint64_t *)(modInternal[i].cr3Addr);
         for (int j = 0; j < 512; j ++) {
             if ((j >= 0x100 && j < 0x140) || (j >= 0x1f0 && j < 0x1ff)) {   // -- kernel and stacks
                 t[j] = cr3[j];
@@ -132,35 +140,32 @@ void ModuleEarlyInit()
 
         t[511] = ((uint64_t)t) | 0x003;
 
-#if 0
-        kprintf("Comparing PML4 at %p (%p)\n", t, cr3[511]);
-        for (int x = 0; x < 512; x ++) {
-            if (t[x] != 0) kprintf("%x > %p (%p)\n", x, t[x], cr3[x]);
-        }
-#endif
+        MmuUnmapPage(modInternal[i].cr3Addr);
 
-        MmuUnmapPage(modInternal[i].cr3Frame << 12);
-
-        kprintf("Loading new CR3 at frame %p\n", modInternal[i].cr3Frame);
-        Addr_t oldCr3 = LoadCr3(modInternal[i].cr3Frame << 12);
+//        kprintf("Loading new CR3 at frame %p (Addr %p)\n", cr3Frame, modInternal[i].cr3Addr);     // <-- this line fixes the problem
+        Addr_t oldCr3 = LoadCr3(modInternal[i].cr3Addr);
 
 
         // -- Load the ELF image into the new CR3
         Addr_t moduleAddr = loaderInterface->modAddr[i];
         kprintf("Loading Module located at %p\n", moduleAddr);
+        kprintf(".. Old CR3: %p; New: %p\n", oldCr3, modInternal[i].cr3Addr);
+        kprintf(".. Module Address is getting mapped to %p\n", moduleAddr);
+        MmuMapPage(moduleAddr, moduleAddr >> 12, false);    // <-- Problem is here
 
-        kprintf(".. Old CR3: %p; New: %p\n", oldCr3, modInternal[i].cr3Frame << 12);
-        krn_MmuMapPage(moduleAddr, moduleAddr >> 12, false);
-        kprintf(".. Preparing to map the loaderInterface struct\n");
         kprintf(".. Image header mapped\n");
         modInternal[i].entries = ElfLoadImage(moduleAddr);
+        kprintf(".. Elf Loaded\n");
 
 
         // -- Now, check the module
         Module_t *mod = ModuleCheck(modInternal[i].entries);
         if (mod) {
             EarlyInit_t init = (EarlyInit_t)mod->earlyInit;
+//            kprintf(".. calling early init function at %p\n", (Addr_t)init);
             int res = init(loaderInterface);
+//            kprintf(".. early init completed\n");
+
             modInternal[i].loaded = true;
 
             // -- if we are not to load the module (non-zero return) then set the name to null
@@ -174,18 +179,18 @@ void ModuleEarlyInit()
 
         if (modInternal[i].loaded) {
             // -- Now install the hooks
-            int h;
+            unsigned long h;
             for (h = 0; h < mod->intCnt; h ++) {
                 IdtSetHandler(mod->hooks[h].loc, 8, (IdtHandlerFunc_t *)mod->hooks[h].target, 0, 0);
             }
 
             for ( ; h < mod->intCnt + mod->internalCnt; h ++) {
-                kprintf(".... Hooking Internal Function %d: %p from %p\n", mod->hooks[h].loc, mod->hooks[h].target, modInternal[i].cr3Frame);
-                SetInternalHandler(mod->hooks[h].loc, mod->hooks[h].target, modInternal[i].cr3Frame);
+//                kprintf(".... Hooking Internal Function %d: %p from %p\n", mod->hooks[h].loc, mod->hooks[h].target, modInternal[i].cr3Addr);
+                SetInternalHandler(mod->hooks[h].loc, mod->hooks[h].target, modInternal[i].cr3Addr);
             }
 
             for ( ; h < mod->intCnt + mod->internalCnt + mod->osCnt; h ++) {
-                SetInternalService(mod->hooks[h].loc, mod->hooks[h].target, modInternal[i].cr3Frame);
+                SetInternalService(mod->hooks[h].loc, mod->hooks[h].target, modInternal[i].cr3Addr);
             }
         } else {
             // -- unload the module
@@ -193,7 +198,7 @@ void ModuleEarlyInit()
 
 
         // -- Clean up from loading the module
-        kprintf(".. The entry point is at %p\n", modInternal[i].entries);
+//        kprintf(".. The entry point is at %p\n", modInternal[i].entries);
         MmuUnmapPage(moduleAddr);
         LoadCr3(oldCr3);
     }

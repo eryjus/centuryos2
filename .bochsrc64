@@ -2,7 +2,7 @@
 plugin_ctrl: unmapped=1, biosdev=1, speaker=1, extfpuirq=1, parallel=1, serial=1
 config_interface: textconfig
 display_library: x
-memory: host=32, guest=8192
+memory: host=128, guest=8192
 romimage: file="/home/adam/workspace/bochs-2.6.11/bios/BIOS-bochs-latest", address=0x0, options=none
 vgaromimage: file="/home/adam/workspace/bochs-2.6.11/bios/VGABIOS-lgpl-latest"
 boot: cdrom

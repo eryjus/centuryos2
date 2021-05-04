@@ -15,6 +15,8 @@
 //===================================================================================================================
 
 
+//#define USE_SERIAL
+
 #include "types.h"
 #include "mmu.h"
 #include "mboot.h"
@@ -264,9 +266,25 @@ static Addr_t MBootGetMb1Kernel(void)
         int cnt = 0;
         Mb1MmapEntry_t *entry = (Mb1MmapEntry_t *)(((Addr_t)mb1->mmapAddr));
         while (size) {
+            SerialPutString(".. Memory Block: ");
+            SerialPutHex64(entry->mmapAddr);
+            SerialPutString("; size: ");
+            SerialPutHex64(entry->mmapLength);
+            SerialPutString("; type: ");
+            SerialPutHex32(entry->mmapType);
+            SerialPutChar('\n');
+
+
             if (entry->mmapType == 1 && cnt < MAX_MEM) {
                 kernelInterface->memBlocks[cnt].start = entry->mmapAddr;
-                kernelInterface->memBlocks[cnt].end = entry->mmapLength + entry->mmapLength;
+                kernelInterface->memBlocks[cnt].end = entry->mmapAddr + entry->mmapLength;
+
+                SerialPutString(".. (Checking start: ");
+                SerialPutHex64(kernelInterface->memBlocks[cnt].start);
+                SerialPutString("; end: ");
+                SerialPutHex64(kernelInterface->memBlocks[cnt].end);
+                SerialPutString(")\n");
+
                 cnt ++;
             }
 

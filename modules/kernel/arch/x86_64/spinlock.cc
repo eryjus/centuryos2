@@ -24,14 +24,16 @@
 // -- Lock a spinlock, busy looping indefinitely until a lock is obtained
 //    -------------------------------------------------------------------
 int krn_SpinLock(Spinlock_t *lock) {
+    __asm volatile ("xchg %edx,%edx");
     int exp, des;
     lock->flags = DisableInt();
-    do {
+    while (!__atomic_compare_exchange(&(lock->lock), &exp, &des, false, __ATOMIC_SEQ_CST, __ATOMIC_SEQ_CST)) {
         RestoreInt(lock->flags);        // -- restore interrupts for a short time -- need to allow a process change
         exp = 0;
         des = 1;
         lock->flags = DisableInt();     // -- that's enough; dsiable them again
-    } while (!__atomic_compare_exchange(&(lock->lock), &exp, &des, false, __ATOMIC_SEQ_CST, __ATOMIC_SEQ_CST));
+    }
+    __asm volatile ("xchg %edx,%edx");
 
     return 0;
 }

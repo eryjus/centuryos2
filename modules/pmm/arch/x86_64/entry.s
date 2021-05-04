@@ -16,10 +16,11 @@
 
 
                 global      header
+                global      GetCr3
 
                 extern      PmmInitEarly
-                extern      PmmAllocateAligned
-                extern      PmmReleaseFrame
+                extern      pmm_PmmAllocateAligned
+                extern      pmm_PmmReleaseFrame
 
 
                 section     .text
@@ -37,12 +38,17 @@ header:
                 dq          2                                                           ; internal Services
                 dq          0                                                           ; OS services
                 dq          10                                                          ; internal function 1
-                dq          PmmAllocateAligned                                          ; .. target address
+                dq          pmm_PmmAllocateAligned                                      ; .. target address
                 dq          11                                                          ; internal function 2
-                dq          PmmReleaseFrame                                             ; .. target address
+                dq          pmm_PmmReleaseFrame                                         ; .. target address
 
 
 PmmRelease:
                 ret
 
+
+
+GetCr3:
+                mov         rax,cr3
+                ret
 

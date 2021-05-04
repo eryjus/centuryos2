@@ -33,11 +33,13 @@ enum {
     INT_SET_INTERRUPT   = 5,
     INT_MMU_MAP         = 6,
     INT_MMU_UNMAP       = 7,
+    INT_MMU_DUMP_TABLES = 8,
     INT_PMM_ALLOC       = 10,
     INT_PMM_RELEASE     = 11,
     INT_SPIN_LOCK       = 16,
     INT_SPIN_TRY        = 17,
     INT_SPIN_UNLOCK     = 18,
+    INT_PRINTF          = 20,
 };
 
 
@@ -52,6 +54,7 @@ extern "C" {
     int InternalDispatch3(int func, Addr_t p1, Addr_t p2, Addr_t p3);
     int InternalDispatch4(int func, Addr_t p1, Addr_t p2, Addr_t p3, Addr_t p4);
     int InternalDispatch5(int func, Addr_t p1, Addr_t p2, Addr_t p3, Addr_t p4, Addr_t p5);
+    int InternalVariable(int func, Addr_t p1, ...);
 }
 
 
@@ -78,6 +81,9 @@ extern "C" {
     // -- Function 7
     int MmuUnmapPage(Addr_t addr);
 
+    // -- FUnction 8
+    int MmuDumpTables(Addr_t addr);
+
     // -- Function 10
     Frame_t PmmAllocAligned(bool lowMem, int numBitsAligned, size_t count);
     Frame_t PmmAllocLow(void);
@@ -95,5 +101,8 @@ extern "C" {
 
     // -- Function 18
     int SpinUnlock(Spinlock_t *lock);
+
+    // -- Function 20
+    int KernelPrintf(const char *fmt, ...);
 }
 

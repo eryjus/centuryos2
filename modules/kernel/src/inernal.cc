@@ -101,25 +101,37 @@ int krn_SetOsService(int i, ServiceHandler_t service, Addr_t cr3)
 
 
 //
+// -- The remaining functions need to have access to kprintf
+//    ------------------------------------------------------
+#ifdef kprintf
+#undef kprintf
+    extern "C" int kprintf(const char *fmt, ...);
+#endif
+
+
+//
 // -- Initialize the internal handler table
 //    -------------------------------------
 void InternalInit(void)
 {
+
     for (int i = 0; i < MAX_HANDLERS; i ++) {
         internalTable[i].handler = (InternalHandler_t)NULL;
         internalTable[i].cr3 = 0;
     }
 
-    internalTable[INT_GET_HANDLER].handler =    (InternalHandler_t)krn_GetFunctionHandler;
-    internalTable[INT_SET_HANDLER].handler =    (InternalHandler_t)krn_SetFunctionHandler;
-    internalTable[INT_GET_SERVICE].handler =    (InternalHandler_t)krn_GetOsService;
-    internalTable[INT_SET_SERVICE].handler =    (InternalHandler_t)krn_SetOsService;
-    internalTable[INT_MMU_MAP].handler =        (InternalHandler_t)krn_MmuMapPage;
-    internalTable[INT_MMU_UNMAP].handler =      (InternalHandler_t)krn_MmuUnmapPage;
-    internalTable[INT_PMM_ALLOC].handler =      (InternalHandler_t)PmmEarlyFrame;
-    internalTable[INT_SPIN_LOCK].handler =      (InternalHandler_t)krn_SpinLock;
-    internalTable[INT_SPIN_TRY].handler =       (InternalHandler_t)krn_SpinTry;
-    internalTable[INT_SPIN_UNLOCK].handler =    (InternalHandler_t)krn_SpinUnlock;
+    internalTable[INT_GET_HANDLER].handler =        (InternalHandler_t)krn_GetFunctionHandler;
+    internalTable[INT_SET_HANDLER].handler =        (InternalHandler_t)krn_SetFunctionHandler;
+    internalTable[INT_GET_SERVICE].handler =        (InternalHandler_t)krn_GetOsService;
+    internalTable[INT_SET_SERVICE].handler =        (InternalHandler_t)krn_SetOsService;
+    internalTable[INT_MMU_MAP].handler =            (InternalHandler_t)krn_MmuMapPage;
+    internalTable[INT_MMU_UNMAP].handler =          (InternalHandler_t)krn_MmuUnmapPage;
+    internalTable[INT_MMU_DUMP_TABLES].handler =    (InternalHandler_t)krn_MmuDumpTables;
+    internalTable[INT_PMM_ALLOC].handler =          (InternalHandler_t)PmmEarlyFrame;
+    internalTable[INT_SPIN_LOCK].handler =          (InternalHandler_t)krn_SpinLock;
+    internalTable[INT_SPIN_TRY].handler =           (InternalHandler_t)krn_SpinTry;
+    internalTable[INT_SPIN_UNLOCK].handler =        (InternalHandler_t)krn_SpinUnlock;
+    internalTable[INT_PRINTF].handler =             (InternalHandler_t)kprintf;
 }
 
 

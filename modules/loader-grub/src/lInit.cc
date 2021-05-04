@@ -15,6 +15,9 @@
 //===================================================================================================================
 
 
+#define USE_SERIAL
+
+
 #include "types.h"
 #include "elf.h"
 #include "mboot.h"
@@ -53,22 +56,15 @@ void lInit(void)
         kernelInterface->memBlocks[i].start = kernelInterface->memBlocks[i].end = 0;
     }
 
+    SerialPutString("Getting the kernel\n");
     Addr_t kernel = MBootGetKernel();
-
-    SerialPutString("Kernel image at ");
-    SerialPutHex32(kernel);
-    SerialPutChar('\n');
-
     Addr_t stack = (earlyFrame);
     earlyFrame += 4;
-    MmuMapPage(0xfffff80000000000, stack, true);
+    MmuMapPage(0xfffff80000000000, stack + 0, true);
     MmuMapPage(0xfffff80000001000, stack + 1, true);
     MmuMapPage(0xfffff80000002000, stack + 2, true);
     MmuMapPage(0xfffff80000003000, stack + 3, true);
-
-    SerialPutString("The new stack will be at frame ");
-    SerialPutHex64((uint64_t)stack);
-    SerialPutChar('\n');
+    SerialPutString("Stack mapped\n");
 
     if (kernel != 0) {
         Addr_t entry = ElfLoadImage(kernel);

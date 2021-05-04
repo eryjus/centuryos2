@@ -41,7 +41,7 @@ typedef union Descriptor_t {
     struct {
         unsigned long baseHi32 : 32;        // the highest 32 bits of a 64-bit TSS ase address
         unsigned long zero : 32;            // reserved as 0
-    };
+    } alt;
 } Descriptor_t;
 
 
@@ -55,7 +55,7 @@ typedef union Descriptor_t {
 // -- A helper macro used to define the kernel code
 //    0x00 c f 9 a 00 0000 ffff
 //    ---------------------------------------------
-#define KCODE_GDT        {              \
+#define KCODE_GDT        { {            \
     .limitLow = 0,                      \
     .baseLow = 0,                       \
     .baseMid = 0,                       \
@@ -69,14 +69,14 @@ typedef union Descriptor_t {
     .db = 0,                            \
     .g = 1,                             \
     .baseHi = 0,                        \
-}
+} }
 
 
 //
 // -- A helper macro used to define the kernel data
 //    0x00 c f 9 2 00 0000 ffff
 //    ---------------------------------------------
-#define KDATA_GDT        {              \
+#define KDATA_GDT        { {            \
     .limitLow = 0,                      \
     .baseLow = 0,                       \
     .baseMid = 0,                       \
@@ -90,14 +90,14 @@ typedef union Descriptor_t {
     .db = 0,                            \
     .g = 1,                             \
     .baseHi = 0,                        \
-}
+} }
 
 
 //
 // -- A helper macro used to define the user code
 //    0x00 c f f a 00 0000 ffff
 //    -------------------------------------------
-#define UCODE_GDT        {              \
+#define UCODE_GDT        { {            \
     .limitLow = 0,                      \
     .baseLow = 0,                       \
     .baseMid = 0,                       \
@@ -111,14 +111,14 @@ typedef union Descriptor_t {
     .db = 0,                            \
     .g = 1,                             \
     .baseHi = 0,                        \
-}
+} }
 
 
 //
 // -- A helper macro used to define the user data
 //    0x00 c f f 2 00 0000 ffff
 //    -------------------------------------------
-#define UDATA_GDT        {              \
+#define UDATA_GDT        { {            \
     .limitLow = 0,                      \
     .baseLow = 0,                       \
     .baseMid = 0,                       \
@@ -132,13 +132,13 @@ typedef union Descriptor_t {
     .db = 0,                            \
     .g = 1,                             \
     .baseHi = 0,                        \
-}
+} }
 
 
 //
 // -- A helper macro to define a segment selector specific to the per-cpu data for a given CPU.
 //    -----------------------------------------------------------------------------------------
-#define GS_GDT(locn)        {           \
+#define GS_GDT(locn)        { {         \
     .limitLow = 7,                      \
     .baseLow = ((locn) & 0xffff),       \
     .baseMid = (((locn) >> 16) & 0xff), \
@@ -152,14 +152,14 @@ typedef union Descriptor_t {
     .db = 1,                            \
     .g = 0,                             \
     .baseHi = (((locn) >> 24) & 0xff),  \
-}
+} }
 
 
 //
 // -- A helper macro used to define the loader code
 //    0x00 c f 9 a 00 0000 ffff
 //    ---------------------------------------------
-#define LCODE_GDT        {              \
+#define LCODE_GDT        { {            \
     .limitLow = 0,                      \
     .baseLow = 0,                       \
     .baseMid = 0,                       \
@@ -173,14 +173,14 @@ typedef union Descriptor_t {
     .db = 0,                            \
     .g = 1,                             \
     .baseHi = 0,                        \
-}
+} }
 
 
 //
 // -- A helper macro used to define the loader data
 //    0x00 c f 9 2 00 0000 ffff
 //    ---------------------------------------------
-#define LDATA_GDT        {              \
+#define LDATA_GDT        { {            \
     .limitLow = 0,                      \
     .baseLow = 0,                       \
     .baseMid = 0,                       \
@@ -194,13 +194,13 @@ typedef union Descriptor_t {
     .db = 0,                            \
     .g = 1,                             \
     .baseHi = 0,                        \
-}
+} }
 
 
 //
 // -- A helper macro used to define the 64-bit TSS (lower entry)
 //    ----------------------------------------------------------
-#define TSSL32_GDT(locn)       {                    \
+#define TSSL32_GDT(locn)       { {                  \
     .limitLow = ((sizeof(Tss_t) - 1) & 0xffff),     \
     .baseLow = ((locn) & 0xffff),                   \
     .baseMid = (((locn) >> 16) & 0xff),             \
@@ -214,16 +214,16 @@ typedef union Descriptor_t {
     .db = 0,                                        \
     .g = 0,                                         \
     .baseHi = (((locn) >> 24) & 0xff),              \
-}
+} }
 
 
 //
 // -- A helper macro used to define the 64-bit TSS (upper entry)
 //    ----------------------------------------------------------
-#define TSSU32_GDT(locn)       {                    \
+#define TSSU32_GDT(locn)       { .alt = {           \
     .baseHi32 = (uint32_t)(locn >> 32),             \
     .zero = 0,                                      \
-}
+} }
 
 
 //

@@ -23,6 +23,7 @@
                 global      earlyFrame
                 global      loaderInterface
                 global      LoadCr3
+                global      GetCr3
 
                 extern      kInit
                 extern      gdtr
@@ -154,4 +155,11 @@ LoadCr3:
                 ret
 
 
+
+;;
+;; -- return the current CR3 value
+;;    ----------------------------
+GetCr3:
+                mov         rax,cr3
+                ret
 

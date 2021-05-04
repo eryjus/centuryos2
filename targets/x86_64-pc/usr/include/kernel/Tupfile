@@ -38,6 +38,5 @@ include_rules
 : $(WS)/modules/libk/inc/kernel-funcs.h |> cp %f %o |> kernel-funcs.h
 : $(WS)/modules/libk/inc/boot-interface.h |> cp %f %o |> boot-interface.h
 : $(WS)/modules/libk/inc/elf.h |> cp %f %o |> elf.h
-: $(WS)/modules/libk/inc/mmu.h |> cp %f %o |> mmu.h
 : $(WS)/modules/libk/inc/serial.h |> cp %f %o |> serial.h
 : $(WS)/arch/$(ARCH)/inc/types.h |> cp %f %o |> types.h

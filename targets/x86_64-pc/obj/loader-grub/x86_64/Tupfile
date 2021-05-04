@@ -35,7 +35,6 @@ CFLAGS+=-D CENTURY_LOADER
 
 DEPS+=../../../usr/include/kernel/types.h
 DEPS+=../../../usr/include/kernel/elf.h
-DEPS+=../../../usr/include/kernel/mmu.h
 DEPS+= ../../../usr/include/kernel/serial.h
 DEPS+= ../../../usr/include/kernel/boot-interface.h
 
@@ -52,6 +51,7 @@ include_rules
 ## -- The rules to build the objects
 ##    ------------------------------
 : foreach  $(WS)/modules/$(MODULE)/arch/$(ARCH)/*.s                             |> !as |>
+: foreach  $(WS)/modules/$(MODULE)/arch/$(ARCH)/*.cc        | $(DEPS)           |> !cc |>
 
 : foreach  $(WS)/modules/$(MODULE)/platform/$(PLAT)/*.cc    | $(DEPS)           |> !cc |>
 

@@ -129,6 +129,7 @@ inline void SetIoBase(Tss_t *tss, uint16_t base) { tss->ioMapBase = base; }
 extern "C" {
     void TssInit(void);
     Addr_t LoadCr3(Addr_t n);
+    Addr_t GetCr3(void);
 }
 
 

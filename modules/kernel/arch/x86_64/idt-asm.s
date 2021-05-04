@@ -120,11 +120,11 @@ InternalTarget:
                 push        r14
                 push        r15
 
-                mov         rax,cr3
-                push        rax
+                mov         rbx,cr3
+                push        rbx
 
-                mov         rax,maxHandlers
-                mov         r15,[rax]
+                mov         r11,maxHandlers
+                mov         r15,[r11]
                 cmp         rdi,0
                 jl          .invalid
 
@@ -138,18 +138,18 @@ InternalTarget:
                 cmp         qword [rbx],0
                 je          .none
 
-                mov         rax,[rbx + 8]
+                mov         r10,[rbx + 8]
                 mov         rbx,[rbx]
 
 ;; -- check for a change in cr3
-                cmp         rax,0
+                cmp         r10,0
                 je          .nocr3
 
-                mov         rcx,cr3
-                cmp         rax,rcx
+                mov         r14,cr3
+                cmp         r10,r14
                 je          .nocr3
 
-                mov         cr3,rcx
+                mov         cr3,r10
 
 
 .nocr3:
@@ -162,16 +162,22 @@ InternalTarget:
                 jmp         .out
 
 .invalid:
-                mov         eax,-22
+                mov         rax,-22
                 jmp         .out
 
 .none:
-                mov         eax,-12
+                mov         rax,-12
 
 .out:
-                pop         rbx
+                pop         rbx                 ;; -- previous cr3
+                mov         r14,cr3
+
+                cmp         r14,rbx
+                je          .skip
+
                 mov         cr3,rbx
 
+.skip:
                 pop         r15
                 pop         r14
                 pop         r13
@@ -253,11 +259,11 @@ ServiceTarget:
                 jmp         .out
 
 .invalid:
-                mov         eax,-22
+                mov         rax,-22
                 jmp         .out
 
 .none:
-                mov         eax,-12
+                mov         rax,-12
 
 .out:
                 pop         rbx

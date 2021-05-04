@@ -79,6 +79,15 @@ int MmuUnmapPage(Addr_t addr)
 
 
 //
+// -- Function 8 -- Dump MMU Tables
+//    -----------------------------
+int MmuDumpTables(Addr_t addr)
+{
+    return InternalDispatch1(INT_MMU_DUMP_TABLES, addr);
+}
+
+
+//
 // -- Function 10 -- Allocate a number of aligned frames
 //    --------------------------------------------------
 Frame_t PmmAllocAligned(bool lowMem, int numBitsAligned, size_t count)
@@ -148,4 +157,8 @@ int SpinUnlock(Spinlock_t *lock)
 {
     return InternalDispatch1(INT_SPIN_UNLOCK, (Addr_t)lock);
 }
+
+
+
+
 

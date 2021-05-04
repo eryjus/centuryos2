@@ -15,8 +15,11 @@
 //===================================================================================================================
 
 
+//#define USE_SERIAL
+
 #include "types.h"
 #include "boot-interface.h"
+#include "kernel-funcs.h"
 #include "printf.h"
 #include "idt.h"
 
@@ -27,9 +30,10 @@
 Frame_t PmmEarlyFrame(void)
 {
     extern BootInterface_t *loaderInterface;
+    Frame_t rv = loaderInterface->nextEarlyFrame ++;
 
-    kprintf(".. (new early frame)\n");
+    kprintf(".. (new early frame: %p)\n", rv);
 
-    return loaderInterface->nextEarlyFrame ++;
+    return rv;
 }
 

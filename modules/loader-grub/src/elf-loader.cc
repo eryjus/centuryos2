@@ -1,6 +1,6 @@
 //===================================================================================================================
 //
-//  elf.cc -- handle the loading of an elf file
+//  elf-loader.cc -- handle the loading of an elf file
 //
 //        Copyright (c)  2017-2021 -- Adam Clark
 //        Licensed under "THE BEER-WARE LICENSE"
@@ -15,7 +15,7 @@
 //===================================================================================================================
 
 
-//#define USE_SERIAL
+#define USE_SERIAL
 
 #include "types.h"
 #include "mmu.h"
@@ -192,7 +192,6 @@ static bool ElfValidateHeader(Addr_t location)
 //    -----------------------
 Addr_t ElfLoadImage(Addr_t location)
 {
-    extern Frame_t earlyFrame;
     Addr_t rv = 0;
 
     SerialPutString("Parsing ELF\n");

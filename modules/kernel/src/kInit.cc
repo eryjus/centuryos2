@@ -26,6 +26,7 @@
 #include "internal.h"
 #include "printf.h"
 #include "boot-interface.h"
+#include "kernel-funcs.h"
 #include "modules.h"
 
 
@@ -40,22 +41,23 @@ extern "C" void kInit(void);
 //    ---------------------------------
 void kInit(void)
 {
-    extern Frame_t kEarlyFrame;
-    extern BootInterface_t *loaderInterface;
-
     SerialOpen();
 
-    kprintf("kInit(): Next Early Frame: %p\n", loaderInterface->nextEarlyFrame);
+    kprintf("Welcome!\n");
 
     IdtInstall();
     InternalInit();
     ServiceInit();            // similar to InternalInit();
+    kprintf(".. Module Early Init:\n");
     ModuleEarlyInit();
 
-    kprintf("Welcome!\n");
-
+    kprintf(".. Starting test\n");
 //    InternalTableDump();
+    Frame_t fr = PmmAlloc();
+    PmmRelease(fr);
+    kprintf(".. Test completed\n");
 
+    kprintf("Boot Complete!\n");
     while (true) {}
 }
 

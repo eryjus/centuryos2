@@ -1,6 +1,6 @@
 //===================================================================================================================
 //
-//  mmu-libk.cc -- Functions related to managing the Paging Tables specific to the non-loader
+//  mmu.h -- Functions related to managing the Paging Tables
 //
 //        Copyright (c)  2017-2021 -- Adam Clark
 //        Licensed under "THE BEER-WARE LICENSE"
@@ -15,34 +15,14 @@
 //===================================================================================================================
 
 
-//#define USE_SERIAL
-
-#include "types.h"
-#include "serial.h"
-#include "mmu.h"
-
-
-
-extern "C" {
-    Frame_t PmmAlloc(void);
-}
-
+#pragma once
 
 
 //
-// -- Get a new Table
-//    ---------------
-Frame_t MmuGetTable(void)
-{
-    SerialPutString("Getting a frame...\n");
-    Frame_t rv = PmmAlloc();
-
-    SerialPutString("New table at frame ");
-    SerialPutHex64(rv);
-    SerialPutChar('\n');
-
-    return rv;
+// -- function prototypes
+//    -------------------
+extern "C" {
+    int krn_MmuUnmapPage(Addr_t a);
+    int krn_MmuMapPage(Addr_t a, Frame_t f, bool writable);
+    int krn_MmuDumpTables(Addr_t);
 }
-
-
-

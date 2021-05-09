@@ -124,6 +124,8 @@ void InternalInit(void)
     internalTable[INT_SET_HANDLER].handler =        (InternalHandler_t)krn_SetFunctionHandler;
     internalTable[INT_GET_SERVICE].handler =        (InternalHandler_t)krn_GetOsService;
     internalTable[INT_SET_SERVICE].handler =        (InternalHandler_t)krn_SetOsService;
+//    internalTable[INT_GET_INTERRUPT].handler =      NULL;
+    internalTable[INT_SET_INTERRUPT].handler =      (InternalHandler_t)IdtSetHandler;
     internalTable[INT_MMU_MAP].handler =            (InternalHandler_t)krn_MmuMapPage;
     internalTable[INT_MMU_UNMAP].handler =          (InternalHandler_t)krn_MmuUnmapPage;
     internalTable[INT_MMU_DUMP_TABLES].handler =    (InternalHandler_t)krn_MmuDumpTables;

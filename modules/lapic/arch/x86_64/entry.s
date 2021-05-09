@@ -10,18 +10,15 @@
 ;;
 ;;     Date      Tracker  Version  Pgmr  Description
 ;;  -----------  -------  -------  ----  --------------------------------------------------------------------------
-;;  2021-Jan-29  Initial  v0.0.4   ADCL  Initial version
+;;  2021-May-05  Initial  v0.0.8   ADCL  Initial version
 ;;
 ;;===================================================================================================================
 
 
                 global      header
-                global      GetCr3
 
-                extern      PmmInitEarly
-                extern      pmm_PmmAllocateAligned
-                extern      pmm_PmmReleaseFrame
-
+                extern      X2ApicInitEarly
+                extern      Init
 
                 section     .text
 
@@ -31,19 +28,11 @@
 ;;    -------------------------------------------------------
 header:
                 db          'C','e','n','t','u','r','y',' ','O','S',' ','6','4',0,0,0   ; Sig
-                db          'P','M','M',0,0,0,0,0,0,0,0,0,0,0,0,0                       ; Name
-                dq          PmmInitEarly                                                ; Early Init
-                dq          0                                                           ; Late Init
+                db          'x','2','A','P','I','C',0,0,0,0,0,0,0,0,0,0                 ; Name
+                dq          X2ApicInitEarly                                             ; Early Init
+                dq          Init                                                        ; Late Init
                 dq          0                                                           ; interrupts
-                dq          2                                                           ; internal Services
+                dq          0                                                           ; internal Services
                 dq          0                                                           ; OS services
-                dq          10                                                          ; internal function 1
-                dq          pmm_PmmAllocateAligned                                      ; .. target address
-                dq          11                                                          ; internal function 2
-                dq          pmm_PmmReleaseFrame                                         ; .. target address
 
-
-GetCr3:
-                mov         rax,cr3
-                ret
 

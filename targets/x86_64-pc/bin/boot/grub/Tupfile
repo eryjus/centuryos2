@@ -36,12 +36,14 @@ include_rules
         echo "  multiboot /boot/loader-grub.elf"                    >> %o;      \
         echo "  module /boot/kernel.elf kernel"                     >> %o;      \
         echo "  module /boot/pmm.elf pmm"                           >> %o;      \
+        echo "  module /boot/lapic.elf lapic"                       >> %o;      \
         echo "  boot"                                               >> %o;      \
         echo "}"                                                    >> %o;      \
         echo "menuentry \"Century (Multiboot2)\" {"                 >> %o;      \
         echo "  multiboot2 /boot/loader-grub.elf"                   >> %o;      \
         echo "  module2 /boot/kernel.elf kernel"                    >> %o;      \
         echo "  module2 /boot/pmm.elf pmm"                          >> %o;      \
+        echo "  module2 /boot/lapic.elf lapic"                      >> %o;      \
         echo "  boot"                                               >> %o;      \
         echo "}"                                                    >> %o;      \
 |> grub.cfg

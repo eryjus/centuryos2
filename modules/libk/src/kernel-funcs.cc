@@ -34,8 +34,8 @@ int GetInternalHandler(int number)
 
 
 //
-// -- Function 1 -- Set Interna Function Handler
-//    ------------------------------------------
+// -- Function 1 -- Set Internal Function Handler
+//    -------------------------------------------
 int SetInternalHandler(int number, Addr_t handlerAddr, Addr_t cr3)
 {
     return InternalDispatch3(INT_SET_HANDLER, (Addr_t)number, (Addr_t)handlerAddr, cr3);
@@ -43,7 +43,7 @@ int SetInternalHandler(int number, Addr_t handlerAddr, Addr_t cr3)
 
 
 //
-// -- Function 2 -- Get OK Service Handler
+// -- Function 2 -- Get OS Service Handler
 //    ------------------------------------
 int GetInternalService(int number)
 {
@@ -52,11 +52,29 @@ int GetInternalService(int number)
 
 
 //
-// -- Function 3 -- Set OK Service Handler
+// -- Function 3 -- Set OS Service Handler
 //    ------------------------------------
 int SetInternalService(int number, Addr_t serviceAddr, Addr_t cr3)
 {
     return InternalDispatch3(INT_SET_SERVICE, (Addr_t)number, (Addr_t)serviceAddr, cr3);
+}
+
+
+//
+// -- Function 4 -- Set Interrupt handler address
+//    -------------------------------------------
+int GetInterruptHandler(int number)
+{
+    return -EINVAL;
+}
+
+
+//
+// -- Function 5
+int SetInterruptHandler(int number, Addr_t selector, Addr_t interruptAddr, int ist, int dpl)
+{
+    return InternalDispatch5(INT_SET_INTERRUPT,
+            (Addr_t)number, Addr_t(selector), Addr_t(interruptAddr), Addr_t(ist), (Addr_t)dpl);
 }
 
 

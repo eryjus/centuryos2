@@ -49,6 +49,7 @@ DEPS += $(WS)/targets/$(TARGET)/lib/libk.a
 LOADER_GRUB_LS=$(WS)/modules/loader-grub/arch/$(ARCH)/$(TARGET).ld
 KERNEL_LS=$(WS)/modules/kernel/arch/$(ARCH)/$(TARGET).ld
 PMM_LS=$(WS)/modules/pmm/arch/$(ARCH)/$(TARGET).ld
+LAPIC_LS=$(WS)/modules/pmm/arch/$(ARCH)/$(TARGET).ld
 
 
 ##
@@ -57,3 +58,4 @@ PMM_LS=$(WS)/modules/pmm/arch/$(ARCH)/$(TARGET).ld
 : ../../obj/loader-grub/$(ARCH)/*.o     | $(LOADER_GRUB_LS) $(DEPS)     |> $(LD) -T $(LOADER_GRUB_LS) $(LDFLAGS) -o %o %f $(LIB);   |> loader-grub.elf
 : ../../obj/kernel/$(ARCH)/*.o          | $(KERNEL_LS) $(DEPS)          |> $(LD) -T $(KERNEL_LS) $(LDFLAGS) -o %o %f $(LIB);        |> kernel.elf
 : ../../obj/pmm/$(ARCH)/*.o             | $(PMM_LS) $(DEPS)             |> $(LD) -T $(PMM_LS) $(LDFLAGS) -o %o %f $(LIB);           |> pmm.elf
+: ../../obj/lapic/$(ARCH)/*.o           | $(LAPIC_LS) $(DEPS)           |> $(LD) -T $(LAPIC_LS) $(LDFLAGS) -o %o %f $(LIB);         |> lapic.elf

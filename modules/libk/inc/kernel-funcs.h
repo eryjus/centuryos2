@@ -75,6 +75,12 @@ extern "C" {
     // -- Function 3
     int SetInternalService(int number, Addr_t serviceAddr, Addr_t cr3);
 
+    // -- Function 4
+    int GetInterruptHandler(int number);
+
+    // -- Function 5
+    int SetInterruptHandler(int number, Addr_t selector, Addr_t interruptAddr, int ist, int dpl);
+
     // -- Function 6
     int MmuMapPage(Addr_t addr, Frame_t frame, bool writable);
 

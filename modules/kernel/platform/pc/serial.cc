@@ -34,36 +34,17 @@ static const char *digits = "0123456789abcdef";
 
 
 //
-// -- Get a byte from an I/O Port
-//    ---------------------------
-inline uint8_t inb(uint16_t port) {
-    uint8_t ret;
-    asm volatile ( "inb %1, %0" : "=a"(ret) : "Nd"(port) );
-    return ret;
-}
-
-
-//
-// -- function to write to an IO port
-//    -------------------------------
-inline void outb(uint16_t port, uint8_t val)
-{
-    asm volatile ( "outb %0, %1" : : "a"(val), "Nd"(port) );
-}
-
-
-//
 // -- Open the serial port
 //    --------------------
 void SerialOpen(void)
 {
-    outb(base + 1, 0x00);       // Disable all interrupts
-    outb(base + 3, 0x80);       // Enable DLAB (set baud rate divisor)
-    outb(base + 0, 0x01);       // Set divisor to 1 (lo byte) 115200 baud
-    outb(base + 1, 0x00);       //                  (hi byte)
-    outb(base + 3, 0x03);       // 8 bits, no parity, one stop bit
-    outb(base + 2, 0xC7);       // Enable FIFO, clear them, with 14-byte threshold
-    outb(base + 4, 0x0B);       // IRQs enabled, RTS/DSR set
+    OUTB(base + 1, 0x00);       // Disable all interrupts
+    OUTB(base + 3, 0x80);       // Enable DLAB (set baud rate divisor)
+    OUTB(base + 0, 0x01);       // Set divisor to 1 (lo byte) 115200 baud
+    OUTB(base + 1, 0x00);       //                  (hi byte)
+    OUTB(base + 3, 0x03);       // 8 bits, no parity, one stop bit
+    OUTB(base + 2, 0xC7);       // Enable FIFO, clear them, with 14-byte threshold
+    OUTB(base + 4, 0x0B);       // IRQs enabled, RTS/DSR set
 }
 
 
@@ -75,9 +56,9 @@ void SerialPutChar(uint8_t ch)
 {
     if (ch == '\n') SerialPutChar('\r');
 
-    while ((inb(base + 5) & 0x20) == 0) {}
+    while ((INB(base + 5) & 0x20) == 0) {}
 
-    outb(base + 0, ch);
+    OUTB(base + 0, ch);
 }
 
 

@@ -99,7 +99,7 @@ Module_t *ModuleCheck(Addr_t addr)
     if (rv->sig[15] !=  0 ) return NULL;
 
     if (rv->earlyInit == 0) return NULL;
-    if (rv->intCnt + rv->internalCnt + rv->osCnt == 0) return NULL;
+//    if (rv->intCnt + rv->internalCnt + rv->osCnt == 0) return NULL;
 
     kprintf(".. valid!\n");
 

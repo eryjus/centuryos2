@@ -1,6 +1,6 @@
 #####################################################################################################################
 ##
-##  Tupfile -- An alternative to 'make` build system -- build the object files for the kernel Library
+##  Tupfile -- An alternative to 'make` build system -- build the object files for the kernel
 ##
 ##        Copyright (c)  2017-2021 -- Adam Clark
 ##        Licensed under "THE BEER-WARE LICENSE"
@@ -12,7 +12,7 @@
 ##
 ##     Date      Tracker  Version  Pgmr  Description
 ##  -----------  -------  -------  ----  ---------------------------------------------------------------------------
-##  2021-Feb-01  Initial  v0.0.4   ADCL  Initial version
+##  2021-Jan-29  Initial  v0.0.4   ADCL  Initial version
 ##
 #####################################################################################################################
 
@@ -23,22 +23,21 @@
 ARCH=x86_64
 PLAT=pc
 TARGET=$(ARCH)-$(PLAT)
-MODULE=libk
+MODULE=scheduler
 
 
-NFLAGS+=-I ../../../../modules/$(MODULE)/inc
-CFLAGS+=-I ../../../../modules/$(MODULE)/inc
-CFLAGS+=-I ../../../../modules/$(MODULE)/arch/$(ARCH)
+NFLAGS+=-I ../../../../../modules/$(MODULE)/inc
+CFLAGS+=-I ../../../../../modules/$(MODULE)/inc
 CFLAGS+=-I ../../../usr/include/kernel
 CFLAGS+=-I ../../../../../arch/$(ARCH)/inc
 
 
-DEPS+= ../../../usr/include/kernel/types.h
-DEPS+= ../../../usr/include/kernel/elf.h
-DEPS+= ../../../usr/include/kernel/heap.h
+DEPS+=../../../usr/include/kernel/kernel-funcs.h
+DEPS+=../../../usr/include/kernel/types.h
+DEPS+=../../../usr/include/kernel/elf.h
 DEPS+= ../../../usr/include/kernel/serial.h
-DEPS+= ../../../usr/include/kernel/kernel-funcs.h
-DEPS+= ../../../usr/include/kernel/arch/heap-arch.h
+DEPS+= ../../../usr/include/kernel/boot-interface.h
+DEPS+=../../../usr/include/errno.h
 
 
 ##
@@ -52,7 +51,6 @@ include_rules
 ## -- The rules to build the objects
 ##    ------------------------------
 : foreach  $(WS)/modules/$(MODULE)/arch/$(ARCH)/*.s                             |> !as |>
-: foreach  $(WS)/modules/$(MODULE)/arch/$(ARCH)/*.cc        | $(DEPS)           |> !cc |>
 
 : foreach  $(WS)/modules/$(MODULE)/src/*.cc                 | $(DEPS)           |> !cc |>
 

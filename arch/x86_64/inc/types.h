@@ -33,10 +33,24 @@
 
 
 //
+// -- This is the natural byte alignment for this architecture
+//    --------------------------------------------------------
+#define BYTE_ALIGNMENT      8
+
+
+//
+// -- Page Size
+//    ---------
+#define PAGE_SIZE           4096
+
+
+//
 // -- Foundational Types
 //    ------------------
 typedef uint64_t Frame_t;
 typedef uint64_t Addr_t;
+typedef uint64_t Pid_t;
+typedef uint8_t Byte_t;
 
 
 //

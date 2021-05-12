@@ -58,6 +58,44 @@ extern "C" {
 }
 
 
+//
+// -- Some additional runtime assertion checking; purposefully set up for use in conditions
+//    -------------------------------------------------------------------------------------
+extern "C" bool AssertFailure(const char *expr, const char *msg, const char *file, int line);
+
+
+//
+// -- Some compiler hints
+//    -------------------
+#define likely(x)       __builtin_expect((x),1)
+#define unlikely(x)     __builtin_expect((x),0)
+
+
+//
+// -- asserts
+//    -------
+#ifdef assert
+#   undef assert
+#endif
+
+#ifdef RELEASE
+#   define assert(e) true
+#   define assert_msg(e,m) true
+#else
+#   define assert(e) (likely((e)) ? true : AssertFailure(#e, NULL, __FILE__, __LINE__))
+#   define assert_msg(e,m) (likely((e)) ? true : AssertFailure(#e, (m), __FILE__, __LINE__))
+#endif
+
+
+
+//
+// -- common functions
+//    ----------------
+extern "C" {
+    void kMemSetB(void *buf, uint8_t byt, size_t cnt);
+}
+
+
 
 //
 // -- all the function prototypes

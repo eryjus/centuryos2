@@ -70,6 +70,8 @@ typedef struct Pmm_t {
     Spinlock_t scrubLock;                   // -- This lock protects scrubStack
     PmmFrameInfo_t *scrubStack;
 
+    Spinlock_t searchLock;                  // -- This lock protects search
+    PmmFrameInfo_t *search;
 
     // -- some additional locks for mapped address usage
     Spinlock_t insertLock;
@@ -340,16 +342,132 @@ static Frame_t PmmAllocate(bool low)
 
 
 //
-// -- Allocate a frame
-//    ----------------
+// -- Split the block as needed to pull out the proper alignment and size of frames
+//    -----------------------------------------------------------------------------
+static Frame_t PmmSplitBlock(PmmFrameInfo_t **stack, Frame_t frame, size_t blockSize, Frame_t atFrame, size_t count)
+{
+    if (frame < atFrame) {
+        // -- Create a new block with the leading frames
+        PushStack(stack, frame, atFrame - blockSize);
+
+        // -- adjust the existing block
+        frame = atFrame;
+        blockSize -= (atFrame - blockSize);
+    }
+
+
+    // -- check for frames to remove at the end of this block; or free the block since it is not needed
+    if (blockSize > count) {
+        // -- adjust this block to remove what we want
+        frame += count;
+        blockSize -= count;
+
+        // -- finally push this block back onto the stack
+        PushStack(stack, frame, blockSize);
+    }
+
+
+    // -- what is left at this point is `count` frames at `atFrame`; return this value
+    return atFrame;
+}
+
+
+//
+// -- This function is the working to find a frame that is properly aligned and allocate multiple contiguous frames
+//    -------------------------------------------------------------------------------------------------------------
+Frame_t PmmDoAllocAlignedFrames(PmmFrameInfo_t **pStack, const size_t count, const size_t bitAlignment)
+{
+    //
+    // -- start by determining the bits we cannot have enabled when we evaluate a frame
+    //    -----------------------------------------------------------------------------
+    Frame_t frameBits = ~(((Frame_t)-1) << (bitAlignment<12?0:bitAlignment-12));
+    Frame_t rv = 0;
+
+    if (!MmuIsMapped((Addr_t)*pStack)) return -ENOMEM;
+
+
+    // -- Interrupts are already disabled before we get here
+    SpinLock(&pmm.searchLock); {
+        MmuMapPage((Addr_t)pmm.search, (*pStack)->frame, true);
+
+        while(true) {
+            Frame_t end = pmm.search->frame + pmm.search->count - 1;
+            Frame_t next;
+
+            // -- here we determine if the block is big enough
+            if (((pmm.search->frame + frameBits) & ~frameBits) + count - 1 <= end) {
+                Frame_t p = pmm.search->prev;
+                Frame_t n = pmm.search->next;
+                Frame_t f = pmm.search->frame;
+                size_t sz = pmm.search->count;
+
+                MmuUnmapPage((Addr_t)pmm.search);
+
+                if (n) {
+                    MmuMapPage((Addr_t)pmm.search, n, true);
+                    pmm.search->prev = p;
+                    MmuUnmapPage((Addr_t)pmm.search);
+                }
+
+                if (p) {
+                    MmuMapPage((Addr_t)pmm.search, p, true);
+                    pmm.search->next = n;
+                    MmuUnmapPage((Addr_t)pmm.search);
+                }
+
+                rv = PmmSplitBlock(pStack, f, sz, (f + frameBits) & ~frameBits, count);
+                goto exit;
+            }
+
+            // -- move to the next node
+            next = pmm.search->next;
+            MmuUnmapPage((Addr_t)pmm.search);
+
+            // -- here we check if we made it to the end of the stack
+            if (next) MmuMapPage((Addr_t)pmm.search, next, true);
+            else goto exit;
+        }
+
+exit:
+
+        SpinUnlock(&pmm.searchLock);
+    }
+
+//    kprintf("Aligned PMM Allocation is finally returning frame %x\n", rv);
+
+    return rv;
+}
+
+
+
+
+
+
+//
+// -- Allocate aligned frame(s)
+//    -------------------------
 Frame_t pmm_PmmAllocateAligned(bool low, int bitsAligned, size_t count)
 {
-    if (count == 1) return PmmAllocate(low);
     if (bitsAligned < 12) bitsAligned = 12;
+    if (count == 1 && bitsAligned == 12) return PmmAllocate(low);
 
     // -- TODO: add some detail here to allocate aligned/multiple frames
+    Addr_t flags = DisableInt();
+    Frame_t rv = 0;
 
-    return -ENOMEM;
+    if (low) {
+        SpinLock(&pmm.lowLock);
+        rv = PmmDoAllocAlignedFrames(&pmm.lowStack, count, bitsAligned);
+        SpinUnlock(&pmm.lowLock);
+    } else {
+        SpinLock(&pmm.normLock);
+        rv = PmmDoAllocAlignedFrames(&pmm.normStack, count, bitsAligned);
+        SpinUnlock(&pmm.normLock);
+    }
+
+    RestoreInt(flags);
+
+    return rv;
 }
 
 
@@ -358,10 +476,10 @@ Frame_t pmm_PmmAllocateAligned(bool low, int bitsAligned, size_t count)
 //    ---------------
 int pmm_PmmReleaseFrame(Frame_t frame, size_t count)
 {
-//    SpinLock(&pmm.scrubLock);
+    SpinLock(&pmm.scrubLock);
     PushStack(&pmm.scrubStack, frame, count);
     AtomicAdd(&pmm.framesAvail, count);
-//    SpinUnlock(&pmm.scrubLock);
+    SpinUnlock(&pmm.scrubLock);
 
     DumpPmm();
 
@@ -377,27 +495,27 @@ int pmm_PmmReleaseFrame(Frame_t frame, size_t count)
 void PmmCleanProcess(void)
 {
     while (true) {
-//        SpinLock(&pmm.scrubLock);
+        SpinLock(&pmm.scrubLock);
 
         if (pmm.scrubStack != 0) {
             Frame_t frame = pmm.scrubStack->frame;
             size_t count = pmm.scrubStack->count;
             PopStack(&pmm.scrubStack);
-//            SpinUnlock(&pmm.scrubLock);
+            SpinUnlock(&pmm.scrubLock);
 
             PmmScrubBlock(frame, count);
 
             if (frame < 0x100) {
-//                SpinLock(&pmm.lowLock);
+                SpinLock(&pmm.lowLock);
                 PushStack(&pmm.lowStack, frame, count);
-//                SpinUnlock(&pmm.lowLock);
+                SpinUnlock(&pmm.lowLock);
             } else {
-//                SpinLock(&pmm.normLock);
+                SpinLock(&pmm.normLock);
                 PushStack(&pmm.normStack, frame, count);
-//                SpinUnlock(&pmm.normLock);
+                SpinUnlock(&pmm.normLock);
             }
         } else {
-//            SpinUnlock(&pmm.scrubLock);
+            SpinUnlock(&pmm.scrubLock);
             // -- TODO: nothing to do; wait for a message to do something else
         }
     }

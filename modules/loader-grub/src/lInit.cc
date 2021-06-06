@@ -42,6 +42,7 @@ void lInit(void)
 {
     extern BootInterface_t *kernelInterface;
     extern Frame_t earlyFrame;
+    extern Addr_t pml4;
     const Addr_t interfaceLocation = 0xffff9ffffffff000;
 
     SerialOpen();
@@ -51,6 +52,8 @@ void lInit(void)
     MmuMapPage(interfaceLocation, fr, true);
     kernelInterface = (BootInterface_t *)interfaceLocation;
     kernelInterface->modCount = 0;
+    kernelInterface->bootVirtAddrSpace = pml4;
+    kernelInterface->cpuCount = 1;
 
     for (int i = 0; i < MAX_MEM; i ++) {
         kernelInterface->memBlocks[i].start = kernelInterface->memBlocks[i].end = 0;
@@ -73,7 +76,7 @@ void lInit(void)
 
         SerialPutString("Jumping!\n");
 
-        JumpKernel(entry, 0xfffff80000000000 + 0x4000);
+        JumpKernel(entry, STACK_LOCATION + STACK_SIZE);
     }
 
     while (true) {}

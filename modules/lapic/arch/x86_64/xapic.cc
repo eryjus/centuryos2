@@ -23,6 +23,13 @@
 
 
 //
+// -- The current tick count
+//    ----------------------
+static uint64_t ticker = 0;
+
+
+
+//
 // -- This is the spurious IRQ handler
 //    --------------------------------
 static void LApicSpurious(Addr_t *regs)
@@ -207,6 +214,9 @@ static int EarlyInit(BootInterface_t *loaderInterface)
         SetInterruptHandler(32, 0x08, (Addr_t)LApicSpurious, 0, 0);
     }
 
+
+    KernelPrintf(".. Initializing to a defined state\n");
+
     // -- here we initialize the LAPIC to a defined state -- taken from Century32
     WriteApicRegister(APIC_DFR, 0xffffffff);       // ipi flat model??
     WriteApicRegister(APIC_LDR, ReadApicRegister(APIC_LDR) | (1<<24));    // set logical apic to 1
@@ -265,6 +275,7 @@ static int EarlyInit(BootInterface_t *loaderInterface)
         }
     }
 
+    KernelPrintf(".. Finally program the timer\n");
 
     //
     // -- Now, program the Timer
@@ -276,7 +287,22 @@ static int EarlyInit(BootInterface_t *loaderInterface)
 }
 
 
+//
+// -- Called on each timer tick from CPU0
+//    -----------------------------------
+static void Tick(void)
+{
+    ticker += 1000000;
+}
 
+
+//
+// -- Get the current timer count
+//    ---------------------------
+static uint64_t CurrentTimer(void)
+{
+    return ticker;
+}
 
 
 //
@@ -292,6 +318,8 @@ Apic_t xapic = {
     .writeApicRegister = WriteApicRegister,
     .checkIndexedStatus = CheckApicStatus,
     .eoi = Eoi,
+    .tick = Tick,
+    .currentTimer = CurrentTimer,
 };
 
 

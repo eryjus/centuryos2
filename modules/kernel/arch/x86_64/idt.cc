@@ -139,6 +139,9 @@ void __attribute__((noreturn)) IdtGenericHandler(Addr_t *stack)
 
 
 
+extern "C" void GsInit(void);
+
+
 //
 // -- Install the IDT
 //    ---------------
@@ -169,6 +172,7 @@ void IdtInstall(void)
     IdtSetHandler(0xe0, 8, &InternalTarget, 0, 0);
 
     TssInit();
+    GsInit();
 }
 
 

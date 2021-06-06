@@ -155,3 +155,28 @@ int CheckApicRegStatus(ApicRegister_t reg, uint8_t index)
 
 
 
+//
+// -- Get the current tick count
+//    --------------------------
+extern "C" uint64_t tmr_GetCurrentTimer(void);
+uint64_t tmr_GetCurrentTimer(void)
+{
+    return apic->currentTimer();
+}
+
+
+
+//
+// -- Handle a timer IRQ
+//    ------------------
+extern "C" void tmr_Interrupt(Addr_t *reg);
+void tmr_Interrupt(Addr_t *reg)
+{
+    if (apic->tick && ThisCpu()->cpuNum == 0) apic->tick();
+    apic->eoi();     // take care of this while interrupts are disabled!
+    uint64_t now = apic->currentTimer();
+
+    SchTimerTick(now);
+}
+
+

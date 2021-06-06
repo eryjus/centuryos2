@@ -44,6 +44,7 @@
 #define PAGE_SIZE           4096
 
 
+
 //
 // -- Foundational Types
 //    ------------------
@@ -51,6 +52,7 @@ typedef uint64_t Frame_t;
 typedef uint64_t Addr_t;
 typedef uint64_t Pid_t;
 typedef uint8_t Byte_t;
+typedef uint64_t Bitmap_t;
 
 
 //
@@ -85,6 +87,20 @@ typedef struct Spinlock_t {
 #include "errno.h"
 #include "atomic.h"
 #include "lists.h"
+
+
+
+//
+// -- Stack information
+//    -----------------
+const Addr_t STACK_LOCATION             = 0xfffff80000000000;
+#define STACK_SIZE                      (4096*4)
+
+
+//
+// -- Temporary Location Mappings
+//    ---------------------------
+const Addr_t MMU_STACK_INIT_VADDR       = 0xffffaf8010000000;
 
 
 #endif

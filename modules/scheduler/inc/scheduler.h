@@ -73,22 +73,6 @@ typedef enum {
 
 
 //
-// -- Convert a ProcStatus_t to a string
-//    -----------------------------------
-inline const char *ProcStatusStr(ProcStatus_t s) {
-    if (s == PROC_INIT)         return "INIT";
-    else if (s == PROC_RUNNING) return "RUNNING";
-    else if (s == PROC_READY)   return "READY";
-    else if (s == PROC_TERM)    return "TERM";
-    else if (s == PROC_MTXW)    return "MTXW";
-    else if (s == PROC_SEMW)    return "SEMW";
-    else if (s == PROC_DLYW)    return "DLYW";
-    else if (s == PROC_MSGW)    return "MSGW";
-    else                        return "Unknown!";
-}
-
-
-//
 // -- This list is the policy choices for a running process; unused currently
 //    -----------------------------------------------------------------------
 typedef enum {
@@ -112,16 +96,9 @@ typedef enum {
 
 
 //
-// -- Convert a ProcStatus_t to a string
-//    -----------------------------------
-inline const char *ProcPriorityStr(ProcPriority_t p) {
-    if (p == PTY_IDLE)          return "IDLE";
-    else if (p == PTY_LOW)      return "LOW";
-    else if (p == PTY_NORM)     return "NORMAL";
-    else if (p == PTY_HIGH)     return "HIGH";
-    else if (p == PTY_OS)       return "OS";
-    else                        return "Unknown!";
-}
+// -- Command string length
+//    ---------------------
+#define CMD_LEN         64
 
 
 //
@@ -136,11 +113,9 @@ typedef struct Process_t {
     ProcPriority_t priority;            // This is the process priority
     volatile AtomicInt_t quantumLeft;   // This is the quantum remaining for the process (may be more than priority)
 
-// -- Anything about this line is referenced from ASM and therefore can any changes need to be checked
+// -- Anything above this line is referenced from ASM and therefore can any changes need to be checked
     Pid_t pid;                          // This is the PID of this process
-    Addr_t ssProcFrame;                 // This is the frame of the process stack
-    Addr_t ssKernFrame;                 // This is the frame of the kernel stack
-    char command[64];                   // The identifying command, includes the terminating null
+    char command[CMD_LEN];              // The identifying command, includes the terminating null
     ProcPolicy_t policy;                // This is the scheduling policy
     uint64_t timeUsed;                  // This is the relative amount of CPU used
     uint64_t wakeAtMicros;              // Wake this process at or after this micros since boot
@@ -207,179 +182,11 @@ typedef struct Scheduler_t {
 
 
 //
-// -- And the scheduler object itself
-//    -------------------------------
-Scheduler_t scheduler;
-Spinlock_t schedulerLock;
-
-
+// -- Exposed function prototypes
+//    ---------------------------
 extern "C" {
-    //
-    // -- Initialize the process structures
-    //    ---------------------------------
-    void ProcessInit(void);
-
-
-    //
-    // -- Scheduler locking, postponing, unlocking, and scheduling functions
-    //    ------------------------------------------------------------------
-    void ProcessUnlockScheduler(void);
-    void ProcessUnlockAndSchedule(void);
-
-    void ProcessLockScheduler(bool save = true);
-
-    inline void ProcessLockAndPostpone(void) {
-        ProcessLockScheduler();
-        AtomicInc(&scheduler.postponeCount);
-    }
-
-
-    //
-    // -- Functions to block the current process
-    //    --------------------------------------
-    void ProcessDoBlock(ProcStatus_t reason);
-
-    inline void ProcessBlock(ProcStatus_t reason) {
-        ProcessLockAndPostpone();
-        ProcessDoBlock(reason);
-        ProcessUnlockAndSchedule();
-    }
-
-
-    //
-    // -- New task initialization tasks
-    //    -----------------------------
     void ProcessStart(void);
-    void ProcessStartEpilogue(void);
-
-
-    //
-    // -- Create a new process
-    //    --------------------
-    Process_t *ProcessCreate(const char *name, void (*startingAddr)(void));
-
-
-    //
-    // -- Switch to a new process
-    //    -----------------------
-    void ProcessSwitch(Process_t *proc);
-
-
-    //
-    // -- Create a new stack for a new process, and populate its contents (kernel and then user varieties)
-    //    ------------------------------------------------------------------------------------------------
-    Frame_t ProcessNewStack(Process_t *proc, void (*startingAddr)(void));
-    Frame_t ProcessNewUserStack(Process_t *proc, void (*startingAddr)(void));
-
-
-    //
-    // -- Perform a scheduling exercise to determine the next process to run
-    //    ------------------------------------------------------------------
-    void ProcessSchedule(void);
-
-
-    //
-    // -- Place a process on the correct ready queue
-    //    ------------------------------------------
-    void ProcessDoReady(Process_t *proc);
-
-    inline void ProcessReady(Process_t *proc) {
-        ProcessLockAndPostpone();
-        ProcessDoReady(proc);
-        ProcessUnlockAndSchedule();
-    }
-
-
-    //
-    // -- Unblock a process
-    //    -----------------
-    void ProcessDoUnblock(Process_t *proc);
-
-    inline void ProcessUnblock(Process_t *proc) {
-        ProcessLockAndPostpone();
-        ProcessDoUnblock(proc);
-        ProcessUnlockAndSchedule();
-    }
-
-
-    //
-    // -- Update the time used for a process
-    //    ----------------------------------
-    void ProcessUpdateTimeUsed(void);
-
-
-    //
-    // -- Sleep until the we reach the number of micro-seconds since boot
-    //    ---------------------------------------------------------------
-    void ProcessDoMicroSleepUntil(uint64_t when);
-
-    inline void ProcessMicroSleepUntil(uint64_t when) {
-        ProcessLockAndPostpone();
-        ProcessDoMicroSleepUntil(when);
-        ProcessUnlockAndSchedule();
-    }
-
-    inline void ProcessMicroSleep(uint64_t micros) {
-//        ProcessMicroSleepUntil(TimerCurrentCount(timerControl) + micros);
-    }
-
-    inline void ProcessMilliSleep(uint64_t ms) {
-//        ProcessMicroSleepUntil(TimerCurrentCount(timerControl) + (ms * 1000));
-    }
-
-    inline void ProcessSleep(uint64_t secs) {
-//        ProcessMicroSleepUntil(TimerCurrentCount(timerControl) + (secs * 1000000));
-    }
-
-
-    //
-    // -- Terminate a task
-    //    ----------------
-    void ProcessTerminate(Process_t *proc);
-
-
-    //
-    // -- End current process
-    //    -------------------
-    void ProcessEnd(void);
-
-
-    //
-    // -- remove the process for its list, if it is on one
-    //    ------------------------------------------------
-    void ProcessListRemove(Process_t *proc);
-
-
-    //
-    // -- Idle when there is nothing to do
-    //    --------------------------------
-    void ProcessIdle(void);
-
-
-    //
-    // -- Debugging functions to output the scheduler state
-    //    -------------------------------------------------
-    void ProcessDoCheckQueue(void);
-
-    inline void ProcessCheckQueue(void) {
-        ProcessLockAndPostpone();
-        ProcessDoCheckQueue();
-        ProcessUnlockAndSchedule();
-    }
-
-
-    //
-    // -- Add a process to the global process List
-    //    ----------------------------------------
-    inline void ProcessDoAddGlobal(Process_t *proc) {
-        ListAddTail(&scheduler.globalProcesses, &proc->globalList);
-    }
-
-    inline void ProcessAddGlobal(Process_t *proc) {
-        ProcessLockAndPostpone();
-        ProcessDoAddGlobal(proc);
-        ProcessUnlockAndSchedule();
-    }
+    void ProcessNewStack(Process_t *proc, void (*startingAddr)(void));
 }
 
 

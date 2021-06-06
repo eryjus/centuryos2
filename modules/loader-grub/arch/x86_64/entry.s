@@ -30,6 +30,7 @@
                 global      mbData
                 global      JumpKernel
                 global      kernelInterface
+                global      pml4
 
 
 ;;

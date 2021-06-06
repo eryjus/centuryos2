@@ -33,6 +33,8 @@
 //    -------------------------------------------------------------------
 typedef struct BootInterface_t {
     Frame_t nextEarlyFrame;
+    Addr_t bootVirtAddrSpace;
+    int cpuCount;
     int modCount;
     Addr_t modAddr[MAX_MODS];
     struct {

@@ -19,6 +19,8 @@
 
                 extern      X2ApicInitEarly
                 extern      Init
+                extern      tmr_Interrupt
+                extern      tmr_GetCurrentTimer
 
                 section     .text
 
@@ -31,8 +33,12 @@ header:
                 db          'x','2','A','P','I','C',0,0,0,0,0,0,0,0,0,0                 ; Name
                 dq          X2ApicInitEarly                                             ; Early Init
                 dq          Init                                                        ; Late Init
-                dq          0                                                           ; interrupts
-                dq          0                                                           ; internal Services
+                dq          1                                                           ; interrupts
+                dq          1                                                           ; internal Services
                 dq          0                                                           ; OS services
+                dq          32                                                          ; Interrupt 32 (IRQ0)
+                dq          tmr_Interrupt                                               ; .. target address
+                dq          13                                                          ; Internal fctn 13 (Tmr Cnt)
+                dq          tmr_GetCurrentTimer                                         ; .. target address
 
 

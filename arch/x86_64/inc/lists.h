@@ -41,7 +41,7 @@
 // -- This macro determines the offset of a member of a structure.  The 'magic' of this macro is the calculation
 //    of an address as a offset from the address 0x00000000.
 //    ----------------------------------------------------------------------------------------------------------
-#define MEMBER_OFFSET(type,member)  ((archsize_t)(&((type *)0x00000000)->member))
+#define MEMBER_OFFSET(type,member)  ((Addr_t)(&((type *)0x00000000)->member))
 
 
 //

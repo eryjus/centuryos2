@@ -106,6 +106,15 @@ int MmuDumpTables(Addr_t addr)
 
 
 //
+// -- Function 9 -- Is page mapped and if so to what Frame
+//    ----------------------------------------------------
+bool MmuIsMapped(Addr_t addr)
+{
+    return InternalDispatch1(INT_MMU_IS_MAPPED, addr);
+}
+
+
+//
 // -- Function 10 -- Allocate a number of aligned frames
 //    --------------------------------------------------
 Frame_t PmmAllocAligned(bool lowMem, int numBitsAligned, size_t count)
@@ -151,6 +160,15 @@ int PmmRelease(Frame_t frame)
 
 
 //
+// -- Function 13 -- Get Current Timer
+//    --------------------------------
+uint64_t TmrCurrentCount(void)
+{
+    return InternalDispatch0(INT_TMR_CURRENT);
+}
+
+
+//
 // -- Function 16 -- Lock a Spinlock
 //    ------------------------------
 int SpinLock(Spinlock_t *lock)
@@ -176,6 +194,14 @@ int SpinUnlock(Spinlock_t *lock)
     return InternalDispatch1(INT_SPIN_UNLOCK, (Addr_t)lock);
 }
 
+
+//
+// -- Function 25 -- Scheduler Timer Tick
+//    -----------------------------------
+int SchTimerTick(uint64_t now)
+{
+    return InternalDispatch1(INT_SCH_TICK, now);
+}
 
 
 

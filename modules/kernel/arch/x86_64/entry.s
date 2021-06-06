@@ -31,6 +31,7 @@
                 extern      _end
                 extern      __init_array_start
                 extern      __init_array_end
+                extern      GsInit
 
 
 ;;
@@ -127,6 +128,8 @@ newGdt:
 
                 mov         rax,0
                 mov         fs,ax
+
+                call        GsInit
 
                 mov         rax,0x48
                 mov         gs,ax

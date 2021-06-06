@@ -21,6 +21,14 @@
 #include "lapic.h"
 
 
+
+//
+// -- The current tick count
+//    ----------------------
+static uint64_t ticker = 0;
+
+
+
 //
 // -- Convert the APIC MMIO offset into a MSR number (compiler should be able to optimize constants)
 //    ----------------------------------------------------------------------------------------------
@@ -283,6 +291,25 @@ static int EarlyInit(BootInterface_t *loaderInterface)
 
 
 //
+// -- Called on each timer tick from CPU0
+//    -----------------------------------
+static void Tick(void)
+{
+    ticker += 1000000;
+}
+
+
+
+//
+// -- Get the current timer count
+//    ---------------------------
+static uint64_t CurrentTimer(void)
+{
+    return ticker;
+}
+
+
+//
 // -- Create the driver structure for the X2APIC
 //    ------------------------------------------
 Apic_t x2apic = {
@@ -295,6 +322,8 @@ Apic_t x2apic = {
     .writeApicRegister = WriteApicRegister,
     .checkIndexedStatus = CheckApicStatus,
     .eoi = Eoi,
+    .tick = Tick,
+    .currentTimer = CurrentTimer,
 };
 
 

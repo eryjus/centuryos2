@@ -21,6 +21,62 @@
 
 
 #include "types.h"
+#include "tss.h"
+#include "atomic.h"
+
+
+
+//
+// -- This is the state of a CPU
+//    --------------------------
+typedef enum {
+    CPU_STOPPED = 0,
+    CPU_STARTING = 1,
+    CPU_STARTED = 2,
+    CPU_BAD = 0xffff,
+} CpuState_t;
+
+
+
+//
+// -- This is the abstraction of the x86 CPU
+//    --------------------------------------
+typedef struct ArchCpu_t {
+    int cpuNum;
+    Addr_t stackTop;
+    Addr_t location;
+    CpuState_t state;
+    int kernelLocksHeld;
+    bool processChangePending;
+    AtomicInt_t postponeCount;
+    int disableIntDepth;
+    Addr_t flags;
+    uint64_t lastTimer;
+    uint64_t cpuIdleTime;
+    ArchCpu_t *cpu;
+    struct Process_t *process;
+    Tss_t tss;
+    Addr_t gsSelector;
+    Addr_t tssSelector;
+} ArchCpu_t;
+
+
+//
+// -- this is for the cpu abstraction
+//    -------------------------------
+extern ArchCpu_t cpus[MAX_CPU];
+
+
+//
+// -- Some access methods for getting to CPU elements.
+//    ------------------------------------------------
+inline ArchCpu_t *ThisCpu(void) { ArchCpu_t *rv; __asm("mov %0,%%gs:(0)" : "=r"(rv) :: "memory"); return rv; }
+struct Process_t;
+inline struct Process_t *CurrentThread(void)  {
+        Process_t *rv; __asm("mov %0,%%gs:(8)" : "=r"(rv) :: "memory"); return rv;
+}
+inline void CurrentThreadAssign(Process_t *p) { __asm("mov %%gs:(8),%0" :: "r"(p) : "memory"); }
+
 
 
 //
@@ -197,6 +253,7 @@ inline void WRMSR(uint32_t r, uint64_t v) {
 //    -------------------------------------
 const uint32_t IA32_APIC_BASE_MSR = 0x1b;
 const uint32_t IA32_MTRR_DEF_TYPE = 0xfe;
+const uint32_t IA32_KERNEL_GS_BASE = 0xc0000102;
 
 
 

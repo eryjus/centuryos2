@@ -96,7 +96,7 @@ static inline void INVLPG(Addr_t a) { __asm volatile("invlpg (%0)" :: "r"(a) : "
 //
 // -- Check if an address is mapped
 //    -----------------------------
-bool MmuIsMapped(Addr_t a)
+bool krn_MmuIsMapped(Addr_t a)
 {
     kprintf("Checking mapping (reporting mapped only)\n");
 
@@ -122,7 +122,7 @@ int krn_MmuUnmapPage(Addr_t a)
 {
     kprintf("Unmapping page at address %p\n", a);
 
-    if (MmuIsMapped(a)) {
+    if (krn_MmuIsMapped(a)) {
         kprintf("Unmapping address %p..\n", GetPTEntry(a));
         *(uint64_t *)GetPTEntry(a) = 0;
     }
@@ -148,7 +148,7 @@ int krn_MmuMapPage(Addr_t a, Frame_t f, bool writable)
     kprintf("..   PT address is %p\n", GetPTEntry(a));
 
     if (!a || !f) return -EINVAL;
-    if (MmuIsMapped(a)) krn_MmuUnmapPage(a);
+    if (krn_MmuIsMapped(a)) krn_MmuUnmapPage(a);
 
     kprintf(".. The page is guaranteed unmapped\n");
 

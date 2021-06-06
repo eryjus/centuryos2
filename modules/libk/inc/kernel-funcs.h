@@ -34,12 +34,19 @@ enum {
     INT_MMU_MAP         = 6,
     INT_MMU_UNMAP       = 7,
     INT_MMU_DUMP_TABLES = 8,
+    INT_MMU_IS_MAPPED   = 9,
     INT_PMM_ALLOC       = 10,
     INT_PMM_RELEASE     = 11,
+    INT_TMR_CURRENT     = 13,
     INT_SPIN_LOCK       = 16,
     INT_SPIN_TRY        = 17,
     INT_SPIN_UNLOCK     = 18,
     INT_PRINTF          = 20,
+    INT_SCH_TICK        = 25,
+    INT_SCH_BLOCK       = 26,
+    INT_SCH_READY       = 27,
+    INT_SCH_UNBLOCK     = 28,
+    INT_SCH_SLEEP_UNTIL = 29,
 };
 
 
@@ -93,6 +100,8 @@ extern "C" bool AssertFailure(const char *expr, const char *msg, const char *fil
 //    ----------------
 extern "C" {
     void kMemSetB(void *buf, uint8_t byt, size_t cnt);
+    void kStrCpy(char *dest, const char *src);
+    size_t kStrLen(const char *str);
 }
 
 
@@ -125,8 +134,11 @@ extern "C" {
     // -- Function 7
     int MmuUnmapPage(Addr_t addr);
 
-    // -- FUnction 8
+    // -- Function 8
     int MmuDumpTables(Addr_t addr);
+
+    // -- Function 9
+    bool MmuIsMapped(Addr_t addr);
 
     // -- Function 10
     Frame_t PmmAllocAligned(bool lowMem, int numBitsAligned, size_t count);
@@ -136,6 +148,9 @@ extern "C" {
     // -- Function 11
     int PmmReleaseRange(Frame_t frame, size_t count);
     int PmmRelease(Frame_t frame);
+
+    // -- Function 13
+    uint64_t TmrCurrentCount(void);
 
     // -- Function 16
     int SpinLock(Spinlock_t *lock);
@@ -148,5 +163,31 @@ extern "C" {
 
     // -- Function 20
     int KernelPrintf(const char *fmt, ...);
+
+    // -- Function 25
+    int SchTimerTick(uint64_t now);
+
+    // -- Function 26
+#define PRC_INIT        0
+#define PRC_RUNNING     1
+#define PRC_READY       2
+#define PRC_TERM        3
+#define PRC_MTXW        4
+#define PRC_SEMW        5
+#define PRC_DLYW        6
+#define PRC_MSGW        7
+    int SchProcessBlock(int status);
+
+    // -- Function 27
+    int SchProcessReady(Process_t *proc);
+
+    // -- Function 28
+    int SchProcessUnblock(Process_t *proc);
+
+    // -- Function 29
+    int SchProcessMicroSleepUntil(uint64_t when);
+    inline int ProcessMicroSleep(uint64_t micros) { return SchProcessMicroSleepUntil(TmrCurrentCount() + micros); }
+    inline int ProcessMilliSleep(uint64_t ms) { return SchProcessMicroSleepUntil(TmrCurrentCount() + (ms * 1000)); }
+    inline int ProcessSleep(uint64_t s) { return SchProcessMicroSleepUntil(TmrCurrentCount() + (s * 1000000)); }
 }
 

@@ -15,7 +15,7 @@
 //===================================================================================================================
 
 
-//#define USE_SERIAL
+#define USE_SERIAL
 
 #include "types.h"
 #include "printf.h"
@@ -98,8 +98,11 @@ Module_t *ModuleCheck(Addr_t addr)
     if (rv->sig[14] !=  0 ) return NULL;
     if (rv->sig[15] !=  0 ) return NULL;
 
+    kprintf(".. checking earlyInit function\n");
     if (rv->earlyInit == 0) return NULL;
-//    if (rv->intCnt + rv->internalCnt + rv->osCnt == 0) return NULL;
+
+    kprintf(".. checking published feature count\n");
+    if (rv->intCnt + rv->internalCnt + rv->osCnt == 0) return NULL;
 
     kprintf(".. valid!\n");
 
@@ -162,9 +165,9 @@ void ModuleEarlyInit()
         Module_t *mod = ModuleCheck(modInternal[i].entries);
         if (mod) {
             EarlyInit_t init = (EarlyInit_t)mod->earlyInit;
-//            kprintf(".. calling early init function at %p\n", (Addr_t)init);
+            kprintf(".. calling early init function at %p\n", (Addr_t)init);
             int res = init(loaderInterface);
-//            kprintf(".. early init completed\n");
+            kprintf(".. early init completed\n");
 
             modInternal[i].loaded = true;
 

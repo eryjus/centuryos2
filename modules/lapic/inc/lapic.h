@@ -95,6 +95,9 @@ typedef struct Apic_t {
 
     bool (*checkIndexedStatus)(ApicRegister_t, uint8_t);
     void (*eoi)(void);
+
+    void (*tick)(void);
+    uint64_t (*currentTimer)(void);
 } Apic_t;
 
 

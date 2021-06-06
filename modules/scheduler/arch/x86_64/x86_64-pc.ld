@@ -25,6 +25,11 @@ SEARCH_DIR("=/usr/lib");
 
 CODE_VIRT  = 0xffffa00000000000;
 
+STACK_START = 0xffffaf0000000000;
+STACK_COUNT = 32;
+STACK_SIZE = 0x1000 * 4;
+
+
 SECTIONS
 {
     /* Read-only sections, merged into text segment: */
@@ -179,6 +184,10 @@ SECTIONS
     .got.plt                : { *(.got.plt) *(.igot.plt) }
     .data :
         {
+            __stackStart = .;       LONG(STACK_START);
+            __stackSize = .;        LONG(STACK_SIZE);
+            __stackCount = .;       LONG(STACK_COUNT);
+
             *(.data .data.* .gnu.linkonce.d.*)
             SORT(CONSTRUCTORS)
         }

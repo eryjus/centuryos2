@@ -129,6 +129,7 @@ void InternalInit(void)
     internalTable[INT_MMU_MAP].handler =            (InternalHandler_t)krn_MmuMapPage;
     internalTable[INT_MMU_UNMAP].handler =          (InternalHandler_t)krn_MmuUnmapPage;
     internalTable[INT_MMU_DUMP_TABLES].handler =    (InternalHandler_t)krn_MmuDumpTables;
+    internalTable[INT_MMU_IS_MAPPED].handler =      (InternalHandler_t)krn_MmuIsMapped;
     internalTable[INT_PMM_ALLOC].handler =          (InternalHandler_t)PmmEarlyFrame;
     internalTable[INT_SPIN_LOCK].handler =          (InternalHandler_t)krn_SpinLock;
     internalTable[INT_SPIN_TRY].handler =           (InternalHandler_t)krn_SpinTry;

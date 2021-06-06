@@ -190,11 +190,11 @@ static void HeapValidateHdr(KHeapHeader_t *hdr, const char *from)
 
     ftr = (KHeapFooter_t *)((char *)hdr + hdr->size - sizeof(KHeapFooter_t));
 
-    if ((hdr->_magicUnion.magicHole & 0xfffffffe) != HEAP_MAGIC) {
+    if ((hdr->_magicUnion.magicHole & HEAP_CHECK_MASK) != HEAP_MAGIC) {
         HeapError(from, "Invalid Heap Header Magic Number");
     }
 
-    if ((ftr->_magicUnion.magicHole & 0xfffffffe) != HEAP_MAGIC) {
+    if ((ftr->_magicUnion.magicHole & HEAP_CHECK_MASK) != HEAP_MAGIC) {
         HeapError(from, "Invalid Heap Footer Magic Number");
     }
 
@@ -361,8 +361,8 @@ static void HeapCheckHealth(void)
         numBlocks ++;
 
         // now determine if block is corrupt
-        if ((block->_magicUnion.magicHole & 0xfffffffe) != HEAP_MAGIC ||
-                (ftr->_magicUnion.magicHole & 0xfffffffe) != HEAP_MAGIC) {
+        if ((block->_magicUnion.magicHole & HEAP_CHECK_MASK) != HEAP_MAGIC ||
+                (ftr->_magicUnion.magicHole & HEAP_CHECK_MASK) != HEAP_MAGIC) {
             numCorrupt ++;
         } else if (block->_magicUnion.magicHole != ftr->_magicUnion.magicHole) {
             numCorrupt ++;
@@ -816,10 +816,18 @@ void HeapInit(void)
         MmuMapPage(vAddr, PmmAlloc(), true);
     }
 
+#ifdef DEBUG_HEAP
+    KernelPrintf(".. initial pages mapped\n");
+#endif
+
     // -- Set up the heap structure and list of open blocks
     KHeapFooter_t *tmpFtr;
 
-    kMemSetB(fixedList, 0, sizeof(fixedList));
+    kMemSetB(fixedList, 0, sizeof(fixedList));  // this line causes a problem
+
+#ifdef DEBUG_HEAP
+    KernelPrintf(".. fixedList cleared\n");
+#endif
 
     // -- Build the first free block which is all allocated
     fixedList[0].block = (KHeapHeader_t *)heapStart;
@@ -834,10 +842,18 @@ void HeapInit(void)
     _heap.heapMemory = _heap.heap512 = _heap.heap1K =
             _heap.heap4K = _heap.heap16K = &fixedList[0];
 
+#ifdef DEBUG_HEAP
+    KernelPrintf(".. initializing the first header\n");
+#endif
+
     fixedList[0].block->_magicUnion.magicHole = HEAP_MAGIC;
     fixedList[0].block->_magicUnion.mhStruct.isHole = 1;
     fixedList[0].block->size = fixedList[0].size;
     fixedList[0].block->entry = &fixedList[0];
+
+#ifdef DEBUG_HEAP
+    KernelPrintf(".. initializing the first footer\n");
+#endif
 
     tmpFtr = (KHeapFooter_t *)(((char *)fixedList[0].block) +
             fixedList[0].size - sizeof(KHeapFooter_t));

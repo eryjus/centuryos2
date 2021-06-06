@@ -21,9 +21,10 @@
 //
 // -- Define some quick macros to help with managing the heap
 //    -------------------------------------------------------
+#define HEAP_CHECK_MASK         0xfffffffffffffffe
 #define HEAP_SMALLEST           128
 #define HEAP_MAGIC              ((Addr_t)0xBAD2DB07EBA6BADC)
-#define HEAP_CHECK(x)           (((x) & 0xfffffffffffffffe) == HEAP_MAGIC)
+#define HEAP_CHECK(x)           (((x) & HEAP_CHECK_MASK) == HEAP_MAGIC)
 #define MIN_HOLE_SIZE           (sizeof(KHeapHeader_t) + sizeof(KHeapHeader_t) + HEAP_SMALLEST)
 
 #define HEAP_MIN_SIZE           0x00040000

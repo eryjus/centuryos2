@@ -1,6 +1,6 @@
 //===================================================================================================================
 //
-//  kInit.cc -- Complete the initialization
+//  lInit.cc -- Complete the initialization
 //
 //        Copyright (c)  2017-2021 -- Adam Clark
 //        Licensed under "THE BEER-WARE LICENSE"
@@ -15,7 +15,7 @@
 //===================================================================================================================
 
 
-#define USE_SERIAL
+//#define USE_SERIAL
 
 
 #include "types.h"
@@ -24,6 +24,12 @@
 #include "serial.h"
 #include "mmu.h"
 #include "boot-interface.h"
+
+
+#define PG_NONE     (0)
+#define PG_WRT      (1<<0)
+#define PG_KRN      (1<<1)
+#define PG_DEV      (1<<15)
 
 
 //
@@ -49,7 +55,7 @@ void lInit(void)
     SerialPutString("Hello\n");
 
     Frame_t fr = earlyFrame ++;
-    MmuMapPage(interfaceLocation, fr, true);
+    MmuMapPage(interfaceLocation, fr, PG_WRT);
     kernelInterface = (BootInterface_t *)interfaceLocation;
     kernelInterface->modCount = 0;
     kernelInterface->bootVirtAddrSpace = pml4;
@@ -63,10 +69,10 @@ void lInit(void)
     Addr_t kernel = MBootGetKernel();
     Addr_t stack = (earlyFrame);
     earlyFrame += 4;
-    MmuMapPage(0xfffff80000000000, stack + 0, true);
-    MmuMapPage(0xfffff80000001000, stack + 1, true);
-    MmuMapPage(0xfffff80000002000, stack + 2, true);
-    MmuMapPage(0xfffff80000003000, stack + 3, true);
+    MmuMapPage(0xfffff80000000000, stack + 0, PG_WRT);
+    MmuMapPage(0xfffff80000001000, stack + 1, PG_WRT);
+    MmuMapPage(0xfffff80000002000, stack + 2, PG_WRT);
+    MmuMapPage(0xfffff80000003000, stack + 3, PG_WRT);
     SerialPutString("Stack mapped\n");
 
     if (kernel != 0) {

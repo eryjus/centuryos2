@@ -34,5 +34,6 @@ const Addr_t LAPIC_MMIO = 0xffffaffffffff000;
 const uint64_t IA32_APIC_BASE_MSR__BSP = (1<<8);
 const uint64_t IA32_APIC_BASE_MSR__EN = (1<<11);
 
+
 #define __XAPIC__
 

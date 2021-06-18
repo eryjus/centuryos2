@@ -81,9 +81,9 @@ int SetInterruptHandler(int number, Addr_t selector, Addr_t interruptAddr, int i
 //
 // -- Function 6 -- Map a page
 //    ------------------------
-int MmuMapPage(Addr_t addr, Frame_t frame, bool writable)
+int MmuMapPage(Addr_t addr, Frame_t frame, int flags)
 {
-    return InternalDispatch3(INT_MMU_MAP, addr, (Addr_t)frame, (Addr_t)writable);
+    return InternalDispatch3(INT_MMU_MAP, addr, (Addr_t)frame, (Addr_t)flags);
 }
 
 
@@ -204,5 +204,48 @@ int SchTimerTick(uint64_t now)
 }
 
 
+//
+// -- Function 26 -- Block a process
+//    ------------------------------
+int SchProcessBlock(int status)
+{
+    return InternalDispatch1(INT_SCH_BLOCK, status);
+}
+
+
+//
+// -- Function 27 -- Ready a process
+//    ------------------------------
+int SchProcessReady(Process_t *proc)
+{
+    return InternalDispatch1(INT_SCH_READY, (Addr_t)proc);
+}
+
+
+//
+// -- Function 28 -- Unblock a process
+//    --------------------------------
+int SchProcessUnblock(Process_t *proc)
+{
+    return InternalDispatch1(INT_SCH_UNBLOCK, (Addr_t)proc);
+}
+
+
+//
+// -- Function 29 -- Sleep a process for some microseconds
+//    ----------------------------------------------------
+int SchProcessMicroSleepUntil(uint64_t when)
+{
+    return InternalDispatch1(INT_SCH_SLEEP_UNTIL, when);
+}
+
+
+//
+// -- Function 30 -- Create a new process
+//    -----------------------------------
+int SchProcessCreate(const char *name, void (*startingAddr)(void))
+{
+    return InternalDispatch2(INT_SCH_CREATE, (Addr_t)name, (Addr_t)startingAddr);
+}
 
 

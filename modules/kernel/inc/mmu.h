@@ -18,12 +18,13 @@
 #pragma once
 
 
+
 //
 // -- function prototypes
 //    -------------------
 extern "C" {
     int krn_MmuUnmapPage(Addr_t a);
-    int krn_MmuMapPage(Addr_t a, Frame_t f, bool writable);
+    int krn_MmuMapPage(Addr_t a, Frame_t f, int flags);
     int krn_MmuDumpTables(Addr_t);
     bool krn_MmuIsMapped(Addr_t);
 }

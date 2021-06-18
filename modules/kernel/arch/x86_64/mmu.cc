@@ -139,7 +139,7 @@ int krn_MmuUnmapPage(Addr_t a)
 //
 // -- Map a page to a frame
 //    ---------------------
-int krn_MmuMapPage(Addr_t a, Frame_t f, bool writable)
+int krn_MmuMapPage(Addr_t a, Frame_t f, int flags)
 {
     kprintf("In tables %p, request was made to map address %p to frame %p\n", GetCr3(), a, f);
     kprintf(".. PML4 address is %p\n", GetPML4Entry(a));
@@ -220,7 +220,9 @@ int krn_MmuMapPage(Addr_t a, Frame_t f, bool writable)
     kprintf("..   PT address is still %p (contents %p)?\n", ent, *(uint64_t *)ent);
 
     ent->frame = f;
-    ent->rw = writable;
+    ent->rw = (flags&PG_WRT?1:0);
+    ent->pcd = (flags&PG_DEV?1:0);
+    ent->pwt = (flags&PG_DEV?1:0);
     ent->p = 1;
 
     __asm volatile ("wbnoinvd" ::: "memory");

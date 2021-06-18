@@ -97,6 +97,8 @@ int X2ApicInitEarly(BootInterface_t *loaderInterface)
 //    ----------------------------
 int Init(void)
 {
+    ProcessInitTable();
+
     if (!apic) return -EINVAL;
     if (apic->init) apic->init();
 
@@ -172,6 +174,7 @@ uint64_t tmr_GetCurrentTimer(void)
 extern "C" void tmr_Interrupt(Addr_t *reg);
 void tmr_Interrupt(Addr_t *reg)
 {
+//    KernelPrintf("*");
     if (apic->tick && ThisCpu()->cpuNum == 0) apic->tick();
     apic->eoi();     // take care of this while interrupts are disabled!
     uint64_t now = apic->currentTimer();

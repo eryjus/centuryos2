@@ -243,23 +243,22 @@ Descriptor_t __attribute__((aligned(16))) gdt[9 + (3 * MAX_CPU)] = {
     LDATA_GDT,                                          //  0x40
 
     // -- CPU0
-    // TODO: CLean up
     GS_GDT(0),                                          //  0x48
     TSSL32_GDT((Addr_t)&tss[0]),                        //  0x50
     TSSU32_GDT((Addr_t)&tss[0]),                        // (0x58)
 
     // -- CPU1
-    GS_GDT((Addr_t)&(cpus[1].cpu)),                     //  0x60
+    GS_GDT(0),                                          //  0x60
     TSSL32_GDT((Addr_t)&tss[1]),                        //  0x68
     TSSU32_GDT((Addr_t)&tss[1]),                        // (0x70)
 
     // -- CPU2
-    GS_GDT((Addr_t)&(cpus[2].cpu)),                     //  0x78
+    GS_GDT(0),                                          //  0x78
     TSSL32_GDT((Addr_t)&tss[2]),                        //  0x80
     TSSU32_GDT((Addr_t)&tss[2]),                        // (0x88)
 
     // -- CPU3
-    GS_GDT((Addr_t)&(cpus[3].cpu)),                     //  0x90
+    GS_GDT(0),                                          //  0x90
     TSSL32_GDT((Addr_t)&tss[3]),                        //  0x98
     TSSU32_GDT((Addr_t)&tss[3]),                        // (0xa0)
 };

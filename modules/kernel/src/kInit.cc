@@ -48,16 +48,19 @@ void kInit(void)
     IdtInstall();
     InternalInit();
     ServiceInit();            // similar to InternalInit();
+    CpuInit();
+
     kprintf(".. Module Early Init:\n");
     ModuleEarlyInit();
 
-//    kprintf(".. Starting test\n");
-//    InternalTableDump();
-//    Frame_t fr = PmmAlloc();
-//    PmmRelease(fr);
-//    kprintf(".. Test completed\n");
+    kprintf(".. enabling interrupts\n");
+    EnableInt();
+
+    ModuleLateInit();
 
     kprintf("Boot Complete!\n");
-    while (true) {}
+    while (true) {
+        __asm volatile ("hlt");
+    }
 }
 

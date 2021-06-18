@@ -27,6 +27,14 @@
 extern BootInterface_t *kernelInterface;
 
 
+
+#define PG_NONE     (0)
+#define PG_WRT      (1<<0)
+#define PG_KRN      (1<<1)
+#define PG_DEV      (1<<15)
+
+
+
 //
 // == MB1 Structures
 //    --------------
@@ -220,7 +228,7 @@ static Addr_t MBootGetMb1Kernel(void)
     SerialPutString("MB1\n");
 
     if (!MmuIsMapped(mbData)) {
-        MmuMapPage(mbData, mbData >> 12, false);
+        MmuMapPage(mbData, mbData >> 12, PG_NONE);
     }
 
 
@@ -237,7 +245,7 @@ static Addr_t MBootGetMb1Kernel(void)
             char *name = (char *)((Addr_t)mods[i].modIdent);
 
             if (!MmuIsMapped((Addr_t)name)) {
-                MmuMapPage((Addr_t)name, ((Addr_t)name) >> 12, false);
+                MmuMapPage((Addr_t)name, ((Addr_t)name) >> 12, PG_NONE);
             }
 
             SerialPutString(".. ");
@@ -313,7 +321,7 @@ static Addr_t MBootGetMb2Kernel(void)
     SerialPutString("MB2\n");
 
     if (!MmuIsMapped(mbData)) {
-        MmuMapPage(mbData, mbData >> 12, false);
+        MmuMapPage(mbData, mbData >> 12, PG_NONE);
     }
 
     while (!lastTag) {

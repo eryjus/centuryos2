@@ -1,6 +1,6 @@
 //===================================================================================================================
 //
-//  cpu.cc -- Complete the CPU structure initialization
+//  init-table.cc -- Process the initialization table function calls
 //
 //        Copyright (c)  2017-2021 -- Adam Clark
 //        Licensed under "THE BEER-WARE LICENSE"
@@ -15,31 +15,31 @@
 //===================================================================================================================
 
 
-
-
 #include "types.h"
-#include "cpu.h"
+#include "kernel-funcs.h"
 
 
 
 //
-// -- The cpus abstraction structure
-//    ------------------------------
-ArchCpu_t cpus[MAX_CPU] = { {0} };
+// -- Some internal types used to complete the initialization
+//    -------------------------------------------------------
+typedef void (*FunctionPtr_t)(void);
+extern FunctionPtr_t const __init_array_start[], __init_array_end[];
 
 
 
 //
-// -- Initialize the CPU structures to initial values
-//    -----------------------------------------------
-void CpuInit(void)
+// -- Process the initialization table
+//    --------------------------------
+void ProcessInitTable(void)
 {
-    for (int i = 0; i < MAX_CPU; i ++) {
-        cpus[i].cpuNum = i;
-        cpus[i].cpu = &cpus[i];
-        cpus[i].process = 0;
+    FunctionPtr_t *wrk = (FunctionPtr_t *)__init_array_start;
+
+    while (wrk != (FunctionPtr_t *)__init_array_end) {
+        KernelPrintf("Calling init function at %p\n", *wrk);
+        (*wrk)();                   // -- call the function
+        wrk ++;
     }
 }
-
 
 

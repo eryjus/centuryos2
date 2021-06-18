@@ -27,7 +27,7 @@ extern "C" {
     Frame_t MmuGetTable(void);
     bool MmuIsMapped(Addr_t a);
     void MmuUnmapPage(Addr_t a);
-    void MmuMapPage(Addr_t a, Frame_t f, bool writable);
+    void MmuMapPage(Addr_t a, Frame_t f, int flags);
     void ldr_MmuUnmapPage(Addr_t a);
-    void ldr_MmuMapPage(Addr_t a, Frame_t f, bool writable);
+    void ldr_MmuMapPage(Addr_t a, Frame_t f, int flags);
 }

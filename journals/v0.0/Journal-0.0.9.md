@@ -197,3 +197,117 @@ OK, I am able to complete the early initialization.  Now, I need to enable inter
 
 Enable interrupts and work out all the issues.
 
+---
+
+
+### 2021-Jun-07
+
+OK, I figured out my current crash when interrupts are enabled.  The problem is that I am registering a function from the x2apic module into the IDT in the kernel.  This means that the interrupt target address is in some unknown virtual address space but the interrupt must land in the kernel address space.
+
+For this to work, I will need to install generic handlers and then use a table for determining where to jump for the handler.
+
+
+---
+
+### 2021-Jun-10
+
+qemu boots.  vbox boots.  Bochs does not boot.  Bochs also happens to be the emulator with an x2APIC.  I need to change that back to an xAPIC.
+
+I have the same problem with both types of XAPIC.
+
+
+---
+
+### 2021-Jun-13
+
+I have figured some things out.  First and foremost, I uncovered a bug in the xapic initialization code.  Now, I have a problem with the `cpus` structure initialization.  The problem is that the compiler has an initialization function that is to be called on load and is not being called.  This is in the kernel module, but I'm certain the same problems exist in the other modules.
+
+I also now know that the `.bss` section is not being cleared.  I need to be able to clear this section.
+
+---
+
+Alright, for the record, I was already calling the calling the init functions and I was already "clearing" the bss.  The problem is I was setting the contents of the bss with the address of the start of the bss.  Now that I have both of those fixed up, I am having problems with the heap.  My problem is with the heap, not the other init functions.
+
+```
+00177794993i[      ] CPU 0 at 0xffff800000006950: mov rdi, 0xffff800000009291   (reg results):
+00177794993i[      ] LEN 10	BYTES: 48bf919200000080ffff
+00177794993i[      ]   RAX: 0x0000000000000017; RBX: 0xffff800000006970; RCX 0x00000001ffff2000; RDX: 0x00000000000003f8
+00177794993i[      ]   RSP: 0xfffff80000003ff0; RBP: 0x0000000000100b50; RSI 0x0000000000166000; RDI: 0xffff800000009291
+00177794993i[      ]   R8 : 0x00000000cccccccd; R9 : 0x00000000000000a8; R10 0xffffa000000061b0; R11: 0xffffa00000001c87
+00177794993i[      ]   R12: 0x0000000000101030; R13: 0x00000000001000a0; R14 0x000000000010d000; R15: 0xfffff80000004000
+00177794993i[      ]   CS: 0x0008; DS: 0x0028; ES: 0x0028; FS: 0x0000; GS: 0x0048; SS: 0x0010;
+00177794993i[      ]   RFLAGS: 0x0000000000200246 (ID vip vif ac vm rf nt IOPL=0 of df IF tf sf ZF af PF cf)
+```
+
+```
+00177795398i[      ] CPU 0 at 0xffff800000001f06: iret    (reg results):
+00177795398i[      ] LEN 2	BYTES: 48cf
+00177795398i[      ]   RAX: 0x0000000000000017; RBX: 0xffff800000006970; RCX 0x00000001ffff2000; RDX: 0x00000000000003f8
+00177795398i[      ]   RSP: 0xfffff80000003ff0; RBP: 0x0000000000100b50; RSI 0x0000000000166000; RDI: 0xffff800000009291
+00177795398i[      ]   R8 : 0x00000000cccccccd; R9 : 0x00000000000000a8; R10 0xffffa000000061b0; R11: 0xffffa00000001c87
+00177795398i[      ]   R12: 0x0000000000101030; R13: 0x00000000001000a0; R14 0x000000000010d000; R15: 0xfffff80000004000
+00177795398i[      ]   CS: 0x0008; DS: 0x0028; ES: 0x0028; FS: 0x0000; GS: 0x0048; SS: 0x0010;
+00177795398i[      ]   RFLAGS: 0x0000000000200286 (ID vip vif ac vm rf nt IOPL=0 of df IF tf SF zf af PF cf)
+```
+
+```
+00177795738i[      ] CPU 0 at 0xffff800000001f06: iret    (reg results):
+00177795738i[      ] LEN 2	BYTES: 48cf
+00177795738i[      ]   RAX: 0x0000000000000017; RBX: 0xffff800000006970; RCX 0x00000001ffff2000; RDX: 0x00000000000003f8
+00177795738i[      ]   RSP: 0xfffff80000003ff0; RBP: 0x0000000000100b50; RSI 0x0000000000166000; RDI: 0xffff800000009291
+00177795738i[      ]   R8 : 0x00000000cccccccd; R9 : 0x00000000000000a8; R10 0xffffa000000061b0; R11: 0xffffa00000001c87
+00177795738i[      ]   R12: 0x0000000000101030; R13: 0x00000000001000a0; R14 0x000000000010d000; R15: 0xfffff80000004000
+00177795738i[      ]   CS: 0x0008; DS: 0x0028; ES: 0x0028; FS: 0x0000; GS: 0x0048; SS: 0x0010;
+00177795738i[      ]   RFLAGS: 0x0000000000200286 (ID vip vif ac vm rf nt IOPL=0 of df IF tf SF zf af PF cf)
+```
+
+
+---
+
+### 2021-Jun-14
+
+So, `qemu` appears to work properly 100% with no exceptions.  `vbox` appears to work for a short period and then faults.  `Bochs` faults right away (within 1 or 2 ticks of the timer).  I have not yet tried it on real hardware, but it is on the horizon.
+
+I may have to add some things into the instrumentation to see if I can get more details from it.
+
+---
+
+Wait a minute!!!  What if the first timer interrupt triggers interrupt `0x20`.  I am issuing an EOI by writing a 0 to the EOI register.  But the second timer tick is actually being interpreted as a `#DF`?  This would mean that I am not properly acknowledging the EOI.  Or maybe it's the flags for the page table?
+
+I think I am going to go into the Mmu flags first.
+
+
+---
+
+### 2021-Jun-16
+
+I am now writing debugging code into Bochs.  I need to figure out where this fault is coming from.  This is a long process, but at the same time I am going to learn a lot about the internals of Bochs.
+
+
+---
+
+### 2021-Jun-18
+
+It dawned on me a couple of days ago as I headed to bed that the problem was that I was not remapping the 8259 PIC.  The default for the 8259 is for PIC1 to interrupt IRQ0 for Vector 0x08 -- the timer interrupt!  So, Bochs was letting a spurious interrupt through.
+
+My research today confirmed this fact:
+* https://wiki.osdev.org/8259_PIC#The_IBM_PC_8259_PIC_Architecture
+* https://wiki.osdev.org/APIC#Local_APIC_configuration
+
+After moving the 8259 interrupts to start at 0x40, this is working now in Bochs.  Now to back out all my debugging changes.
+
+---
+
+OK, the next step here will be to "publish" all the Process functions and then complete the PMM Late Initialization function so that it can be called -- which will require `ProcessCreate()`.
+
+---
+
+I am getting the late initialization completed.  That said, the process is not getting started.
+
+I am debating the next steps and whether to complete this version and move on to creating a debugger.  The debugger will likely be the next thing I do, but do I want to fight with debugging the scheduler before I create the debugger to help debug the scheduler?  That sounds very leading.  While I consider that, I think I will wrap up this micro-version.  If I do complete this debugging in v0.0.9, I will do it as its own micro-version.
+
+
+
+
+
+

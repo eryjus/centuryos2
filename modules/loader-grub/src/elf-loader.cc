@@ -15,7 +15,7 @@
 //===================================================================================================================
 
 
-#define USE_SERIAL
+//#define USE_SERIAL
 
 #include "types.h"
 #include "mmu.h"
@@ -23,11 +23,18 @@
 #include "elf.h"
 
 
+#define PG_NONE     (0)
+#define PG_WRT      (1<<0)
+#define PG_KRN      (1<<1)
+#define PG_DEV      (1<<15)
+
+
+
 //
 // -- Some local function prototypes
 //    ------------------------------
 extern "C" {
-    void MmuMapPage(Addr_t a, Frame_t f, bool writable);
+    void MmuMapPage(Addr_t a, Frame_t f, int flags);
     void MmuUnmapPage(Addr_t a);
 }
 
@@ -196,7 +203,7 @@ Addr_t ElfLoadImage(Addr_t location)
 
     SerialPutString("Parsing ELF\n");
 
-    MmuMapPage(location, location >> 12, false);
+    MmuMapPage(location, location >> 12, PG_NONE);
 
     if (ElfValidateHeader(location)) {
         Elf64EHdr_t *eHdr = (Elf64EHdr_t *)location;
@@ -224,7 +231,7 @@ Addr_t ElfLoadImage(Addr_t location)
                         f = PmmGetFrame();
                     }
 
-                    MmuMapPage(virt, f, pHdr[i].pType & PF_W);
+                    MmuMapPage(virt, f, (pHdr[i].pType&PF_W?PG_WRT:PG_NONE));
 
                     virt += 4096;
                     phys += 4096;

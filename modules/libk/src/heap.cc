@@ -493,7 +493,7 @@ static size_t HeapExpand(void)
         KernelPrintf(".. getting a frame...\n");
         Frame_t frame = PmmAlloc();
         KernelPrintf(".. mapping\n");
-        MmuMapPage((Addr_t)kHeap->endAddr, frame, true);
+        MmuMapPage((Addr_t)kHeap->endAddr, frame, PG_WRT);
         KernelPrintf(".. done\n");
         kHeap->endAddr += PAGE_SIZE;
         rv += PAGE_SIZE;
@@ -813,7 +813,7 @@ void HeapInit(void)
     Addr_t vLimit = vAddr + INITIAL_HEAP;
 
     for ( ; vAddr < vLimit; vAddr += 0x1000) {
-        MmuMapPage(vAddr, PmmAlloc(), true);
+        MmuMapPage(vAddr, PmmAlloc(), PG_WRT);
     }
 
 #ifdef DEBUG_HEAP

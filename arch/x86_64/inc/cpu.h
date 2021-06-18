@@ -70,12 +70,12 @@ extern ArchCpu_t cpus[MAX_CPU];
 //
 // -- Some access methods for getting to CPU elements.
 //    ------------------------------------------------
-inline ArchCpu_t *ThisCpu(void) { ArchCpu_t *rv; __asm("mov %0,%%gs:(0)" : "=r"(rv) :: "memory"); return rv; }
+inline ArchCpu_t *ThisCpu(void) { ArchCpu_t *rv; __asm("mov %%gs:(0),%0" : "=r"(rv) :: "memory"); return rv; }
 struct Process_t;
 inline struct Process_t *CurrentThread(void)  {
-        Process_t *rv; __asm("mov %0,%%gs:(8)" : "=r"(rv) :: "memory"); return rv;
+        Process_t *rv; __asm("mov %%gs:(8),%0" : "=r"(rv) :: "memory"); return rv;
 }
-inline void CurrentThreadAssign(Process_t *p) { __asm("mov %%gs:(8),%0" :: "r"(p) : "memory"); }
+inline void CurrentThreadAssign(Process_t *p) { __asm("mov %0,%%gs:(8)" :: "r"(p) : "memory"); }
 
 
 
@@ -143,6 +143,13 @@ inline void NOP(void)
 {
     __asm volatile ("nop" ::: "memory");
 }
+
+
+//
+// -- Some Bochs macros
+//    -----------------
+#define BOCHS_INSTRUMENTATION __asm volatile ("xchg %edx,%edx");
+#define BOCHS_BREAK __asm volatile("xchg %bx,%bx");
 
 
 //
@@ -289,6 +296,13 @@ inline volatile uint32_t PEEK32(Addr_t regLocation) { return (*((volatile uint32
 //    ---------------------------------------------
 inline volatile uint64_t PEEK64(Addr_t regLocation) { return (*((volatile uint64_t *)(regLocation))); }
 
+
+//
+// -- Some other function prototypes
+//    ------------------------------
+extern "C" {
+    void CpuInit(void);
+}
 
 
 #endif

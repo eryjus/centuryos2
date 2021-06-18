@@ -22,6 +22,13 @@
 #include "mmu.h"
 
 
+#define PG_NONE     (0)
+#define PG_WRT      (1<<0)
+#define PG_KRN      (1<<1)
+#define PG_DEV      (1<<15)
+
+
+
 //
 // -- This is a 64-bit page entry for all levels of the page tables
 //    -------------------------------------------------------------
@@ -110,7 +117,7 @@ Frame_t MmuGetTable(void)
 //
 // -- Some wrapper functions
 //    ----------------------
-void MmuMapPage(Addr_t a, Frame_t f, bool writable) { ldr_MmuMapPage(a, f, writable); }
+void MmuMapPage(Addr_t a, Frame_t f, int flags) { ldr_MmuMapPage(a, f, flags); }
 void MmuUnmapPage(Addr_t a) { ldr_MmuUnmapPage(a); }
 
 
@@ -177,7 +184,7 @@ void ldr_MmuUnmapPage(Addr_t a)
 //
 // -- Map a page to a frame
 //    ---------------------
-void ldr_MmuMapPage(Addr_t a, Frame_t f, bool writable)
+void ldr_MmuMapPage(Addr_t a, Frame_t f, int flags)
 {
     SerialPutString("Mapping ");
     SerialPutHex64(a);
@@ -271,7 +278,7 @@ void ldr_MmuMapPage(Addr_t a, Frame_t f, bool writable)
     SerialPutHex64((Addr_t)ent);
     SerialPutChar('\n');
     ent->frame = f;
-    ent->rw = writable;
+    ent->rw = (flags&PG_WRT?1:0);
     ent->p = 1;
 }
 

@@ -65,7 +65,7 @@
 // -- Some local function prototypes
 //    ------------------------------
 extern "C" {
-    void ProcessInit(BootInterface_t *loaderInterface);
+    int ProcessInit(BootInterface_t *loaderInterface);
     void ProcessSchedule(void);
     void ProcessSwitch(Process_t *nextProcess);
     void ProcessDoReady(Process_t *proc);
@@ -76,6 +76,7 @@ extern "C" {
     int sch_ProcessReady(Process_t *proc);
     int sch_ProcessUnblock(Process_t *proc);
     int sch_ProcessMicroSleepUntil(uint64_t when);
+    Process_t *sch_ProcessCreate(const char *name, void (*startingAddr)(void));
 }
 
 
@@ -567,7 +568,7 @@ void ProcessStart(void)
 //
 // -- Create a new process structure and leave it on the Ready Queue
 //    --------------------------------------------------------------
-Process_t *ProcessCreate(const char *name, void (*startingAddr)(void))
+Process_t *sch_ProcessCreate(const char *name, void (*startingAddr)(void))
 {
     extern Addr_t mmuLvl1Table;
 
@@ -603,7 +604,7 @@ Process_t *ProcessCreate(const char *name, void (*startingAddr)(void))
     rv->tosKernel = kStack + STACK_SIZE;
 
     for (int i = 0; i < STACK_SIZE / PAGE_SIZE; i ++) {
-        MmuMapPage(kStack + (PAGE_SIZE * i), PmmAlloc(), true);
+        MmuMapPage(kStack + (PAGE_SIZE * i), PmmAlloc(), PG_WRT);
     }
 
 
@@ -709,8 +710,10 @@ int sch_Tick(uint64_t now)
 //
 // -- Initialize the process structures
 //    ---------------------------------
-void ProcessInit(BootInterface_t *loaderInterface)
+int ProcessInit(BootInterface_t *loaderInterface)
 {
+    ProcessInitTable();
+
     KernelPrintf("ProcessInit() called\n");
 
     ListInit(&scheduler.queueOS.list);
@@ -724,10 +727,11 @@ void ProcessInit(BootInterface_t *loaderInterface)
     ListInit(&scheduler.globalProcesses.list);
 
     Process_t *proc = NEW(Process_t);
+    KernelPrintf(".. the current process is located at %p\n", proc);
     CurrentThreadAssign(proc);
 
     if (!assert(proc != NULL)) {
-        KernelPrintf("FATAL: Unable to allocate Current Process structure");
+        KernelPrintf("FATAL: Unable to allocate Current Process structure\n");
 
         while (true) {
             __asm volatile ("hlt");
@@ -743,7 +747,7 @@ void ProcessInit(BootInterface_t *loaderInterface)
     Addr_t kStack = StackFind();
     proc->tosKernel = kStack + STACK_SIZE;
     Frame_t kernelStackFrame = PmmAlloc();
-    MmuMapPage(kStack, kernelStackFrame, true);
+    MmuMapPage(kStack, kernelStackFrame, PG_WRT);
 
 
     // -- set the process name
@@ -765,13 +769,15 @@ void ProcessInit(BootInterface_t *loaderInterface)
     // -- Create an idle process for each CPU
     //    -----------------------------------
     for (int i = 0; i < loaderInterface->cpuCount; i ++) {
-        KernelPrintf("starting idle process %d\n", i);
-        ProcessCreate("Idle Process", ProcessIdle);
+        KernelPrintf("starting idle process %d\n", i, ProcessIdle);
+        sch_ProcessCreate("Idle Process", ProcessIdle);
     }
 
 
     ThisCpu()->lastTimer = TmrCurrentCount();
     KernelPrintf("ProcessInit() complete\n");
+
+    return 0;
 }
 
 

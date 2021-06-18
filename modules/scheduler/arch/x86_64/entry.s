@@ -21,6 +21,7 @@
                 extern      ProcessInit
                 extern      sch_Tick
                 extern      sch_ProcessBlock
+                extern      sch_ProcessCreate
                 extern      sch_ProcessReady
                 extern      sch_ProcessUnblock
                 extern      sch_ProcessMicroSleepUntil
@@ -50,6 +51,8 @@ header:
                 dq          sch_ProcessUnblock                                          ; .. target address
                 dq          29                                                          ; Sleep until specified tick count
                 dq          sch_ProcessMicroSleepUntil                                  ; .. target address
+                dq          30                                                          ; Createa a new process
+                dq          sch_ProcessCreate                                           ; .. target address
 
 
 

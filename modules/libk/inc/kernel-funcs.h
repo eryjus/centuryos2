@@ -25,28 +25,29 @@
 // -- these are the internal functions provided by the kernel
 //    -------------------------------------------------------
 enum {
-    INT_GET_HANDLER     = 0,
-    INT_SET_HANDLER     = 1,
-    INT_GET_SERVICE     = 2,
-    INT_SET_SERVICE     = 3,
-    INT_GET_INTERRUPT   = 4,
-    INT_SET_INTERRUPT   = 5,
-    INT_MMU_MAP         = 6,
-    INT_MMU_UNMAP       = 7,
-    INT_MMU_DUMP_TABLES = 8,
-    INT_MMU_IS_MAPPED   = 9,
-    INT_PMM_ALLOC       = 10,
-    INT_PMM_RELEASE     = 11,
-    INT_TMR_CURRENT     = 13,
-    INT_SPIN_LOCK       = 16,
-    INT_SPIN_TRY        = 17,
-    INT_SPIN_UNLOCK     = 18,
-    INT_PRINTF          = 20,
-    INT_SCH_TICK        = 25,
-    INT_SCH_BLOCK       = 26,
-    INT_SCH_READY       = 27,
-    INT_SCH_UNBLOCK     = 28,
-    INT_SCH_SLEEP_UNTIL = 29,
+    INT_GET_HANDLER         = 0,
+    INT_SET_HANDLER         = 1,
+    INT_GET_SERVICE         = 2,
+    INT_SET_SERVICE         = 3,
+    INT_GET_INTERRUPT       = 4,
+    INT_SET_INTERRUPT       = 5,
+    INT_MMU_MAP             = 6,
+    INT_MMU_UNMAP           = 7,
+    INT_MMU_DUMP_TABLES     = 8,
+    INT_MMU_IS_MAPPED       = 9,
+    INT_PMM_ALLOC           = 10,
+    INT_PMM_RELEASE         = 11,
+    INT_TMR_CURRENT         = 13,
+    INT_SPIN_LOCK           = 16,
+    INT_SPIN_TRY            = 17,
+    INT_SPIN_UNLOCK         = 18,
+    INT_PRINTF              = 20,
+    INT_SCH_TICK            = 25,
+    INT_SCH_BLOCK           = 26,
+    INT_SCH_READY           = 27,
+    INT_SCH_UNBLOCK         = 28,
+    INT_SCH_SLEEP_UNTIL     = 29,
+    INT_SCH_CREATE          = 30,
 };
 
 
@@ -69,6 +70,13 @@ extern "C" {
 // -- Some additional runtime assertion checking; purposefully set up for use in conditions
 //    -------------------------------------------------------------------------------------
 extern "C" bool AssertFailure(const char *expr, const char *msg, const char *file, int line);
+
+
+
+//
+// -- Process the init table
+//    ----------------------
+extern "C" void ProcessInitTable(void);
 
 
 //
@@ -129,7 +137,11 @@ extern "C" {
     int SetInterruptHandler(int number, Addr_t selector, Addr_t interruptAddr, int ist, int dpl);
 
     // -- Function 6
-    int MmuMapPage(Addr_t addr, Frame_t frame, bool writable);
+#define PG_NONE     (0)
+#define PG_WRT      (1<<0)
+#define PG_KRN      (1<<1)
+#define PG_DEV      (1<<15)
+    int MmuMapPage(Addr_t addr, Frame_t frame, int flags);
 
     // -- Function 7
     int MmuUnmapPage(Addr_t addr);
@@ -189,5 +201,8 @@ extern "C" {
     inline int ProcessMicroSleep(uint64_t micros) { return SchProcessMicroSleepUntil(TmrCurrentCount() + micros); }
     inline int ProcessMilliSleep(uint64_t ms) { return SchProcessMicroSleepUntil(TmrCurrentCount() + (ms * 1000)); }
     inline int ProcessSleep(uint64_t s) { return SchProcessMicroSleepUntil(TmrCurrentCount() + (s * 1000000)); }
+
+    // -- Function 30
+    int SchProcessCreate(const char *name, void (*startingAddr)(void));
 }
 

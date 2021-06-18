@@ -28,6 +28,7 @@ extern "C" {
     Frame_t pmm_PmmAllocateAligned(bool low, int bitsAligned, size_t count);
     int pmm_PmmReleaseFrame(Frame_t frame, size_t count);
     Addr_t GetCr3(void);
+    void pmm_LateInit(void);
 }
 
 
@@ -136,7 +137,7 @@ void DumpPmm(void)
 static void PushStack(PmmFrameInfo_t **stack, Frame_t frame, size_t count)
 {
 //    SpinLock(&pmm.insertLock);
-    MmuMapPage(tempInsert, frame, true);
+    MmuMapPage(tempInsert, frame, PG_WRT);
     volatile PmmFrameInfo_t *wrk = (PmmFrameInfo_t *)tempInsert;
 
     wrk->frame = frame;
@@ -161,7 +162,7 @@ static void PushStack(PmmFrameInfo_t **stack, Frame_t frame, size_t count)
 //    SpinUnlock(&pmm.insertLock);
 
     // -- finally, push the new node
-    MmuMapPage((Addr_t)(*stack), frame, true);
+    MmuMapPage((Addr_t)(*stack), frame, PG_WRT);
 }
 
 
@@ -183,7 +184,7 @@ static void PopStack(PmmFrameInfo_t **stack)
     MmuUnmapPage((Addr_t)(*stack));
 
     if (nx) {
-        MmuMapPage((Addr_t)(*stack), nx, true);
+        MmuMapPage((Addr_t)(*stack), nx, PG_WRT);
         (*stack)->prev = 0;
     }
 }
@@ -197,7 +198,7 @@ static void PmmScrubFrame(Frame_t frame)
 {
 //    SpinLock(&pmm.clearLock);
 
-    MmuMapPage(clearAddr, frame, true);
+    MmuMapPage(clearAddr, frame, PG_WRT);
     uint64_t *wrk = (uint64_t *)clearAddr;
 
     for (int i = 0; i < 512; i ++) wrk[i] = 0;
@@ -252,7 +253,9 @@ static Frame_t PmmDoRemoveFrame(PmmFrameInfo_t **stack, bool scrub)
 //    ------------------------------------------------
 int PmmInitEarly(BootInterface_t *loaderInterface)
 {
-    MmuMapPage(tempMap, 1, false);              // -- this needs to be mapped to allocate new tables
+    ProcessInitTable();
+
+    MmuMapPage(tempMap, 1, PG_NONE);            // -- this needs to be mapped to allocate new tables
     MmuUnmapPage(tempMap);                      // -- unmap immediately -- tables created
 
     for (int i = 0; i < MAX_MEM; i ++) {
@@ -264,7 +267,7 @@ int PmmInitEarly(BootInterface_t *loaderInterface)
         if (start < loaderInterface->nextEarlyFrame) start = loaderInterface->nextEarlyFrame + 0x100;
 
         Addr_t size = end - start;
-        MmuMapPage(tempMap, start, true);
+        MmuMapPage(tempMap, start, PG_WRT);
 
         PmmFrameInfo_t *info = (PmmFrameInfo_t *)tempMap;
         info->count = size;
@@ -280,9 +283,9 @@ int PmmInitEarly(BootInterface_t *loaderInterface)
             info->next = pmm.scrubStack->frame;
 
             MmuUnmapPage((Addr_t)pmm.scrubStack);
-            MmuMapPage((Addr_t)pmm.scrubStack, info->frame, true);
+            MmuMapPage((Addr_t)pmm.scrubStack, info->frame, PG_WRT);
         } else {
-            MmuMapPage((Addr_t)scrubStack, info->frame, true);
+            MmuMapPage((Addr_t)scrubStack, info->frame, PG_WRT);
             pmm.scrubStack = (PmmFrameInfo_t *)scrubStack;
         }
 
@@ -388,7 +391,7 @@ Frame_t PmmDoAllocAlignedFrames(PmmFrameInfo_t **pStack, const size_t count, con
 
     // -- Interrupts are already disabled before we get here
     SpinLock(&pmm.searchLock); {
-        MmuMapPage((Addr_t)pmm.search, (*pStack)->frame, true);
+        MmuMapPage((Addr_t)pmm.search, (*pStack)->frame, PG_WRT);
 
         while(true) {
             Frame_t end = pmm.search->frame + pmm.search->count - 1;
@@ -404,13 +407,13 @@ Frame_t PmmDoAllocAlignedFrames(PmmFrameInfo_t **pStack, const size_t count, con
                 MmuUnmapPage((Addr_t)pmm.search);
 
                 if (n) {
-                    MmuMapPage((Addr_t)pmm.search, n, true);
+                    MmuMapPage((Addr_t)pmm.search, n, PG_WRT);
                     pmm.search->prev = p;
                     MmuUnmapPage((Addr_t)pmm.search);
                 }
 
                 if (p) {
-                    MmuMapPage((Addr_t)pmm.search, p, true);
+                    MmuMapPage((Addr_t)pmm.search, p, PG_WRT);
                     pmm.search->next = n;
                     MmuUnmapPage((Addr_t)pmm.search);
                 }
@@ -424,7 +427,7 @@ Frame_t PmmDoAllocAlignedFrames(PmmFrameInfo_t **pStack, const size_t count, con
             MmuUnmapPage((Addr_t)pmm.search);
 
             // -- here we check if we made it to the end of the stack
-            if (next) MmuMapPage((Addr_t)pmm.search, next, true);
+            if (next) MmuMapPage((Addr_t)pmm.search, next, PG_WRT);
             else goto exit;
         }
 
@@ -494,6 +497,7 @@ int pmm_PmmReleaseFrame(Frame_t frame, size_t count)
 //    --------------------------------------------------------
 void PmmCleanProcess(void)
 {
+    KernelPrintf("Starting the PMM Cleaner\n");
     while (true) {
         SpinLock(&pmm.scrubLock);
 
@@ -519,6 +523,16 @@ void PmmCleanProcess(void)
             // -- TODO: nothing to do; wait for a message to do something else
         }
     }
+}
+
+
+//
+// -- Complete the late initialization of the PMM
+//    -------------------------------------------
+void pmm_LateInit(void)
+{
+    SchProcessCreate("PMM Cleaner", PmmCleanProcess);
+    KernelPrintf("PMM Late Initialization Complete!\n");
 }
 
 

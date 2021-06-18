@@ -36,6 +36,7 @@ extern "C" {
     int ServiceGetHandler(int i);
     int ServiceSetHandler(int i, ServiceHandler_t handler, Addr_t cr3);
     void InternalTableDump(void);
+    int krn_SetVectorHandler(int i, IdtHandlerFunc_t handler, Addr_t cr3);
 }
 
 
@@ -45,5 +46,15 @@ extern "C" {
 //    ------------------
 extern IdtHandlerFunc_t InternalTarget;
 
+
+//
+// -- the interrupt vector table
+//    --------------------------
+typedef struct VectorFunctions_t {
+    IdtHandlerFunc_t handler;
+    Addr_t cr3;
+} VectorFunctions_t;
+
+extern VectorFunctions_t vectorTable[256];
 
 #endif

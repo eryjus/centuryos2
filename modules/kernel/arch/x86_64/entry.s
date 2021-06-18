@@ -74,6 +74,8 @@ entry:
                 sub         rcx,rax
 
                 shr         rcx,3
+                xor         rax,rax
+
                 rep         stosq
 
 

@@ -15,7 +15,7 @@
 //===================================================================================================================
 
 
-#define USE_SERIAL
+//#define USE_SERIAL
 
 #include "types.h"
 #include "printf.h"
@@ -50,6 +50,7 @@ typedef struct Module_t {
 // -- the function prototype for early init calls
 //    -------------------------------------------
 typedef int (*EarlyInit_t)(BootInterface_t *);
+typedef void (*LateInit_t)(void);
 
 
 
@@ -130,9 +131,9 @@ void ModuleEarlyInit()
 
 //        kprintf("Preparing to map address %p to frame %p\n", modInternal[i].cr3Addr, cr3Frame);
 
-        MmuMapPage(modInternal[i].cr3Addr, cr3Frame, true);
+        MmuMapPage(modInternal[i].cr3Addr, cr3Frame, PG_WRT);
 
-        kprintf("Mapping the kernel\n");
+        kprintf("Mapping the module\n");
 
         uint64_t *t = (uint64_t *)(modInternal[i].cr3Addr);
         for (int j = 0; j < 512; j ++) {
@@ -154,7 +155,7 @@ void ModuleEarlyInit()
         kprintf("Loading Module located at %p\n", moduleAddr);
         kprintf(".. Old CR3: %p; New: %p\n", oldCr3, modInternal[i].cr3Addr);
         kprintf(".. Module Address is getting mapped to %p\n", moduleAddr);
-        MmuMapPage(moduleAddr, moduleAddr >> 12, false);    // <-- Problem is here
+        MmuMapPage(moduleAddr, moduleAddr >> 12, PG_NONE);
 
         kprintf(".. Image header mapped\n");
         modInternal[i].entries = ElfLoadImage(moduleAddr);
@@ -164,6 +165,7 @@ void ModuleEarlyInit()
         // -- Now, check the module
         Module_t *mod = ModuleCheck(modInternal[i].entries);
         if (mod) {
+            kprintf(".. module name is %s\n", mod->name);
             EarlyInit_t init = (EarlyInit_t)mod->earlyInit;
             kprintf(".. calling early init function at %p\n", (Addr_t)init);
             int res = init(loaderInterface);
@@ -181,18 +183,21 @@ void ModuleEarlyInit()
 
 
         if (modInternal[i].loaded) {
+            kprintf(".. Hooking services: %d interrupts; %d internal functions; %d OS services\n", mod->intCnt, mod->internalCnt, mod->osCnt);
             // -- Now install the hooks
             unsigned long h;
             for (h = 0; h < mod->intCnt; h ++) {
-                IdtSetHandler(mod->hooks[h].loc, 8, (IdtHandlerFunc_t *)mod->hooks[h].target, 0, 0);
+                kprintf(".... Hooking Interrupt Vector %d: %p from %p\n", mod->hooks[h].loc, mod->hooks[h].target, modInternal[i].cr3Addr);
+                krn_SetVectorHandler(mod->hooks[h].loc, (IdtHandlerFunc_t)mod->hooks[h].target, modInternal[i].cr3Addr);
             }
 
             for ( ; h < mod->intCnt + mod->internalCnt; h ++) {
-//                kprintf(".... Hooking Internal Function %d: %p from %p\n", mod->hooks[h].loc, mod->hooks[h].target, modInternal[i].cr3Addr);
+                kprintf(".... Hooking Internal Function %d: %p from %p\n", mod->hooks[h].loc, mod->hooks[h].target, modInternal[i].cr3Addr);
                 SetInternalHandler(mod->hooks[h].loc, mod->hooks[h].target, modInternal[i].cr3Addr);
             }
 
             for ( ; h < mod->intCnt + mod->internalCnt + mod->osCnt; h ++) {
+                kprintf(".... Hooking OS Service %d: %p from %p\n", mod->hooks[h].loc, mod->hooks[h].target, modInternal[i].cr3Addr);
                 SetInternalService(mod->hooks[h].loc, mod->hooks[h].target, modInternal[i].cr3Addr);
             }
         } else {
@@ -207,4 +212,25 @@ void ModuleEarlyInit()
     }
 }
 
+
+//
+// -- Call the Late Initialization functions for any loaded module
+//    ------------------------------------------------------------
+void ModuleLateInit(void)
+{
+    for (int i = 0; i < loaderInterface->modCount; i ++) {
+        if (modInternal[i].loaded) {
+            Addr_t oldCr3 = LoadCr3(modInternal[i].cr3Addr);
+            Addr_t moduleAddr = loaderInterface->modAddr[i];
+            MmuMapPage(moduleAddr, moduleAddr >> 12, PG_NONE);
+            Module_t *mod = ModuleCheck(modInternal[i].entries);
+            if (mod->lateInit) {
+                LateInit_t init = (LateInit_t)mod->lateInit;
+                init();
+            }
+            MmuUnmapPage(moduleAddr);
+            LoadCr3(oldCr3);
+        }
+    }
+}
 

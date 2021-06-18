@@ -25,5 +25,6 @@
 //    -------------------
 extern "C" {
     void ModuleEarlyInit(void);
+    void ModuleLateInit(void);
 }
 

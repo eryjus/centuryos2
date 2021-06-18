@@ -46,7 +46,7 @@ void ProcessNewStack(Process_t *proc, void (*startingAddr)(void))
     Addr_t flags = DisableInt();
     SpinLock(&mmuStackInitLock); {
         for (int i = 0; i < frameCount; i ++) {
-            MmuMapPage(MMU_STACK_INIT_VADDR + (PAGE_SIZE * i), stackFrames[i], true);
+            MmuMapPage(MMU_STACK_INIT_VADDR + (PAGE_SIZE * i), stackFrames[i], PG_WRT);
         }
 
         stack = (Addr_t *)(MMU_STACK_INIT_VADDR + STACK_SIZE);
@@ -72,7 +72,7 @@ void ProcessNewStack(Process_t *proc, void (*startingAddr)(void))
     proc->tosProcessSwap = ((Addr_t)stack - MMU_STACK_INIT_VADDR) + stackLoc;
 
     for (int i = 0; i < frameCount; i ++) {
-        MmuMapPage(stackLoc + (PAGE_SIZE * i), stackFrames[i], true);
+        MmuMapPage(stackLoc + (PAGE_SIZE * i), stackFrames[i], PG_WRT);
     }
 }
 

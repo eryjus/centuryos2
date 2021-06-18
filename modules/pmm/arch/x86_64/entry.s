@@ -21,6 +21,7 @@
                 extern      PmmInitEarly
                 extern      pmm_PmmAllocateAligned
                 extern      pmm_PmmReleaseFrame
+                extern      pmm_LateInit
 
 
                 section     .text
@@ -33,7 +34,7 @@ header:
                 db          'C','e','n','t','u','r','y',' ','O','S',' ','6','4',0,0,0   ; Sig
                 db          'P','M','M',0,0,0,0,0,0,0,0,0,0,0,0,0                       ; Name
                 dq          PmmInitEarly                                                ; Early Init
-                dq          0                                                           ; Late Init
+                dq          pmm_LateInit                                                ; Late Init
                 dq          0                                                           ; interrupts
                 dq          2                                                           ; internal Services
                 dq          0                                                           ; OS services

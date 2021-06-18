@@ -206,7 +206,7 @@ static int EarlyInit(BootInterface_t *loaderInterface)
         WRMSR(IA32_APIC_BASE_MSR, 0
                 | IA32_APIC_BASE_MSR__EN
                 | IA32_APIC_BASE_MSR__EXTD
-                | (apicBaseMsr & 0xfff));
+                | (apicBaseMsr & ~0xfff));
     }
 
     //
@@ -260,6 +260,14 @@ static int EarlyInit(BootInterface_t *loaderInterface)
         while (!(INB(0x61) & 0x20)) {}  // -- busy wait here
 
         WriteApicRegister(APIC_LVT_TIMER, APIC_LVT_MASKED);
+
+        // -- remap the 8259 PIC to some obscure interrupts
+        OUTB(0x20, 0x11);       // starts the initialization sequence (in cascade mode)
+    	OUTB(0xa0, 0x11);
+	    OUTB(0x21, 0x40);       // ICW2: Master PIC vector offset
+	    OUTB(0xa1, 0x48);       // ICW2: Slave PIC vector offset
+	    OUTB(0x21, 4);          // ICW3: tell Master PIC that there is a slave PIC at IRQ2 (0000 0100)
+	    OUTB(0xa1, 2);          // ICW3: tell Slave PIC its cascade identity (0000 0010)
 
         // -- disable the PIC
         OUTB(0x21, 0xff);

@@ -182,7 +182,7 @@ Addr_t ElfLoadImage(Addr_t location)
 
     SerialPutString("Parsing ELF\n");
 
-    MmuMapPage(location, location >> 12, false);
+    MmuMapPage(location, location >> 12, PG_NONE);
 
     if (ElfValidateHeader(location)) {
         Elf64EHdr_t *eHdr = (Elf64EHdr_t *)location;
@@ -210,7 +210,7 @@ Addr_t ElfLoadImage(Addr_t location)
                         f = PmmAlloc();
                     }
 
-                    MmuMapPage(virt, f, pHdr[i].pType & PF_W);
+                    MmuMapPage(virt, f, (pHdr[i].pType&PF_W?PG_WRT:PG_NONE));
 
                     virt += 4096;
                     phys += 4096;

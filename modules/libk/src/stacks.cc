@@ -135,6 +135,7 @@ Addr_t StackFind(void)
                     if ((stackManager->stacks[i] & (1 << j)) == 0) {
                         rv = stackManager->startStart + (stackManager->stackSize * ((i * 32) + j));
                         StackDoAlloc(rv);
+                        KernelPrintf("In address space %p, allocating stack %p\n", GetAddressSpace(), rv);
                         goto exit;
                     }
                 }

@@ -65,18 +65,17 @@
 // -- Some local function prototypes
 //    ------------------------------
 extern "C" {
-    int ProcessInit(BootInterface_t *loaderInterface);
+    Return_t ProcessInit(BootInterface_t *loaderInterface);
     void ProcessSchedule(void);
     void ProcessSwitch(Process_t *nextProcess);
     void ProcessDoReady(Process_t *proc);
     void ProcessUpdateTimeUsed(void);
 
-    int sch_Tick(uint64_t now);
-    int sch_ProcessBlock(ProcStatus_t reason);
-    int sch_ProcessReady(Process_t *proc);
-    int sch_ProcessUnblock(Process_t *proc);
-    int sch_ProcessMicroSleepUntil(uint64_t when);
-    Process_t *sch_ProcessCreate(const char *name, void (*startingAddr)(void));
+    Return_t sch_Tick(int, uint64_t now);
+    Return_t sch_ProcessBlock(int, ProcStatus_t reason);
+    Return_t sch_ProcessReady(int, Process_t *proc);
+    Return_t sch_ProcessUnblock(int, Process_t *proc);
+    Return_t sch_ProcessMicroSleepUntil(int, uint64_t when);
 }
 
 
@@ -107,7 +106,6 @@ Scheduler_t scheduler = {
 Spinlock_t schedulerLock = {0};
 
 
-#if 0
 //
 // -- Convert a ProcStatus_t to a string
 //    -----------------------------------
@@ -122,10 +120,8 @@ static const char *ProcStatusStr(ProcStatus_t s) {
     else if (s == PROC_MSGW)    return "MSGW";
     else                        return "Unknown!";
 }
-#endif
 
 
-#if 0
 //
 // -- Convert a ProcStatus_t to a string
 //    -----------------------------------
@@ -137,7 +133,103 @@ static const char *ProcPriorityStr(ProcPriority_t p) {
     else if (p == PTY_OS)       return "OS";
     else                        return "Unknown!";
 }
-#endif
+
+
+
+//
+// -- Dump a Process structure for debugging purposes
+//    -----------------------------------------------
+void DumpProcess(Process_t *proc)
+{
+    KernelPrintf("=========================================================\n");
+    KernelPrintf("Dumping Process_t structure at address %p\n", proc);
+
+    if (!proc) goto exit;
+
+    KernelPrintf("---------------------------------------------------------\n");
+    KernelPrintf("  TOS (last preemption)..: %p\n", proc->tosProcessSwap);
+    KernelPrintf("  Virtual Address Space..: %p\n", proc->virtAddrSpace);
+    KernelPrintf("  Process Status.........: %d (%s)\n", proc->status, ProcStatusStr(proc->status));
+    KernelPrintf("  Process Priority.......: %d (%s)\n", proc->priority, ProcPriorityStr(proc->priority));
+    KernelPrintf("  Quantum left this slice: %d\n", AtomicRead(&proc->quantumLeft));
+    KernelPrintf("  Process ID.............: %d\n", proc->pid);
+    KernelPrintf("  Command Line...........: %s\n", proc->command);
+    KernelPrintf("  Micros used............: %lu\n", proc->timeUsed);
+    KernelPrintf("  Wake tick number.......: %d\n", proc->wakeAtMicros);
+    KernelPrintf("  Pending Error Number...: %d\n", proc->pendingErrno);
+
+exit:
+    KernelPrintf("=========================================================\n");
+}
+
+
+
+//
+// -- Dump the current status of the Ready Queue
+//    ------------------------------------------
+void DumpReadyQueue(void)
+{
+    ListHead_t::List_t *wrk = NULL;
+    KernelPrintf("=========================================================\n");
+    KernelPrintf("Dumping OS Priority Ready Queue\n");
+    KernelPrintf("---------------------------------------------------------\n");
+
+    wrk = scheduler.queueOS.list.next;
+    while (wrk != &scheduler.queueOS.list) {
+        Process_t *proc = FIND_PARENT(wrk, Process_t, stsQueue);
+        KernelPrintf("  Process %s at %p\n", proc->command, proc);
+        wrk = wrk->next;
+    }
+
+    KernelPrintf("\nDumping High Priority Ready Queue\n");
+    KernelPrintf("---------------------------------------------------------\n");
+
+    wrk = scheduler.queueHigh.list.next;
+    while (wrk != &scheduler.queueHigh.list) {
+        Process_t *proc = FIND_PARENT(wrk, Process_t, stsQueue);
+        KernelPrintf("  Process %s at %p\n", proc->command, proc);
+        wrk = wrk->next;
+    }
+
+    KernelPrintf("\nDumping Normal Priority Ready Queue\n");
+    KernelPrintf("---------------------------------------------------------\n");
+
+    wrk = scheduler.queueNormal.list.next;
+    while (wrk != &scheduler.queueNormal.list) {
+        Process_t *proc = FIND_PARENT(wrk, Process_t, stsQueue);
+        KernelPrintf("  Process %s at %p\n", proc->command, proc);
+        wrk = wrk->next;
+    }
+
+    KernelPrintf("\nDumping Low Priority Ready Queue\n");
+    KernelPrintf("---------------------------------------------------------\n");
+
+    wrk = scheduler.queueLow.list.next;
+    while (wrk != &scheduler.queueLow.list) {
+        Process_t *proc = FIND_PARENT(wrk, Process_t, stsQueue);
+        KernelPrintf("  Process %s at %p\n", proc->command, proc);
+        wrk = wrk->next;
+    }
+
+    KernelPrintf("\nDumping idle Priority Ready Queue\n");
+    KernelPrintf("---------------------------------------------------------\n");
+
+    wrk = scheduler.queueIdle.list.next;
+    while (wrk != &scheduler.queueIdle.list) {
+        Process_t *proc = FIND_PARENT(wrk, Process_t, stsQueue);
+        KernelPrintf("  Process %s at %p\n", proc->command, proc);
+        wrk = wrk->next;
+    }
+
+    KernelPrintf("\nSome other interesting information\n");
+    KernelPrintf("---------------------------------------------------------\n");
+    KernelPrintf("  Scheduler Process Change Pending: %s\n", scheduler.processChangePending?"yes":"no");
+    KernelPrintf("  Scheduler Lock Count: %d\n", AtomicRead(&scheduler.schedulerLockCount));
+    KernelPrintf("  Scheduler Postpone Count: %d\n", AtomicRead(&scheduler.postponeCount));
+
+    KernelPrintf("=========================================================\n");
+}
+
 
 
 
@@ -225,6 +317,8 @@ static void ProcessUnlockAndSchedule(void)
 //    ----------------------------------------
 static Process_t *ProcessNext(ProcPriority_t pty)
 {
+    DumpReadyQueue();
+
     if (IsListEmpty(&scheduler.queueOS) == false) {
         return FIND_PARENT(scheduler.queueOS.list.next, Process_t, stsQueue);
     } else if (IsListEmpty(&scheduler.queueHigh) == false && PTY_HIGH >= pty) {
@@ -236,6 +330,7 @@ static Process_t *ProcessNext(ProcPriority_t pty)
     } else if (IsListEmpty(&scheduler.queueIdle) == false && PTY_IDLE >= pty) {
         return FIND_PARENT(scheduler.queueIdle.list.next, Process_t, stsQueue);
     } else {
+        KernelPrintf(".. no next process\n");
         return NULL;
     }
 }
@@ -364,6 +459,17 @@ void ProcessDoReady(Process_t *proc)
     if (!assert(proc != NULL)) return;
     assert_msg(AtomicRead(&scheduler.schedulerLockCount) > 0, "Calling `ProcessDoReady()` without the proper lock");
 
+    if (proc->globalList.next == &proc->globalList) {
+        proc->pid = scheduler.nextPID ++;
+
+        DumpProcess(proc);
+
+        proc->status = PROC_READY;
+        ProcessDoAddGlobal(proc);
+    }
+
+    KernelPrintf("Readying process at %p\n", proc);
+
     proc->status = PROC_READY;
 
     switch(proc->priority) {
@@ -392,6 +498,8 @@ void ProcessDoReady(Process_t *proc)
         Enqueue(&scheduler.queueIdle, &proc->stsQueue);
         break;
     }
+
+    DumpReadyQueue();
 }
 
 
@@ -461,6 +569,9 @@ static void ProcessDoUnblock(Process_t *proc)
 //    -----------------------------------------------------------------------------------------------------
 void ProcessSchedule(void)
 {
+    KernelPrintf("Dumping the process being swapped out\n");
+    DumpProcess(CurrentThread());
+
     assert_msg(AtomicRead(&scheduler.schedulerLockCount) > 0,
             "Calling `ProcessSchedule()` without holding the proper lock");
     if (!assert(CurrentThread() != NULL)) {
@@ -474,19 +585,23 @@ void ProcessSchedule(void)
     ProcessUpdateTimeUsed();
 
     if (AtomicRead(&scheduler.postponeCount) != 0) {
-        if (CurrentThread() && AtomicRead(&(CurrentThread()->quantumLeft)) < 0) {
+        if (CurrentThread() && AtomicRead(&(CurrentThread()->quantumLeft)) <= 0) {
             scheduler.processChangePending = true;
         }
+        KernelPrintf(".");
         return;
     }
 
     next = ProcessNext(CurrentThread()?CurrentThread()->priority:PTY_IDLE);
+    KernelPrintf(".. next process is at %p\n", next);
     if (next != NULL) {
+        KernelPrintf("!");
         ProcessListRemove(next);
         assert(AtomicRead(&scheduler.postponeCount) == 0);
         ProcessSwitch(next);
     } else if (CurrentThread()->status == PROC_RUNNING) {
         // -- Do nothing; the current process can continue; reset quantum
+        KernelPrintf("+");
         AtomicAdd(&(CurrentThread()->quantumLeft), CurrentThread()->priority);
         return;
     } else {
@@ -495,6 +610,7 @@ void ProcessSchedule(void)
         CurrentThreadAssign(NULL);                  // nothing is running!
 
         do {
+            KernelPrintf(";");
             // -- -- temporarily unlock the scheduler and enable interrupts for the timer to fire
             ProcessUnlockScheduler();
             EnableInt();
@@ -560,79 +676,11 @@ void ProcessStart(void)
     assert_msg(AtomicRead(&scheduler.schedulerLockCount) == 1,
             "`ProcessStart()` is executing while too many locks are held");
 
+    KernelPrintf("Starting new process with address space %p\n", GetAddressSpace());
+
     ProcessUnlockScheduler();
-    EnableInt();
+//    EnableInt();
 }
-
-
-//
-// -- Create a new process structure and leave it on the Ready Queue
-//    --------------------------------------------------------------
-Process_t *sch_ProcessCreate(const char *name, void (*startingAddr)(void))
-{
-    extern Addr_t mmuLvl1Table;
-
-    Process_t *rv = NEW(Process_t);
-    if (!assert_msg(rv != NULL, "Out of memory allocating a new Process_t")) {
-        KernelPrintf("Out of memory allocating a new Process_t");
-        while (true) {
-            __asm volatile("hlt");
-        }
-    }
-
-    kMemSetB(rv, 0, sizeof(Process_t));
-
-    rv->pid = scheduler.nextPID ++;
-
-    // -- set the name of the process
-    int len = kStrLen(name + 1);
-    rv->command[len + 1] = 0;
-    kStrCpy(rv->command, name);
-
-    KernelPrintf(".. naming the process\n");
-
-    rv->policy = POLICY_0;
-    rv->priority = PTY_OS;
-    rv->status = PROC_INIT;
-    AtomicSet(&rv->quantumLeft, 0);
-    rv->timeUsed = 0;
-    rv->wakeAtMicros = 0;
-    ListInit(&rv->stsQueue);
-    ListInit(&rv->references.list);
-
-    Addr_t kStack = StackFind();
-    rv->tosKernel = kStack + STACK_SIZE;
-
-    for (int i = 0; i < STACK_SIZE / PAGE_SIZE; i ++) {
-        MmuMapPage(kStack + (PAGE_SIZE * i), PmmAlloc(), PG_WRT);
-    }
-
-
-    //
-    // -- Construct the stack for the architecture
-    //    ----------------------------------------
-    ProcessNewStack(rv, startingAddr);
-
-
-    //
-    // -- Construct the new addres space for the process
-    //    ----------------------------------------------
-//  TODO: Fix this
-//    rv->virtAddrSpace = mmuLvl1Table;
-
-
-    //
-    // -- Put this process on the queue to execute
-    //    ----------------------------------------
-    ProcessLockAndPostpone();
-    rv->status = PROC_READY;
-    ProcessDoAddGlobal(rv);
-    ProcessDoReady(rv);
-    ProcessUnlockAndSchedule();
-
-    return rv;
-}
-
 
 
 //
@@ -659,8 +707,9 @@ void ProcessEnd(void)
 //
 // -- The scheduler timer resccheduling function
 //    ------------------------------------------
-int sch_Tick(uint64_t now)
+Return_t sch_Tick(int, uint64_t now)
 {
+    KernelPrintf("*");
     ProcessLockAndPostpone();
 
 
@@ -695,7 +744,8 @@ int sch_Tick(uint64_t now)
     // -- adjust the quantum and see if it is time to change tasks
     //    --------------------------------------------------------
     if (CurrentThread() != NULL) {
-        if (AtomicDec(&(CurrentThread()->quantumLeft)) <= 0) {
+        AtomicDec(&(CurrentThread()->quantumLeft));
+        if (AtomicRead(&CurrentThread()->quantumLeft) <= 0) {
             scheduler.processChangePending = true;
         }
     }
@@ -706,15 +756,85 @@ int sch_Tick(uint64_t now)
 }
 
 
+//
+// -- Create a new process structure and leave it on the Ready Queue
+//    --------------------------------------------------------------
+Process_t *sch_ProcessCreate(int, const char *name, void (*startingAddr)(void), Addr_t addrSpace)
+{
+    KernelPrintf("Creating a new process named at %p (%s), starting at %p\n", name, name, startingAddr);
+
+    Process_t *rv = NEW(Process_t);
+    if (!assert_msg(rv != NULL, "Out of memory allocating a new Process_t")) {
+        KernelPrintf("Out of memory allocating a new Process_t");
+        while (true) {
+            __asm volatile("hlt");
+        }
+    }
+
+    kMemSetB(rv, 0, sizeof(Process_t));
+
+    // -- set the name of the process
+    KernelPrintf(".. naming the process: %s\n", name);
+    int len = kStrLen(name + 1);
+    rv->command[len + 1] = 0;
+    kStrCpy(rv->command, name);
+
+
+    rv->policy = POLICY_0;
+    rv->priority = PTY_OS;
+    rv->status = PROC_INIT;
+    AtomicSet(&rv->quantumLeft, rv->priority);
+    rv->timeUsed = 0;
+    rv->wakeAtMicros = 0;
+    ListInit(&rv->stsQueue);
+    ListInit(&rv->references.list);
+    ListInit(&rv->globalList);
+
+
+    //
+    // -- Construct the stack for the architecture
+    //    ----------------------------------------
+    KernelPrintf(".. Creating the new Process's stack\n");
+    ProcessNewStack(rv, startingAddr);
+
+
+    //
+    // -- Construct the new addres space for the process
+    //    ----------------------------------------------
+    rv->virtAddrSpace = addrSpace;
+
+
+    //
+    // -- Put this process on the queue to execute
+    //    ----------------------------------------
+    KernelPrintf(".. Readying the new process to be scheduled\n");
+    sch_ProcessReady(0, rv);
+
+
+    return rv;
+}
+
 
 //
 // -- Initialize the process structures
 //    ---------------------------------
-int ProcessInit(BootInterface_t *loaderInterface)
+Return_t ProcessInit(BootInterface_t *loaderInterface)
 {
     ProcessInitTable();
 
-    KernelPrintf("ProcessInit() called\n");
+//    KernelPrintf("ProcessInit() called\n");
+
+    KernelPrintf("Process table offsets:\n");
+    KernelPrintf("  TOS: %d\n", offsetof(Process_t, tosProcessSwap));
+    KernelPrintf("  Virtual Address Space: %d\n", offsetof(Process_t, virtAddrSpace));
+    KernelPrintf("  Status: %d\n", offsetof(Process_t, status));
+    KernelPrintf("  Priority: %d\n", offsetof(Process_t, priority));
+    KernelPrintf("  Quantum Left: %d\n", offsetof(Process_t, quantumLeft));
+    KernelPrintf("Scheduler structure offsets:\n");
+    KernelPrintf("  Change pending: %d (%d)\n", offsetof(Scheduler_t, processChangePending), sizeof(bool));
+    KernelPrintf("  Lock count: %d (%d)\n", offsetof(Scheduler_t, schedulerLockCount), sizeof (AtomicInt_t));
+    KernelPrintf("  Postpone count: %d (%d)\n", offsetof(Scheduler_t, postponeCount), sizeof(AtomicInt_t));
+
 
     ListInit(&scheduler.queueOS.list);
     ListInit(&scheduler.queueHigh.list);
@@ -744,11 +864,6 @@ int ProcessInit(BootInterface_t *loaderInterface)
     proc->virtAddrSpace = loaderInterface->bootVirtAddrSpace;
     proc->pid = scheduler.nextPID ++;          // -- this is the butler process ID
 
-    Addr_t kStack = StackFind();
-    proc->tosKernel = kStack + STACK_SIZE;
-    Frame_t kernelStackFrame = PmmAlloc();
-    MmuMapPage(kStack, kernelStackFrame, PG_WRT);
-
 
     // -- set the process name
     kMemSetB(proc->command, 0, CMD_LEN);
@@ -764,18 +879,20 @@ int ProcessInit(BootInterface_t *loaderInterface)
     ListInit(&proc->references.list);
     ProcessDoAddGlobal(proc);           // no lock required -- still single threaded
 
+    DumpProcess(proc);
+
 
     //
     // -- Create an idle process for each CPU
     //    -----------------------------------
     for (int i = 0; i < loaderInterface->cpuCount; i ++) {
         KernelPrintf("starting idle process %d\n", i, ProcessIdle);
-        sch_ProcessCreate("Idle Process", ProcessIdle);
+        sch_ProcessCreate(0, "Idle Process", ProcessIdle, GetAddressSpace());
     }
 
 
     ThisCpu()->lastTimer = TmrCurrentCount();
-    KernelPrintf("ProcessInit() complete\n");
+//    KernelPrintf("ProcessInit() complete\n");
 
     return 0;
 }
@@ -785,7 +902,7 @@ int ProcessInit(BootInterface_t *loaderInterface)
 //
 // -- Functions to block the current process
 //    --------------------------------------
-int sch_ProcessBlock(ProcStatus_t reason)
+Return_t sch_ProcessBlock(int, ProcStatus_t reason)
 {
     ProcessLockAndPostpone();
     ProcessDoBlock(reason);
@@ -798,7 +915,7 @@ int sch_ProcessBlock(ProcStatus_t reason)
 //
 // -- Place a process on the correct ready queue
 //    ------------------------------------------
-int sch_ProcessReady(Process_t *proc)
+Return_t sch_ProcessReady(int, Process_t *proc)
 {
     ProcessLockAndPostpone();
     ProcessDoReady(proc);
@@ -811,7 +928,7 @@ int sch_ProcessReady(Process_t *proc)
 //
 // -- Unblock a process
 //    -----------------
-int sch_ProcessUnblock(Process_t *proc)
+Return_t sch_ProcessUnblock(int, Process_t *proc)
 {
     ProcessLockAndPostpone();
     ProcessDoUnblock(proc);
@@ -824,7 +941,7 @@ int sch_ProcessUnblock(Process_t *proc)
 //
 // -- Sleep until the we reach the number of micro-seconds since boot
 //    ---------------------------------------------------------------
-int sch_ProcessMicroSleepUntil(uint64_t when)
+Return_t sch_ProcessMicroSleepUntil(int, uint64_t when)
 {
     ProcessLockAndPostpone();
     ProcessDoMicroSleepUntil(when);

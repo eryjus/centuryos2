@@ -52,20 +52,18 @@
 ;; -- Some local equates for use with access structure elements
 ;;    ---------------------------------------------------------
 PROC_TOS_PROCESS_SWAP   EQU     0
-PROC_TOS_KERNEL         EQU     8
-PROC_TOS_INTERRUPTED    EQU     16
-PROC_VIRT_ADDR_SPACE    EQU     24
-PROC_STATUS             EQU     32
-PROC_PRIORITY           EQU     40
-PROC_QUANTUM_LEFT       EQU     48
+PROC_VIRT_ADDR_SPACE    EQU     8
+PROC_STATUS             EQU     16      ;; dword size
+PROC_PRIORITY           EQU     20      ;; dword size
+PROC_QUANTUM_LEFT       EQU     24
 
 
 ;;
 ;; -- some local equates for accessing the structure offsets
 ;;    ------------------------------------------------------
-SCH_CHG_PENDING         EQU     0x18
-SCH_LOCK_COUNT          EQU     0x28
-SCH_POSTPONE_COUNT      EQU     0x30
+SCH_CHG_PENDING         EQU     16    ;; byte size
+SCH_LOCK_COUNT          EQU     32
+SCH_POSTPONE_COUNT      EQU     40
 
 
 ;;
@@ -98,7 +96,7 @@ ProcessSwitch:
 
         mov     rax,scheduler
         add     rax,SCH_CHG_PENDING
-        mov     qword [rax],1
+        mov     byte [rax],1
 
         pop     rax
         ret
@@ -118,40 +116,36 @@ ProcessSwitch:
 ;;
 ;; -- Get the current task structure
 ;;    ------------------------------
-        mov     rsi,[gs:8]                  ;; get the address of the current process
+        mov     r14,[gs:8]                  ;; get the address of the current process
 
-        cmp     dword [rsi+PROC_STATUS],PROC_STS_RUNNING    ;; is this the current running process
+        cmp     dword [r14+PROC_STATUS],PROC_STS_RUNNING    ;; is this the current running process
         jne     .saveStack
 
-        push    rsi                                         ;; make the process ready
+        mov     r15,rdi                     ;; save the target process to a preserved register
+        mov     rdi,r14                     ;; get the current process to make it ready
         call    ProcessDoReady
-        add     rsp,8
 
 .saveStack:
-        call    ProcessUpdateTimeUsed
+        call    ProcessUpdateTimeUsed       ;; update the time used for the current process
 
-        mov     [rsi+PROC_TOS_PROCESS_SWAP],rsp ;; save the top of the current stack
+        mov     [r14+PROC_TOS_PROCESS_SWAP],rsp ;; save the top of the current stack
 
 
 ;;
 ;; -- next, we get the next task and prepare to switch to that
 ;;    --------------------------------------------------------
-        mov     rdi,[rsp+((4+1)*8)]         ;; get the new task's structure
-        mov     [gs:8],edi                  ;; this is now the currnet task
+        mov     [gs:8],r15                  ;; this is now the current task
 
-        mov     rsp,[rdi+PROC_TOS_PROCESS_SWAP]  ;; get the stop of the next process stack
-        mov     qword [rdi+PROC_STATUS],PROC_STS_RUNNING    ;; set the new process to be running
-        mov     rax,qword [rdi+PROC_PRIORITY]   ;; get the priority, which becomes the next quantum
-        add     qword [rdi+PROC_QUANTUM_LEFT],rax   ;; add it to the amount left to overcome "overdrawn" procs
+        mov     rsp,[r15+PROC_TOS_PROCESS_SWAP]  ;; get the stop of the next process stack
+        mov     dword [r15+PROC_STATUS],PROC_STS_RUNNING    ;; set the new process to be running
+        xor     rax,rax
+        mov     eax,dword [r15+PROC_PRIORITY]   ;; get the priority, which becomes the next quantum
+        add     qword [r15+PROC_QUANTUM_LEFT],rax   ;; add it to the amount left to overcome "overdrawn" procs
 
 ;;
 ;; -- Here we redecorate the TSS
 ;;    --------------------------
-        mov     rcx,[rdi+PROC_TOS_KERNEL]   ;; get the TOS for the kernel
-        mov     rax,[gs:8]                  ;; get the cpu struct address
-        mov     [rax+60],rcx                ;; and set the new kernel stack
-
-        mov     rax,[rdi+PROC_VIRT_ADDR_SPACE]  ;; get the paing tables address
+        mov     rax,[r15+PROC_VIRT_ADDR_SPACE]  ;; get the paing tables address
         mov     rcx,cr3                     ;; get the current paging tables
 
         cmp     rax,rcx                     ;; are they the same?
@@ -166,6 +160,7 @@ ProcessSwitch:
         pop     r12                         ;; restore r12
         pop     rbp                         ;; restore rbp
         pop     rbx                         ;; restore rbx
+        pop     rax                         ;; restore rax (from the very first push)
 
         ret
 

@@ -26,8 +26,8 @@
 
 
 ;;
-;; -- Internal Function 10 -- kprintf
-;;    -------------------------------
+;; -- Internal Function 8 -- kprintf
+;;    ------------------------------
 KernelPrintf:
                 push    r9
                 push    r8
@@ -35,15 +35,18 @@ KernelPrintf:
                 push    rdx
                 push    rsi
                 push    rdi
+                push    r11
 
+                mov     r11,r9
                 mov     r9,r8
                 mov     r8,rcx
                 mov     rcx,rdx
                 mov     rdx,rsi
                 mov     rsi,rdi
-                mov     rdi,20
+                mov     rdi,0x008
                 int     0xe0
 
+                pop     r11
                 pop     rdi
                 pop     rsi
                 pop     rdx

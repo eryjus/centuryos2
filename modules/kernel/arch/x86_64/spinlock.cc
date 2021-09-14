@@ -23,8 +23,7 @@
 //
 // -- Lock a spinlock, busy looping indefinitely until a lock is obtained
 //    -------------------------------------------------------------------
-int krn_SpinLock(Spinlock_t *lock) {
-//    __asm volatile ("xchg %edx,%edx");
+int krn_SpinLock(int, Spinlock_t *lock) {
     int exp, des;
     lock->flags = DisableInt();
     while (!__atomic_compare_exchange(&(lock->lock), &exp, &des, false, __ATOMIC_SEQ_CST, __ATOMIC_SEQ_CST)) {
@@ -33,7 +32,6 @@ int krn_SpinLock(Spinlock_t *lock) {
         des = 1;
         lock->flags = DisableInt();     // -- that's enough; dsiable them again
     }
-//    __asm volatile ("xchg %edx,%edx");
 
     return 0;
 }
@@ -42,7 +40,7 @@ int krn_SpinLock(Spinlock_t *lock) {
 //
 // -- Unlock a spinlock, restoring interrupt flag
 //    -------------------------------------------
-int krn_SpinUnlock(Spinlock_t *lock) {
+int krn_SpinUnlock(int, Spinlock_t *lock) {
     int l;
     __atomic_load(&(lock->lock), &l, __ATOMIC_SEQ_CST);
     if (l == 0) return -ENOLCK;
@@ -57,8 +55,8 @@ int krn_SpinUnlock(Spinlock_t *lock) {
 //
 // -- Determine if a spinlock is locked, lock it if not
 //    -------------------------------------------------
-int krn_SpinTry(Spinlock_t *lock, size_t timeout) {
-    int l;
+int krn_SpinTry(int, Spinlock_t *lock, size_t timeout) {
+   int l;
     __atomic_load(&(lock->lock), &l, __ATOMIC_SEQ_CST);
     if (l == 1) return -EBUSY;
     else return 0;

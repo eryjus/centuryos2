@@ -83,8 +83,8 @@ int kprintf(const char *fmt, ...)
         return kprintf("ERROR: Too many `kprintf()` parameters; use 6 or less!\n");
     }
 
-    int printed = 0;
-    int curParm = 1;
+   int printed = 0;
+   int curParm = 1;
     const char *dig = digits;
 
     va_start();
@@ -103,8 +103,8 @@ int kprintf(const char *fmt, ...)
 
         // --Begin a new scope
         {
-            int fmtDefn = 1;
-            int flags = 0;
+           int fmtDefn = 1;
+           int flags = 0;
             bool isLong = false;
 
             if (isLong) {}          // TODO: remove this
@@ -134,7 +134,7 @@ int kprintf(const char *fmt, ...)
                 continue;
 
             case 'c': {
-                int c = va_arg(int);
+               int c = va_arg(int);
                 SerialPutChar(c & 0xff);
                 continue;
             }
@@ -184,7 +184,7 @@ int kprintf(const char *fmt, ...)
                     bool allZero = true;
 
                     for (int j = sizeof(Addr_t) * 8 - 4; j >= 0; j -= 4) {
-                        int ch = (val >> j) & 0x0f;
+                       int ch = (val >> j) & 0x0f;
                         if (ch != 0) allZero = false;
                         if (!allZero || flags & ZEROPAD) {
                             SerialPutChar(dig[ch]);
@@ -202,9 +202,9 @@ int kprintf(const char *fmt, ...)
 
             case 'd':
                 {
-                    int val = va_arg(int);
+                   int val = va_arg(int64_t);
                     char buf[30];
-                    int i = 0;
+                   int i = 0;
 
                     if (val < 0) {
                         SerialPutChar('-');
@@ -232,11 +232,11 @@ int kprintf(const char *fmt, ...)
 
             case 'u':
                 {
-                    unsigned int val;
+                    uint64_t val;
 
-                    val = va_arg(unsigned int);
+                    val = va_arg(uint64_t);
                     char buf[30];
-                    int i = 0;
+                   int i = 0;
 
                     if (val == 0) {
                         SerialPutChar('0');

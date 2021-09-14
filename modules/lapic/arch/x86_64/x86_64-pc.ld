@@ -85,6 +85,7 @@ SECTIONS
         {
             KEEP (*(SORT_NONE(.fini)))
         }
+    . = ALIGN(4096);
     PROVIDE (__etext = .);
     PROVIDE (_etext = .);
     PROVIDE (etext = .);
@@ -113,6 +114,7 @@ SECTIONS
             *(.tdata .tdata.* .gnu.linkonce.td.*)
         }
     .tbss		            : { *(.tbss .tbss.* .gnu.linkonce.tb.*) *(.tcommon) }
+    ALIGN(4096)
     .preinit_array :
         {
             PROVIDE_HIDDEN (__preinit_array_start = .);
@@ -125,6 +127,7 @@ SECTIONS
             KEEP (*(SORT_BY_INIT_PRIORITY(.init_array.*) SORT_BY_INIT_PRIORITY(.ctors.*)))
             KEEP (*(.init_array EXCLUDE_FILE (*crtbegin.o *crtbegin?.o *crtend.o *crtend?.o ) .ctors))
             PROVIDE_HIDDEN (__init_array_end = .);
+            QUAD(0);
         }
     .fini_array :
         {

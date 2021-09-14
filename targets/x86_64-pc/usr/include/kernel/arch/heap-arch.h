@@ -41,11 +41,3 @@ typedef struct MagicHole_t {
 } MagicHole_t;
 
 
-
-//
-// -- Define the heap limits
-//    ----------------------
-#define MMU_HEAP_START          0xffffb80000000000
-#define MMU_HEAP_END            0xffffc00000000000
-
-

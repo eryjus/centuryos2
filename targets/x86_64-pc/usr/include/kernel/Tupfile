@@ -42,3 +42,6 @@ include_rules
 : $(WS)/modules/libk/inc/serial.h |> cp %f %o |> serial.h
 : $(WS)/modules/libk/inc/stacks.h |> cp %f %o |> stacks.h
 : $(WS)/arch/$(ARCH)/inc/types.h |> cp %f %o |> types.h
+
+: $(WS)/modules/scheduler/inc/scheduler.h |> cp %f %o |> scheduler.h
+

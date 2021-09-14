@@ -15,10 +15,11 @@
 ;;===================================================================================================================
 
 
-                global      GetPageTables
+                global      GetAddressSpace
 
 
-GetPageTables:
+GetAddressSpace:
+                xor         rax,rax
                 mov         rax,cr3
                 ret
 

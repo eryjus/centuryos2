@@ -23,7 +23,7 @@
 #include "types.h"
 #include "idt.h"
 #include "serial.h"
-#include "internal.h"
+#include "internals.h"
 #include "printf.h"
 #include "boot-interface.h"
 #include "kernel-funcs.h"
@@ -34,6 +34,7 @@
 // -- local prototype
 //    ---------------
 extern "C" void kInit(void);
+extern BootInterface_t *loaderInterface;
 
 
 //
@@ -41,21 +42,31 @@ extern "C" void kInit(void);
 //    ---------------------------------
 void kInit(void)
 {
+    ProcessInitTable();
     SerialOpen();
 
     kprintf("Welcome!\n");
 
-    IdtInstall();
-    InternalInit();
-    ServiceInit();            // similar to InternalInit();
-    CpuInit();
+    IntInit();                          // init the interrupt table (hardware structure)
+    VectorInit();                       // init the vector table (OS structure)
+    InternalInit();                     // init the internal function table
+    ServiceInit();                      // init the OS services table
+    CpuInit();                          // init the cpus tables
+
+    InternalTableDump();
+    VectorTableDump();
 
     kprintf(".. Module Early Init:\n");
     ModuleEarlyInit();
+    kprintf(".. loader Virtual Address Space (%p) vs. cr3 (%p)\n", loaderInterface->bootVirtAddrSpace, GetAddressSpace());
 
-    kprintf(".. enabling interrupts\n");
+    InternalTableDump();
+    VectorTableDump();
+    ServiceTableDump();
+
+    kprintf("Enabling interrupts\n");
+
     EnableInt();
-
     ModuleLateInit();
 
     kprintf("Boot Complete!\n");

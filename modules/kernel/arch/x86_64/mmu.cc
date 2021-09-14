@@ -15,7 +15,7 @@
 //===================================================================================================================
 
 
-//#define USE_SERIAL
+#define USE_SERIAL
 
 #include "types.h"
 #include "kernel-funcs.h"
@@ -96,9 +96,9 @@ static inline void INVLPG(Addr_t a) { __asm volatile("invlpg (%0)" :: "r"(a) : "
 //
 // -- Check if an address is mapped
 //    -----------------------------
-bool krn_MmuIsMapped(Addr_t a)
+bool krn_MmuIsMapped(int, Addr_t a)
 {
-    kprintf("Checking mapping (reporting mapped only)\n");
+//    kprintf("Checking mapping (reporting mapped only)\n");
 
     INVLPG((Addr_t)GetPML4Entry(a));
     INVLPG((Addr_t)GetPDPTEntry(a));
@@ -110,7 +110,7 @@ bool krn_MmuIsMapped(Addr_t a)
     if (!GetPDEntry(a)->p) return false;
     if (!GetPTEntry(a)->p) return false;
 
-    kprintf("... mapped\n");
+//    kprintf("... mapped\n");
     return true;
 }
 
@@ -118,19 +118,19 @@ bool krn_MmuIsMapped(Addr_t a)
 //
 // -- Safely Unmap a page
 //    -------------------
-int krn_MmuUnmapPage(Addr_t a)
+int krn_MmuUnmapPage(int, Addr_t a)
 {
-    kprintf("Unmapping page at address %p\n", a);
+    kprintf("In address space %p, Unmapping page at address %p\n", GetCr3(), a);
 
-    if (krn_MmuIsMapped(a)) {
-        kprintf("Unmapping address %p..\n", GetPTEntry(a));
+    if (krn_MmuIsMapped(0, a)) {
+//        kprintf("Unmapping address %p..\n", GetPTEntry(a));
         *(uint64_t *)GetPTEntry(a) = 0;
     }
 
     INVLPG((Addr_t)GetPTEntry(a));
     INVLPG(a);
 
-    kprintf("!! Unmapped\n");
+//    kprintf("!! Unmapped\n");
 
     return 0;
 }
@@ -139,22 +139,26 @@ int krn_MmuUnmapPage(Addr_t a)
 //
 // -- Map a page to a frame
 //    ---------------------
-int krn_MmuMapPage(Addr_t a, Frame_t f, int flags)
+int krn_MmuMapPage(int, Addr_t a, Frame_t f, int flags)
 {
-    kprintf("In tables %p, request was made to map address %p to frame %p\n", GetCr3(), a, f);
-    kprintf(".. PML4 address is %p\n", GetPML4Entry(a));
-    kprintf(".. PDPT address is %p\n", GetPDPTEntry(a));
-    kprintf("..   PD address is %p\n", GetPDEntry(a));
-    kprintf("..   PT address is %p\n", GetPTEntry(a));
+    a &= ~(PAGE_SIZE - 1);
+    kprintf("In address space %p, request was made to map address %p to frame %p\n", GetCr3(), a, f);
+//    kprintf(".. PML4 address is %p\n", GetPML4Entry(a));
+//    kprintf(".. PDPT address is %p\n", GetPDPTEntry(a));
+//    kprintf("..   PD address is %p\n", GetPDEntry(a));
+//    kprintf("..   PT address is %p\n", GetPTEntry(a));
 
     if (!a || !f) return -EINVAL;
-    if (krn_MmuIsMapped(a)) krn_MmuUnmapPage(a);
+    if (krn_MmuIsMapped(0, a)) {
+        kprintf("!!! CHECK THE CODE!!! The page is already mapped and will be unmapped!\n");
+        krn_MmuUnmapPage(0, a);
+    }
 
-    kprintf(".. The page is guaranteed unmapped\n");
+//    kprintf(".. The page is guaranteed unmapped\n");
 
     Frame_t t;
     PageEntry_t *ent = GetPML4Entry(a);
-    kprintf(".. PML4 address is still %p (contents %p)?\n", ent, *(uint64_t *)ent);
+//    kprintf(".. PML4 address is still %p (contents %p)?\n", ent, *(uint64_t *)ent);
 
     if (!ent->p) {
         t = PmmAlloc();
@@ -166,16 +170,16 @@ int krn_MmuMapPage(Addr_t a, Frame_t f, int flags)
         INVLPG((Addr_t)GetPDPTEntry(a));
 
         uint64_t *tbl = (uint64_t *)((Addr_t)GetPDPTEntry(a) & 0xfffffffffffff000);
-        kprintf(".... Clearing new table from address %p\n", tbl);
+//        kprintf(".... Clearing new table from address %p\n", tbl);
         for (int i = 0; i < 512; i ++) {
             tbl[i] = 0;
         }
 
-        kprintf(".... PML4 address is now %p (contents %p)?\n", ent, *(uint64_t *)ent);
+//        kprintf(".... PML4 address is now %p (contents %p)?\n", ent, *(uint64_t *)ent);
     }
 
     ent = GetPDPTEntry(a);
-    kprintf(".. PDPT address is still %p (contents %p)?\n", ent, *(uint64_t *)ent);
+//    kprintf(".. PDPT address is still %p (contents %p)?\n", ent, *(uint64_t *)ent);
 
     if (!ent->p) {
         t = PmmAlloc();
@@ -187,16 +191,16 @@ int krn_MmuMapPage(Addr_t a, Frame_t f, int flags)
         INVLPG((Addr_t)GetPDEntry(a));
 
         uint64_t *tbl = (uint64_t *)((Addr_t)GetPDEntry(a) & 0xfffffffffffff000);
-        kprintf(".... Clearing new table from address %p\n", tbl);
+//        kprintf(".... Clearing new table from address %p\n", tbl);
         for (int i = 0; i < 512; i ++) {
             tbl[i] = 0;
         }
 
-        kprintf(".... PDPT address is now %p (contents %p)?\n", ent, *(uint64_t *)ent);
+//        kprintf(".... PDPT address is now %p (contents %p)?\n", ent, *(uint64_t *)ent);
     }
 
     ent = GetPDEntry(a);
-    kprintf("..   PD address is still %p (contents %p)?\n", ent, *(uint64_t *)ent);
+//    kprintf("..   PD address is still %p (contents %p)?\n", ent, *(uint64_t *)ent);
 
     if (!ent->p) {
         t = PmmAlloc();
@@ -208,27 +212,28 @@ int krn_MmuMapPage(Addr_t a, Frame_t f, int flags)
         INVLPG((Addr_t)GetPTEntry(a));
 
         uint64_t *tbl = (uint64_t *)((Addr_t)GetPTEntry(a) & 0xfffffffffffff000);
-        kprintf(".... Clearing new table from address %p\n", tbl);
+//        kprintf(".... Clearing new table from address %p\n", tbl);
         for (int i = 0; i < 512; i ++) {
             tbl[i] = 0;
         }
 
-        kprintf(".... PD address is now %p (contents %p)?\n", ent, *(uint64_t *)ent);
+//        kprintf(".... PD address is now %p (contents %p)?\n", ent, *(uint64_t *)ent);
     }
 
     ent = GetPTEntry(a);
-    kprintf("..   PT address is still %p (contents %p)?\n", ent, *(uint64_t *)ent);
+//    kprintf("..   PT address is still %p (contents %p)?\n", ent, *(uint64_t *)ent);
 
     ent->frame = f;
     ent->rw = (flags&PG_WRT?1:0);
     ent->pcd = (flags&PG_DEV?1:0);
     ent->pwt = (flags&PG_DEV?1:0);
+    ent->us = (flags&PG_DEV?1:0);
     ent->p = 1;
 
     __asm volatile ("wbnoinvd" ::: "memory");
     INVLPG((Addr_t)a);
 
-    kprintf("!! Mapping complete\n");
+//    kprintf("!! Mapping complete\n");
 
     return 0;
 }
@@ -242,9 +247,9 @@ extern "C" int kprintf(const char *, ...);
 //
 // -- Dump the MMU Tables for a specific address
 //    ------------------------------------------
-int krn_MmuDumpTables(Addr_t addr)
+int krn_MmuDump(int, Addr_t addr)
 {
-    kprintf("\nMmuDumpTables: Walking the page tables for address %p\n", addr);
+    kprintf("\nMmuDump: Walking the page tables for address %p\n", addr);
     kprintf("Level  Entry Address       Index               Next Frame          us  rw  p\n");
     kprintf("-----  ------------------  ------------------  ------------------  --  --  -\n");
 

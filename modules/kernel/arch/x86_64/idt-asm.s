@@ -15,38 +15,146 @@
 ;;===================================================================================================================
 
 
-                global      IdtGenericEntry
-                global      IdtGenericEntryNoErr
-                global      InternalTarget
+        global  InternalTarget
 
-                extern      IdtGenericHandler
-                extern      maxHandlers
-                extern      internalTable
-                extern      serviceTable
-                extern      vectorTable
+        extern  internalTable
+        extern  serviceTable
+        extern  vectorTable
+        extern  krn_SpinLock
+        extern  krn_SpinUnlock
 
 
-                cpu         x64
-                section     .text
+MAX_HANDLERS    equ         1024
 
+        cpu     x64
+        section .text
+
+
+;;
+;; -- This is a macro to mimic the pusha instruction which is not available in x64
+;;    ----------------------------------------------------------------------------
+%macro  PUSHA 0
+        push    rax
+        push    rbx
+        push    rcx
+        push    rdx
+        push    rbp
+        push    rsi
+        push    rdi
+        push    r8
+        push    r9
+        push    r10
+        push    r11
+        push    r12
+        push    r13
+        push    r14
+        push    r15
+%endmacro
+
+
+
+;;
+;; -- This is a macro to mimic the popa instrucion, which is not available in x64
+;;    ---------------------------------------------------------------------------
+%macro  POPA 0
+        pop     r15
+        pop     r14
+        pop     r13
+        pop     r12
+        pop     r11
+        pop     r10
+        pop     r9
+        pop     r8
+        pop     rdi
+        pop     rsi
+        pop     rbp
+        pop     rdx
+        pop     rcx
+        pop     rbx
+        pop     rax
+%endmacro
+
+
+;;
+;; -- These are macros to facilitate getting an interrupt exception entry point built
+;;    -------------------------------------------------------------------------------
+%macro INT_ERROR 1
+        global  int%1
+int%1:
+        push    qword %1                ;; the interrupt number
+        jmp     IntCommonTarget
+%endmacro
+
+%macro INT_NO_ERROR 1
+        global  int%1
+int%1:
+        push    qword 0                 ;; a placeholder error code
+        push    qword %1                ;; the interrupt number
+        jmp     IntCommonTarget
+%endmacro
 
 
 ;;
 ;; -- This is a macro to facilitate getting an ISR entry point built
 ;;    --------------------------------------------------------------
 %macro ISR_ENTRY 1
-global      isr%1                       ;; make the label available to other modules
+        global  isr%1                   ;; make the label available to other modules
 
 isr%1:
-    push    dword 0                     ;; since no error was pushed, align the stack
-    push    dword %1                    ;; push the interrupt number
-    jmp     IsrCommonStub               ;; jump to the common handler (below)
+        push    qword 0                 ;; since no error was pushed, align the stack
+        push    qword %1                ;; push the interrupt number
+        push    rax
+        push    rbx
+
+        mov     rax,[rsp+16]
+        mov     rbx,rax
+        shl     rax,5                   ;; 32 bytes in the structure; offset the service
+        shl     rbx,4                   ;; add another 16 bytes to the structure;
+        add     rax,rbx                 ;; total of 48 bytes.
+
+        mov     rbx,vectorTable
+        lea     rbx,[rbx+rax]           ;; load the table address
+
+        call    CommonTarget            ;; jump to the common handler (below)
+        jmp     ExitPoint
 %endmacro
 
 
 ;;
 ;; -- Set up all the entry points for each interrupt vector
 ;;    -----------------------------------------------------
+INT_NO_ERROR 0
+INT_NO_ERROR 1
+INT_NO_ERROR 2
+INT_NO_ERROR 3
+INT_NO_ERROR 4
+INT_NO_ERROR 5
+INT_NO_ERROR 6
+INT_NO_ERROR 7
+INT_ERROR 8
+INT_NO_ERROR 9
+INT_ERROR 10
+INT_ERROR 11
+INT_ERROR 12
+INT_ERROR 13
+INT_ERROR 14
+INT_NO_ERROR 15
+INT_NO_ERROR 16
+INT_ERROR 17
+INT_NO_ERROR 18
+INT_NO_ERROR 19
+INT_NO_ERROR 20
+INT_ERROR 21
+INT_NO_ERROR 22
+INT_NO_ERROR 23
+INT_NO_ERROR 24
+INT_NO_ERROR 25
+INT_NO_ERROR 26
+INT_NO_ERROR 27
+INT_NO_ERROR 28
+INT_NO_ERROR 29
+INT_NO_ERROR 30
+INT_NO_ERROR 31
 ISR_ENTRY 32
 ISR_ENTRY 33
 ISR_ENTRY 34
@@ -273,357 +381,223 @@ ISR_ENTRY 254
 ISR_ENTRY 255
 
 
-;;
-;; -- The common interrupt handling code
-;;    ----------------------------------
-IsrCommonStub:
-                push        rax
-                mov         rax,[rsp+8]                 ;; get the interrupt vector
-
-                push        rbx
-                push        rcx
-                push        rdx
-                push        rbp
-                push        rsi
-                push        rdi
-                push        r8
-                push        r9
-                push        r10
-                push        r11
-                push        r12
-                push        r13
-                push        r14
-                push        r15
-
-                mov         rbx,cr3
-                push        rbx
-
-                cmp         rax,0
-                jl          .invalid
-
-                cmp         rax,256
-                jge         .invalid
-
-                mov         rbx,vectorTable
-                shl         rax,4                   ;; -- adjust for 16 bytes per entry
-                lea         rbx,[rbx + rax]
-
-                cmp         qword [rbx],0
-                je          .none
-
-                mov         r10,[rbx + 8]
-                mov         rbx,[rbx]
-
-;; -- check for a change in cr3
-                cmp         r10,0
-                je          .nocr3
-
-                mov         r14,cr3
-                cmp         r10,r14
-                je          .nocr3
-
-                mov         cr3,r10
-
-.nocr3:
-                mov         rdi,rsp                     ;; the pionter to the stack containing the variables
-                sub         rdi,8
-                call        rbx
-                jmp         .out
-
-.invalid:
-                mov         rax,-22
-                jmp         .out
-
-.none:
-                mov         rax,-12
-
-.out:
-                pop         rbx                 ;; -- previous cr3
-                mov         r14,cr3
-
-                cmp         r14,rbx
-                je          .skip
-
-                mov         cr3,rbx
-
-.skip:
-                pop         r15
-                pop         r14
-                pop         r13
-                pop         r12
-                pop         r11
-                pop         r10
-                pop         r9
-                pop         r8
-                pop         rdi
-                pop         rsi
-                pop         rbp
-                pop         rdx
-                pop         rcx
-                pop         rbx
-                pop         rax
-
-                add         rsp,16                      ;; skip the error code and vector
-                iretq
-
 
 ;;
 ;; -- This is the entry point for the generic IDT handler
 ;;    ---------------------------------------------------
-IdtGenericEntryNoErr:
-                push        qword 0
-IdtGenericEntry:
-                push        qword 0         ;; -- This is the interrupt vector number
-                push        rax
-                push        rbx
-                push        rcx
-                push        rdx
-                push        rbp
-                push        rsi
-                push        rdi
-                push        r8
-                push        r9
-                push        r10
-                push        r11
-                push        r12
-                push        r13
-                push        r14
-                push        r15
+IntCommonTarget:
+        push    rax
+        push    rbx
 
-                mov         rax,cr3
-                push        rax
+        mov     rax,[rsp+16]
+        mov     rbx,rax
+        shl     rax,5                   ;; 32 bytes in the structure; offset the service
+        shl     rbx,4                   ;; add another 16 bytes to the structure;
+        add     rax,rbx                 ;; total of 48 bytes.
 
-                xor         rax,rax
-                mov         ax,ds
-                push        rax
+        mov     rbx,vectorTable
+        lea     rbx,[rbx+rax]           ;; load the table address
 
-                mov         ax,es
-                push        rax
+        call    CommonTarget            ;; jump to the common handler (below)
+        jmp     ExitPoint
 
-                mov         ax,fs
-                push        rax
-
-                mov         ax,gs
-                push        rax
-
-                mov         rdi,rsp                     ;; the pionter to the stack containing the variables
-                sub         rdi,8
-                call        IdtGenericHandler
-
-                pop         rax
-                mov         cr3,rax
-
-                pop         rax                         ;; gs
-                pop         rax                         ;; fs
-                pop         rax                         ;; es
-                pop         rax                         ;; ds
-
-                pop         r15
-                pop         r14
-                pop         r13
-                pop         r12
-                pop         r11
-                pop         r10
-                pop         r9
-                pop         r8
-                pop         rdi
-                pop         rsi
-                pop         rbp
-                pop         rdx
-                pop         rcx
-                pop         rbx
-                pop         rax
-
-                add         rsp,16                       ;; skip the error code and vector
-
-                iretq
 
 
 ;;
 ;; -- This is the intenral function handler entry point
 ;;    -------------------------------------------------
 InternalTarget:
-                push        rax
-                push        rbx
-                push        rcx
-                push        rdx
-                push        rbp
-                push        rsi
-                push        rdi
-                push        r8
-                push        r9
-                push        r10
-                push        r11
-                push        r12
-                push        r13
-                push        r14
-                push        r15
+        push    qword 0                 ;; fake error code
+        push    rdi                     ;; service number
+        push    rax
+        push    rbx
 
-                mov         rbx,cr3
-                push        rbx
+        mov     rbx,rdi                 ;; capture the service number
 
-                mov         r11,maxHandlers
-                mov         r15,[r11]
-                cmp         rdi,0
-                jl          .invalid
+        cmp     rbx,0
+        jl      Einval
+        cmp     rbx,MAX_HANDLERS
+        jge     Einval
 
-                cmp         rdi,r15
-                jge         .invalid
+        push    rax
+        mov     rax,rbx
+        shl     rax,5                   ;; 32 bytes in the structure; offset the service
+        shl     rbx,4                   ;; add another 16 bytes to the structure;
+        add     rbx,rax                 ;; total of 48 bytes.
 
-                mov         rbx,internalTable
-                shl         rdi,4                   ;; -- adjust for 16 bytes per entry
-                lea         rbx,[rbx + rdi]
+        mov     rax,internalTable
+        lea     rbx,[rbx+rax]           ;; load the table address
+        pop     rax
 
-                cmp         qword [rbx],0
-                je          .none
+        call    CommonTarget            ;; jump to the common handler (below)
+        mov     [rsp+8],rax             ;; set the return value
+        jmp     ExitPoint
 
-                mov         r10,[rbx + 8]
-                mov         rbx,[rbx]
-
-;; -- check for a change in cr3
-                cmp         r10,0
-                je          .nocr3
-
-                mov         r14,cr3
-                cmp         r10,r14
-                je          .nocr3
-
-                mov         cr3,r10
-
-
-.nocr3:
-                mov         rdi,rsi
-                mov         rsi,rdx
-                mov         rdx,rcx
-                mov         rcx,r8
-                mov         r8,r9
-                call        rbx
-                jmp         .out
-
-.invalid:
-                mov         rax,-22
-                jmp         .out
-
-.none:
-                mov         rax,-12
-
-.out:
-                pop         rbx                 ;; -- previous cr3
-                mov         r14,cr3
-
-                cmp         r14,rbx
-                je          .skip
-
-                mov         cr3,rbx
-
-.skip:
-                pop         r15
-                pop         r14
-                pop         r13
-                pop         r12
-                pop         r11
-                pop         r10
-                pop         r9
-                pop         r8
-                pop         rdi
-                pop         rsi
-                pop         rbp
-                pop         rdx
-                pop         rcx
-                pop         rbx
-                add         rsp,8
-
-                iretq
 
 
 ;;
 ;; -- This is the OS Service function handler entry point
 ;;    ---------------------------------------------------
 ServiceTarget:
-                push        rax
-                push        rbx
-                push        rcx
-                push        rdx
-                push        rbp
-                push        rsi
-                push        rdi
-                push        r8
-                push        r9
-                push        r10
-                push        r11
-                push        r12
-                push        r13
-                push        r14
-                push        r15
+        push    qword 0                 ;; fake error code
+        push    rdi                     ;; internal function number number
+        push    rax
+        push    rbx
 
-                mov         rax,cr3
-                push        rax
+        mov     rbx,rdi                 ;; capture the service number
 
-                mov         rax,maxHandlers
-                mov         r15,[rax]
-                cmp         rdi,0
-                jl          .invalid
+        cmp     rbx,0
+        jl      Einval
+        cmp     rbx,MAX_HANDLERS
+        jge     Einval
 
-                cmp         rdi,r15
-                jge         .invalid
+        push    rax                     ;; save rax as it may have relevant values
+        mov     rax,rbx
+        shl     rax,5                   ;; 32 bytes in the structure; offset the service
+        shl     rbx,4                   ;; add another 16 bytes to the structure;
+        add     rbx,rax                 ;; total of 48 bytes.
 
-                mov         rbx,serviceTable
-                shl         rdi,4
-                lea         rbx,[rbx + rdi]
+        mov     rax,serviceTable
+        lea     rbx,[rbx+rax]           ;; load the table address
+        pop     rax                     ;; restore rax as it may have relevant values
 
-                cmp         qword [rbx],0
-                je          .none
-
-                mov         rax,[rbx + 8]
-                mov         rbx,[rbx]
-
-;; -- check for a change in cr3
-                cmp         rax,0
-                je          .nocr3
-
-                mov         rcx,cr3
-                cmp         rax,rcx
-                je          .nocr3
-
-                mov         cr3,rcx
+        call    CommonTarget            ;; jump to the common handler (below)
+        mov     [rsp+8],rax             ;; set the return value
+        jmp     ExitPoint
 
 
-.nocr3:
-                mov         rdi,rsi
-                mov         rsi,rdx
-                mov         rdx,rcx
-                mov         rcx,r8
-                mov         r8,r9
-                call        rbx
-                jmp         .out
+;;
+;; -- Return the proper error code
+;;    ----------------------------
+Einval:
+        mov     qword [rsp+8],-22
+        jmp     ExitPoint
 
-.invalid:
-                mov         rax,-22
-                jmp         .out
 
-.none:
-                mov         rax,-12
+;;
+;; -- All targets execute from here
+;;    -----------------------------
+CommonTarget:
+        push    rcx
+        push    rdx
+        push    rbp
+        push    rsi
+        push    rdi
+        push    r8
+        push    r9
+        push    r10
+        push    r11
+        push    r12
+        push    r13
+        push    r14
+        push    r15
 
-.out:
-                pop         rbx
-                mov         cr3,rbx
+        mov     rbp,cr0
+        push    rbp
+        mov     rbp,cr2
+        push    rbp
+        mov     rbp,cr3
+        push    rbp
+        mov     rbp,cr4
+        push    rbp
 
-                pop         r15
-                pop         r14
-                pop         r13
-                pop         r12
-                pop         r11
-                pop         r10
-                pop         r9
-                pop         r8
-                pop         rdi
-                pop         rsi
-                pop         rbp
-                pop         rdx
-                pop         rcx
-                pop         rbx
-                add         rsp,8
+        xor     rbp,rbp
+        mov     bp,ds
+        push    rbp
+        mov     bp,es
+        push    rbp
+        mov     bp,fs
+        push    rbp
+        mov     bp,gs
+        push    rbp
 
-                iretq
+        cmp     qword [rbx+0],0
+        je      SameStack               ;; jump past the call
+
+        cmp     qword [rbx+8],0
+        je      NoCr3
+
+        mov     rbp,[rbx+8]
+        mov     cr3,rbp
+
+NoCr3:
+        mov     [rbx+24],rsp            ;; save the stack pointer containing the regs
+        xor     r11,r11                 ;; clear old stack value
+        cmp     qword [rbx+16],0
+        je      NoStack
+
+        ;; -- if there is a stack to protect, then get a spinlock for it
+        PUSHA
+        lea     rsi,[rbx+32]
+        call    krn_SpinLock
+        POPA
+
+        mov     rbp,[rbx+16]
+        mov     r11,rsp
+        mov     rsp,rbp
+
+NoStack:
+        mov     rdi,rbx
+        push    r11
+        call    [rbx+0]                 ;; make the actual handler function call
+
+        pop     rbp
+        cmp     rbp,0
+        je      SameStack
+
+        mov     rsp,rbp
+
+SameStack:
+        PUSHA
+        lea     rsi,[rbx+32]
+        call    krn_SpinUnlock
+        POPA
+
+        pop     rbp                     ;; discard gs
+        pop     rbp                     ;; discard fs
+
+        pop     rbp
+        mov     es,bp
+        pop     rbp
+        mov     ds,bp
+
+        pop     rbp                     ;; discard cr4
+
+        pop     rbp                     ;; old cr3
+        cmp     rbp,0
+        je      SameCr3
+
+        mov     rbx,cr3                 ;; current cr3
+        cmp     rbx,rbp
+        je      SameCr3
+
+        mov     cr3,rbp
+
+SameCr3:
+        pop     rbp                     ;; discard cr2
+        pop     rbp                     ;; discard cr0
+
+        pop     r15
+        pop     r14
+        pop     r13
+        pop     r12
+        pop     r11
+        pop     r10
+        pop     r9
+        pop     r8
+        pop     rdi
+        pop     rsi
+        pop     rbp
+        pop     rdx
+        pop     rcx
+
+        ret
+
+ExitPoint:
+        pop     rbx
+        pop     rax
+        add     rsp,16                  ;; discard error and function/service/interrupt #
+
+        iretq
 
 

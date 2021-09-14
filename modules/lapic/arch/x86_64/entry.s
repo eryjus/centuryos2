@@ -29,16 +29,18 @@
 ;; -- Set up the header structure for parsing from the kernel
 ;;    -------------------------------------------------------
 header:
-                db          'C','e','n','t','u','r','y',' ','O','S',' ','6','4',0,0,0   ; Sig
-                db          'x','2','A','P','I','C',0,0,0,0,0,0,0,0,0,0                 ; Name
-                dq          X2ApicInitEarly                                             ; Early Init
-                dq          Init                                                        ; Late Init
-                dq          1                                                           ; interrupts
-                dq          1                                                           ; internal Services
-                dq          0                                                           ; OS services
-                dq          32                                                          ; Interrupt 32 (IRQ0)
-                dq          tmr_Interrupt                                               ; .. target address
-                dq          13                                                          ; Internal fctn 13 (Tmr Cnt)
-                dq          tmr_GetCurrentTimer                                         ; .. target address
-
+                db          'C','e','n','t','u','r','y',' ','O','S',' ','6','4',0,0,0   ;; Sig
+                db          'x','2','A','P','I','C',0,0,0,0,0,0,0,0,0,0                 ;; Name
+                dq          X2ApicInitEarly                                             ;; Early Init
+                dq          Init                                                        ;; Late Init
+                dq          0xffffaf4000000000                                          ;; Stack Locations
+                dq          1                                                           ;; interrupts
+                dq          1                                                           ;; internal Services
+                dq          0                                                           ;; OS services
+                dq          32                                                          ;; Interrupt 32 (IRQ0)
+                dq          tmr_Interrupt                                               ;; .. target address
+                dq          0                                                           ;; .. stack
+                dq          0x040                                                       ;; Internal fctn 0x040 (Tmr Cnt)
+                dq          tmr_GetCurrentTimer                                         ;; .. target address
+                dq          0                                                           ;; .. stack
 

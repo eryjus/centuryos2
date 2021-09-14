@@ -25,7 +25,7 @@
 // -- Function prototypes
 //    -------------------
 extern "C" {
-    int X2ApicInitEarly(BootInterface_t *loaderInterface);
+    Return_t X2ApicInitEarly(BootInterface_t *loaderInterface);
     int Init(void);
     int ReadApicReg(ApicRegister_t reg);
     int WriteApicReg(ApicRegister_t reg, uint32_t val);
@@ -42,8 +42,10 @@ Apic_t *apic = NULL;
 //
 // -- Initialize the x2APIC, cascading down to the 8259 PIC if required
 //    -----------------------------------------------------------------
-int X2ApicInitEarly(BootInterface_t *loaderInterface)
+Return_t X2ApicInitEarly(BootInterface_t *loaderInterface)
 {
+    ProcessInitTable();
+
     uint32_t eax;
     uint32_t ebx;
     uint32_t ecx;
@@ -93,20 +95,6 @@ int X2ApicInitEarly(BootInterface_t *loaderInterface)
 
 
 //
-// -- Late initialization function
-//    ----------------------------
-int Init(void)
-{
-    ProcessInitTable();
-
-    if (!apic) return -EINVAL;
-    if (apic->init) apic->init();
-
-    return 0;
-}
-
-
-//
 // -- End of Interrupt signal
 //    -----------------------
 int Eoi(void)
@@ -114,6 +102,21 @@ int Eoi(void)
     if (!apic) return -EINVAL;
     if (!apic->eoi) return -EINVAL;
     apic->eoi();
+
+    return 0;
+}
+
+
+//
+// -- Late initialization function
+//    ----------------------------
+int Init(void)
+{
+    ProcessInitTable();
+    KernelPrintf("Performing the LAPIC late initialization\n");
+
+    if (!apic) return -EINVAL;
+    if (apic->init) apic->init();
 
     return 0;
 }
@@ -171,15 +174,16 @@ uint64_t tmr_GetCurrentTimer(void)
 //
 // -- Handle a timer IRQ
 //    ------------------
-extern "C" void tmr_Interrupt(Addr_t *reg);
-void tmr_Interrupt(Addr_t *reg)
+extern "C" void tmr_Interrupt(int, Addr_t *reg);
+void tmr_Interrupt(int, Addr_t *reg)
 {
-//    KernelPrintf("*");
+    KernelPrintf("*");
     if (apic->tick && ThisCpu()->cpuNum == 0) apic->tick();
     apic->eoi();     // take care of this while interrupts are disabled!
-    uint64_t now = apic->currentTimer();
+//    uint64_t now = apic->currentTimer();
+apic->currentTimer();
 
-    SchTimerTick(now);
+//    SchTimerTick(now);
 }
 
 

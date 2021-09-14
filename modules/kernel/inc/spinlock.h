@@ -28,9 +28,9 @@
 // -- Function prototypes
 //    -------------------
 extern "C" {
-    int krn_SpinLock(Spinlock_t *lock);
-    int krn_SpinUnlock(Spinlock_t *lock);
-    int krn_SpinTry(Spinlock_t *lock, size_t timeout);
+    int krn_SpinLock(int, Spinlock_t *lock);
+    int krn_SpinUnlock(int, Spinlock_t *lock);
+    int krn_SpinTry(int, Spinlock_t *lock, size_t timeout);
 }
 
 

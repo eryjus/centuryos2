@@ -131,8 +131,6 @@ newGdt:
                 mov         rax,0
                 mov         fs,ax
 
-                call        GsInit
-
                 mov         rax,0x48
                 mov         gs,ax
 

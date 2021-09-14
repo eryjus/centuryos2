@@ -6,6 +6,10 @@
 //        Licensed under "THE BEER-WARE LICENSE"
 //        See License.md for details.
 //
+//  PROGRAMMER'S NOTE:
+//  Since this function is called from the kernel before any structures are prepared, this function cannot output
+//  any information.
+//
 // ------------------------------------------------------------------------------------------------------------------
 //
 //     Date      Tracker  Version  Pgmr  Description
@@ -36,7 +40,6 @@ void ProcessInitTable(void)
     FunctionPtr_t *wrk = (FunctionPtr_t *)__init_array_start;
 
     while (wrk != (FunctionPtr_t *)__init_array_end) {
-        KernelPrintf("Calling init function at %p\n", *wrk);
         (*wrk)();                   // -- call the function
         wrk ++;
     }

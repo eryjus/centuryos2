@@ -27,10 +27,10 @@
 // -- Function prototypes
 //    -------------------
 extern "C" {
-    void IdtInstall(void);
-    Addr_t IdtGetHandler(int i);
-    void IdtSetHandler(int i, uint16_t sec, IdtHandlerFunc_t *handler, int ist, int dpl);
+    void IntInit(void);
+    void VectorInit(void);
     Frame_t PmmEarlyFrame(void);
+    void __attribute__((noreturn)) IdtGenericHandler(ServiceRoutine_t *handler);
 }
 
 

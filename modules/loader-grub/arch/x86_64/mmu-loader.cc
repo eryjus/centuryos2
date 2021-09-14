@@ -126,40 +126,40 @@ void MmuUnmapPage(Addr_t a) { ldr_MmuUnmapPage(a); }
 //    -----------------------------
 bool MmuIsMapped(Addr_t a)
 {
-    SerialPutString("Checking if address ");
-    SerialPutHex64(a);
-    SerialPutString(" is mapped\n");
+//    SerialPutString("Checking if address ");
+//    SerialPutHex64(a);
+//    SerialPutString(" is mapped\n");
 
     INVLPG((Addr_t)GetPML4Entry(a));
     INVLPG((Addr_t)GetPDPTEntry(a));
     INVLPG((Addr_t)GetPDEntry(a));
     INVLPG((Addr_t)GetPTEntry(a));
 
-    SerialPutString("Mapped? PML4 at ");
-    SerialPutHex64((Addr_t)GetPML4Entry(a));
-    SerialPutChar('\n');
+//    SerialPutString("Mapped? PML4 at ");
+//    SerialPutHex64((Addr_t)GetPML4Entry(a));
+//    SerialPutChar('\n');
 
     if (!GetPML4Entry(a)->p) return false;
 
-    SerialPutString("mapped? PDPT at ");
-    SerialPutHex64((Addr_t)GetPDPTEntry(a));
-    SerialPutChar('\n');
+//    SerialPutString("mapped? PDPT at ");
+//    SerialPutHex64((Addr_t)GetPDPTEntry(a));
+//    SerialPutChar('\n');
 
     if (!GetPDPTEntry(a)->p) return false;
 
-    SerialPutString("mapped? PD at ");
-    SerialPutHex64((Addr_t)GetPDEntry(a));
-    SerialPutChar('\n');
+//    SerialPutString("mapped? PD at ");
+//    SerialPutHex64((Addr_t)GetPDEntry(a));
+//    SerialPutChar('\n');
 
     if (!GetPDEntry(a)->p) return false;
 
-    SerialPutString("mapped? PT at ");
-    SerialPutHex64((Addr_t)GetPTEntry(a));
-    SerialPutChar('\n');
+//    SerialPutString("mapped? PT at ");
+//    SerialPutHex64((Addr_t)GetPTEntry(a));
+//    SerialPutChar('\n');
 
     if (!GetPTEntry(a)->p) return false;
 
-    SerialPutString("mapped.\n");
+//    SerialPutString("mapped.\n");
 
     return true;
 }
@@ -170,7 +170,9 @@ bool MmuIsMapped(Addr_t a)
 //    -------------------
 void ldr_MmuUnmapPage(Addr_t a)
 {
-    SerialPutString("Unmapping ");
+    SerialPutString("In address space ");
+    SerialPutHex64(GetCr3());
+    SerialPutString(", Unmapping page at address ");
     SerialPutHex64(a);
     SerialPutChar('\n');
 
@@ -186,23 +188,25 @@ void ldr_MmuUnmapPage(Addr_t a)
 //    ---------------------
 void ldr_MmuMapPage(Addr_t a, Frame_t f, int flags)
 {
-    SerialPutString("Mapping ");
+    SerialPutString("In address space ");
+    SerialPutHex64(GetCr3());
+    SerialPutString(", request was made to map address ");
     SerialPutHex64(a);
     SerialPutString(" to frame ");
     SerialPutHex64(f);
     SerialPutChar('\n');
 
-    SerialPutString("Checking if the page is mapped\n");
+//    SerialPutString("Checking if the page is mapped\n");
     if (MmuIsMapped(a)) ldr_MmuUnmapPage(a);
-    SerialPutString(".. Done -- guaranteed unmapped\n");
+//    SerialPutString(".. Done -- guaranteed unmapped\n");
 
 
     Frame_t t;
     PageEntry_t *ent = GetPML4Entry(a);
     INVLPG((Addr_t)ent);
-    SerialPutString(".. Mapping PML4 @ ");
-    SerialPutHex64((Addr_t)ent);
-    SerialPutChar('\n');
+//    SerialPutString(".. Mapping PML4 @ ");
+//    SerialPutHex64((Addr_t)ent);
+//    SerialPutChar('\n');
     if (!ent->p) {
         t = MmuGetTable();
         ent->frame = t;
@@ -218,15 +222,15 @@ void ldr_MmuMapPage(Addr_t a, Frame_t f, int flags)
         }
     }
 
-    SerialPutString(".... [hex ");
-    SerialPutHex64(*(uint64_t *)ent);
-    SerialPutString("]\n");
+//    SerialPutString(".... [hex ");
+//    SerialPutHex64(*(uint64_t *)ent);
+//    SerialPutString("]\n");
 
     ent = GetPDPTEntry(a);
     INVLPG((Addr_t)ent);
-    SerialPutString(".. Mapping PDPT @ ");
-    SerialPutHex64((Addr_t)ent);
-    SerialPutChar('\n');
+//    SerialPutString(".. Mapping PDPT @ ");
+//    SerialPutHex64((Addr_t)ent);
+//    SerialPutChar('\n');
     if (!ent->p) {
         t = MmuGetTable();
         ent->frame = t;
@@ -240,15 +244,15 @@ void ldr_MmuMapPage(Addr_t a, Frame_t f, int flags)
         for (int i = 0; i < 512; i ++) tbl[i] = 0;
     }
 
-    SerialPutString(".... [hex ");
-    SerialPutHex64(*(uint64_t *)ent);
-    SerialPutString("]\n");
+//    SerialPutString(".... [hex ");
+//    SerialPutHex64(*(uint64_t *)ent);
+//    SerialPutString("]\n");
 
     ent = GetPDEntry(a);
     INVLPG((Addr_t)ent);
-    SerialPutString(".. Mapping PD @ ");
-    SerialPutHex64((Addr_t)ent);
-    SerialPutChar('\n');
+//    SerialPutString(".. Mapping PD @ ");
+//    SerialPutHex64((Addr_t)ent);
+//    SerialPutChar('\n');
     if (!ent->p) {
         t = MmuGetTable();
         ent->frame = t;
@@ -261,24 +265,51 @@ void ldr_MmuMapPage(Addr_t a, Frame_t f, int flags)
         uint64_t *tbl = (uint64_t *)((Addr_t)GetPTEntry(a) & 0xfffffffffffff000);
         for (int i = 0; i < 512; i ++) tbl[i] = 0;
 
-        SerialPutString("Address: ");
-        SerialPutHex64((uint64_t)ent);
-        SerialPutString(" .... [hex ");
-        SerialPutHex64(*((uint64_t *)ent));
-        SerialPutString("]\n");
+//        SerialPutString("Address: ");
+//        SerialPutHex64((uint64_t)ent);
+//        SerialPutString(" .... [hex ");
+//        SerialPutHex64(*((uint64_t *)ent));
+//        SerialPutString("]\n");
     }
 
-    SerialPutString(".... [hex ");
-    SerialPutHex64(*(uint64_t *)ent);
-    SerialPutString("]\n");
+//    SerialPutString(".... [hex ");
+//    SerialPutHex64(*(uint64_t *)ent);
+//    SerialPutString("]\n");
 
     ent = GetPTEntry(a);
     INVLPG((Addr_t)ent);
-    SerialPutString(".. Mapping PT @ ");
-    SerialPutHex64((Addr_t)ent);
-    SerialPutChar('\n');
+//    SerialPutString(".. Mapping PT @ ");
+//    SerialPutHex64((Addr_t)ent);
+//    SerialPutChar('\n');
     ent->frame = f;
     ent->rw = (flags&PG_WRT?1:0);
     ent->p = 1;
 }
 
+
+
+//
+// -- Create an empty PDPT Table
+//    --------------------------
+void MmuEmptyPdpt(int index)
+{
+    extern Frame_t earlyFrame;
+
+    PageEntry_t *ent = &((PageEntry_t *)0xfffffffffffff000)[index];
+
+    if (!ent->p) {
+        ent->frame = earlyFrame ++;
+
+//        SerialPutString("Next frame is: ");
+//        SerialPutHex64(ent->frame);
+//        SerialPutChar('\n');
+
+        ent->rw = 1;
+        ent->p = 1;
+
+        uint64_t *tbl = (uint64_t *)(0xffffffffffe00000 | (index << 21));;
+        for (int i = 0; i < 512; i ++) {
+            tbl[i] = 0;
+        }
+    }
+}

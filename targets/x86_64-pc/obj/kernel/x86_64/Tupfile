@@ -30,12 +30,18 @@ NFLAGS+=-I ../../../../../modules/$(MODULE)/inc
 CFLAGS+=-I ../../../../../modules/$(MODULE)/inc
 CFLAGS+=-I ../../../usr/include/kernel
 CFLAGS+=-I ../../../../../arch/$(ARCH)/inc
+CFLAGS+=-DMMU_HEAP_START=0xffff900000000000
+CFLAGS+=-DMMU_HEAP_END=0xffff980000000000
+
 
 
 DEPS+=../../../usr/include/kernel/kernel-funcs.h
 DEPS+=../../../usr/include/kernel/types.h
+DEPS+=../../../usr/include/kernel/heap.h
 DEPS+=../../../usr/include/kernel/elf.h
+DEPS+= ../../../usr/include/kernel/scheduler.h
 DEPS+= ../../../usr/include/kernel/serial.h
+DEPS+= ../../../usr/include/kernel/stacks.h
 DEPS+= ../../../usr/include/kernel/boot-interface.h
 DEPS+=../../../usr/include/errno.h
 

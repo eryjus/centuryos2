@@ -16,6 +16,7 @@
 
 
 #pragma once
+
 #ifndef __TYPES_H__
 #define __TYPES_H__
 
@@ -44,6 +45,12 @@
 #define PAGE_SIZE           4096
 
 
+//
+// -- The allocated stack size
+//    ------------------------
+#define STACK_SIZE                      (4096*4)
+
+
 
 //
 // -- Foundational Types
@@ -53,20 +60,8 @@ typedef uint64_t Addr_t;
 typedef uint64_t Pid_t;
 typedef uint8_t Byte_t;
 typedef uint64_t Bitmap_t;
+typedef int64_t Return_t;
 
-
-//
-// -- This is the type definition of a handler function
-//    -------------------------------------------------
-typedef void (*IdtHandlerFunc_t)(Addr_t *);
-
-
-//
-// -- this is the internal handler function address, used for the table
-//    (each function has its own parameter list)
-//    -----------------------------------------------------------------
-typedef Addr_t InternalHandler_t;
-typedef Addr_t ServiceHandler_t;
 
 
 //
@@ -77,6 +72,18 @@ typedef struct Spinlock_t {
     Addr_t flags;
 } Spinlock_t;
 
+
+
+//
+// -- This is the common definition of a service routine
+//    --------------------------------------------------
+typedef struct ServiceRoutine_t {
+    Addr_t handler;
+    Addr_t cr3;
+    Addr_t stack;
+    Addr_t runtimeRegs;
+    Spinlock_t lock;
+} ServiceRoutine_t;
 
 
 
@@ -94,7 +101,6 @@ typedef struct Spinlock_t {
 // -- Stack information
 //    -----------------
 const Addr_t STACK_LOCATION             = 0xfffff80000000000;
-#define STACK_SIZE                      (4096*4)
 
 
 //

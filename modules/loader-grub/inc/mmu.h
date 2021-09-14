@@ -30,4 +30,5 @@ extern "C" {
     void MmuMapPage(Addr_t a, Frame_t f, int flags);
     void ldr_MmuUnmapPage(Addr_t a);
     void ldr_MmuMapPage(Addr_t a, Frame_t f, int flags);
+    void MmuEmptyPdpt(int index);
 }

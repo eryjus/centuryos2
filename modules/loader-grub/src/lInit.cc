@@ -15,7 +15,7 @@
 //===================================================================================================================
 
 
-//#define USE_SERIAL
+#define USE_SERIAL
 
 
 #include "types.h"
@@ -51,8 +51,15 @@ void lInit(void)
     extern Addr_t pml4;
     const Addr_t interfaceLocation = 0xffff9ffffffff000;
 
+    // -- create all the kernel PML4 entries
     SerialOpen();
     SerialPutString("Hello\n");
+
+    for (int i = 0x100; i < 0x1ff; i ++) {
+        if ((i >= 0x100 && i < 0x140) || (i >= 0x1f0 && i < 0x1ff)) {
+            MmuEmptyPdpt(i);
+        }
+    }
 
     Frame_t fr = earlyFrame ++;
     MmuMapPage(interfaceLocation, fr, PG_WRT);
@@ -66,6 +73,10 @@ void lInit(void)
     }
 
     SerialPutString("Getting the kernel\n");
+    SerialPutString("  cr3 = ");
+    SerialPutHex64(GetCr3());
+    SerialPutChar('\n');
+
     Addr_t kernel = MBootGetKernel();
     Addr_t stack = (earlyFrame);
     earlyFrame += 4;

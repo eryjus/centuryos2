@@ -144,8 +144,12 @@ typedef struct KHeap_t {
 //
 // -- some local and global variables
 //    -------------------------------
+extern Addr_t __heapStart, __heapEnd;
+
 Spinlock_t heapLock = {0};
-const Addr_t heapStart = MMU_HEAP_START;              // this is the start in virtual address space
+const Addr_t heapStart = __heapStart;              // this is the start in virtual address space
+const Addr_t heapEnd = __heapEnd;
+
 OrderedList_t fixedList[ORDERED_LIST_STATIC];
 bool fixedListUsed = 0;
 
@@ -156,9 +160,9 @@ static KHeap_t _heap = {
     .heap1K = NULL,
     .heap4K = NULL,
     .heap16K = NULL,
-    .strAddr = (Byte_t *)(MMU_HEAP_START),
-    .endAddr = (Byte_t *)(MMU_HEAP_START + INITIAL_HEAP),
-    .maxAddr = (Byte_t *)(MMU_HEAP_END),
+    .strAddr = (Byte_t *)(heapStart),
+    .endAddr = (Byte_t *)(heapStart + INITIAL_HEAP),
+    .maxAddr = (Byte_t *)(heapEnd),
 };
 
 KHeap_t *kHeap = &_heap;
@@ -813,6 +817,9 @@ void HeapInit(void)
     Addr_t vLimit = vAddr + INITIAL_HEAP;
 
     for ( ; vAddr < vLimit; vAddr += 0x1000) {
+#ifdef DEBUG_HEAP
+//        KernelPrintf(".. mapping addr %p (limit %p)\n", vAddr, vLimit);
+#endif
         MmuMapPage(vAddr, PmmAlloc(), PG_WRT);
     }
 
@@ -830,6 +837,10 @@ void HeapInit(void)
 #endif
 
     // -- Build the first free block which is all allocated
+#ifdef DEBUG_HEAP
+    KernelPrintf(".. building the first block at address %p\n", heapStart);
+#endif
+
     fixedList[0].block = (KHeapHeader_t *)heapStart;
     fixedList[0].next = 0;
     fixedList[0].prev = 0;
@@ -837,13 +848,13 @@ void HeapInit(void)
 
     _heap.strAddr = (Byte_t *)heapStart;
     _heap.endAddr = ((Byte_t *)_heap.strAddr) + fixedList[0].size;
-    _heap.maxAddr = (Byte_t *)MMU_HEAP_END;
+    _heap.maxAddr = (Byte_t *)heapEnd;
 
     _heap.heapMemory = _heap.heap512 = _heap.heap1K =
             _heap.heap4K = _heap.heap16K = &fixedList[0];
 
 #ifdef DEBUG_HEAP
-    KernelPrintf(".. initializing the first header\n");
+    KernelPrintf(".. initializing the first header at %p\n", fixedList[0].block);
 #endif
 
     fixedList[0].block->_magicUnion.magicHole = HEAP_MAGIC;

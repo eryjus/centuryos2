@@ -106,8 +106,6 @@ typedef enum {
 //    ---------------------------
 typedef struct Process_t {
     Addr_t tosProcessSwap;              // This is the process current esp value (when not executing)
-    Addr_t tosKernel;                   // This is the stack used when changing to the kernel (interrupts/syscalls)
-    Addr_t tosInterrupted;              // This is the stack as it was then it was interrupted by fault, IRQ or syscall
     Addr_t virtAddrSpace;               // This is the process top level page table
     ProcStatus_t status;                // This is the process status
     ProcPriority_t priority;            // This is the process priority
@@ -187,6 +185,7 @@ typedef struct Scheduler_t {
 extern "C" {
     void ProcessStart(void);
     void ProcessNewStack(Process_t *proc, void (*startingAddr)(void));
+    Process_t *sch_ProcessCreate(int, const char *name, void (*startingAddr)(void), Addr_t addrSpace);
 }
 
 

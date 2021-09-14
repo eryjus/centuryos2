@@ -24,9 +24,9 @@
 // -- Some function prototypes
 //    ------------------------
 extern "C" {
-    int PmmInitEarly(BootInterface_t *loaderInterface);
-    Frame_t pmm_PmmAllocateAligned(bool low, int bitsAligned, size_t count);
-    int pmm_PmmReleaseFrame(Frame_t frame, size_t count);
+    Return_t PmmInitEarly(BootInterface_t *loaderInterface);
+    Frame_t pmm_PmmAllocateAligned(int, bool low, int bitsAligned, size_t count);
+    Return_t pmm_PmmReleaseFrame(int, Frame_t frame, size_t count);
     Addr_t GetCr3(void);
     void pmm_LateInit(void);
 }
@@ -126,6 +126,15 @@ void DumpPmm(void)
     }
 
     KernelPrintf("\n");
+    KernelPrintf("  Search Lock State: %s\n", pmm.searchLock.lock?"locked":"unlocked");
+    KernelPrintf("  Search Stack Address: %p\n", pmm.search);
+
+    if (pmm.search) {
+        KernelPrintf("    Search Stack TOS frame: %p\n", pmm.search->frame);
+        KernelPrintf("    Search Stack TOS count: %d\n", pmm.search->count);
+    }
+
+    KernelPrintf("\n");
     KernelPrintf("==========================================\n");
     KernelPrintf("\n");
 }
@@ -136,7 +145,7 @@ void DumpPmm(void)
 //    ---------------------------------------------------------
 static void PushStack(PmmFrameInfo_t **stack, Frame_t frame, size_t count)
 {
-//    SpinLock(&pmm.insertLock);
+    SpinLock(&pmm.insertLock);
     MmuMapPage(tempInsert, frame, PG_WRT);
     volatile PmmFrameInfo_t *wrk = (PmmFrameInfo_t *)tempInsert;
 
@@ -159,7 +168,7 @@ static void PushStack(PmmFrameInfo_t **stack, Frame_t frame, size_t count)
     }
 
     MmuUnmapPage(tempInsert);
-//    SpinUnlock(&pmm.insertLock);
+    SpinUnlock(&pmm.insertLock);
 
     // -- finally, push the new node
     MmuMapPage((Addr_t)(*stack), frame, PG_WRT);
@@ -196,16 +205,20 @@ static void PopStack(PmmFrameInfo_t **stack)
 //    ------------------------------------
 static void PmmScrubFrame(Frame_t frame)
 {
-//    SpinLock(&pmm.clearLock);
+    SpinLock(&pmm.clearLock);
 
+//    KernelPrintf("!!!!! PmmScrubFrame() preparing to map a page\n");
     MmuMapPage(clearAddr, frame, PG_WRT);
+//    KernelPrintf("!!!!! PmmScrubFrame() page mapped\n");
+    MmuDump(clearAddr);
+
     uint64_t *wrk = (uint64_t *)clearAddr;
 
     for (int i = 0; i < 512; i ++) wrk[i] = 0;
 
     MmuUnmapPage(clearAddr);
 
-//    SpinUnlock(&pmm.clearLock);
+    SpinUnlock(&pmm.clearLock);
 }
 
 
@@ -227,6 +240,10 @@ static Frame_t PmmDoRemoveFrame(PmmFrameInfo_t **stack, bool scrub)
 {
     Frame_t rv = 0;         // assume we will not find anything
 
+//    KernelPrintf("Removing a single frame; some interesting facts:\n");
+//    KernelPrintf(".. stack = %p\n", stack);
+//    KernelPrintf(".. *stack = %p\n", stack?*stack:0);
+
     if ((Addr_t)(*stack)) {
         rv = (*stack)->frame + (*stack)->count - 1;
         (*stack)->count --;
@@ -239,9 +256,13 @@ static Frame_t PmmDoRemoveFrame(PmmFrameInfo_t **stack, bool scrub)
         return 0;
     }
 
+//    KernelPrintf(".. Found the frame to use: %p\n", rv);
+
 
     // -- scrub the frame if requested
     if (scrub) PmmScrubFrame(rv);
+
+//    KernelPrintf(".. all good!\n");
 
     return rv;
 }
@@ -251,12 +272,10 @@ static Frame_t PmmDoRemoveFrame(PmmFrameInfo_t **stack, bool scrub)
 //
 // -- Complete the initialization required for the PMM
 //    ------------------------------------------------
-int PmmInitEarly(BootInterface_t *loaderInterface)
+Return_t PmmInitEarly(BootInterface_t *loaderInterface)
 {
     ProcessInitTable();
-
-    MmuMapPage(tempMap, 1, PG_NONE);            // -- this needs to be mapped to allocate new tables
-    MmuUnmapPage(tempMap);                      // -- unmap immediately -- tables created
+    KernelPrintf("PmmInitEarly(): Starting initialization\n");
 
     for (int i = 0; i < MAX_MEM; i ++) {
         Frame_t start = loaderInterface->memBlocks[i].start >> 12;
@@ -292,8 +311,9 @@ int PmmInitEarly(BootInterface_t *loaderInterface)
         MmuUnmapPage(tempMap);
     }
 
-    SetInternalHandler(INT_PMM_ALLOC, (InternalHandler_t)pmm_PmmAllocateAligned, GetPageTables());
+    SetInternalHandler(INT_PMM_ALLOC, (Addr_t)pmm_PmmAllocateAligned, GetAddressSpace(), 0);
 
+    KernelPrintf("PmmInitEarly(): Initialization complete\n");
 //    DumpPmm();
 
     return 0;   // will be loaded
@@ -313,6 +333,7 @@ static Frame_t PmmAllocate(bool low)
     // -- check the normal stack for a frame to allocate
     //    ----------------------------------------------
     if (!low) {
+//        KernelPrintf("Allocating a single frame from the normal stack\n");
         SpinLock(&pmm.normLock);
         rv = PmmDoRemoveFrame(&pmm.normStack, false);
         SpinUnlock(&pmm.normLock);
@@ -324,9 +345,11 @@ static Frame_t PmmAllocate(bool low)
     // -- check the scrub queue for a frame to allocate
     //    ---------------------------------------------
     if (!low) {
+//        KernelPrintf("Allocating a single frame from the scrub stack\n");
         SpinLock(&pmm.scrubLock);
         rv = PmmDoRemoveFrame(&pmm.scrubStack, true);       // -- scrub the frame when it is removed
         SpinUnlock(&pmm.scrubLock);
+//        KernelPrintf("Frame Allocated: %p\n", rv);
     }
     if (rv != 0) return rv;
 
@@ -334,6 +357,7 @@ static Frame_t PmmAllocate(bool low)
     //
     // -- check the low stack for a frame to allocate
     //    -------------------------------------------
+//    KernelPrintf("Allocating a single frame from the low stack\n");
     SpinLock(&pmm.lowLock);
     rv = PmmDoRemoveFrame(&pmm.lowStack, false);
     SpinUnlock(&pmm.lowLock);
@@ -375,11 +399,14 @@ static Frame_t PmmSplitBlock(PmmFrameInfo_t **stack, Frame_t frame, size_t block
 }
 
 
+
 //
 // -- This function is the working to find a frame that is properly aligned and allocate multiple contiguous frames
 //    -------------------------------------------------------------------------------------------------------------
 Frame_t PmmDoAllocAlignedFrames(PmmFrameInfo_t **pStack, const size_t count, const size_t bitAlignment)
 {
+//    KernelPrintf("Allocating aligned frame(s)\n");
+
     //
     // -- start by determining the bits we cannot have enabled when we evaluate a frame
     //    -----------------------------------------------------------------------------
@@ -390,8 +417,19 @@ Frame_t PmmDoAllocAlignedFrames(PmmFrameInfo_t **pStack, const size_t count, con
 
 
     // -- Interrupts are already disabled before we get here
+//    KernelPrintf(".. Attempting the search lock\n");
+
     SpinLock(&pmm.searchLock); {
+//        KernelPrintf(".. Lock obtained\n");
+
+//        KernelPrintf("Some interesting facts before MmuMapPage:\n");
+//        KernelPrintf(".. pmm.search is %p\n", pmm.search);
+//        KernelPrintf(".. pStack is %p (%s)\n", pStack, MmuIsMapped((Addr_t)pStack)?"mapped":"not mapped");
+//        KernelPrintf(".. (*pStack) is %p\n", *pStack);
+//        KernelPrintf(".. (*pStack)->frame is %p\n", pStack?(*pStack)->frame:0);
         MmuMapPage((Addr_t)pmm.search, (*pStack)->frame, PG_WRT);
+
+//        KernelPrintf(".. Page mapped\n");
 
         while(true) {
             Frame_t end = pmm.search->frame + pmm.search->count - 1;
@@ -436,25 +474,25 @@ exit:
         SpinUnlock(&pmm.searchLock);
     }
 
-//    kprintf("Aligned PMM Allocation is finally returning frame %x\n", rv);
+//    KernelPrintf("Aligned PMM Allocation is finally returning frame %x\n", rv);
 
     return rv;
 }
 
 
 
-
-
-
 //
 // -- Allocate aligned frame(s)
 //    -------------------------
-Frame_t pmm_PmmAllocateAligned(bool low, int bitsAligned, size_t count)
+Frame_t pmm_PmmAllocateAligned(int, bool low, int bitsAligned, size_t count)
 {
+//    KernelPrintf("Internal Function to allocate aligned frames (pmm_PmmAllocateAligned)\n");
+//    KernelPrintf(".. low = %s; alignment bits = %d; count = %d\n", low?"true":"false", bitsAligned, count);
     if (bitsAligned < 12) bitsAligned = 12;
     if (count == 1 && bitsAligned == 12) return PmmAllocate(low);
 
     // -- TODO: add some detail here to allocate aligned/multiple frames
+//    KernelPrintf(".. More than a trivial allocation\n");
     Addr_t flags = DisableInt();
     Frame_t rv = 0;
 
@@ -477,7 +515,7 @@ Frame_t pmm_PmmAllocateAligned(bool low, int bitsAligned, size_t count)
 //
 // -- Release a frame
 //    ---------------
-int pmm_PmmReleaseFrame(Frame_t frame, size_t count)
+Return_t pmm_PmmReleaseFrame(int, Frame_t frame, size_t count)
 {
     SpinLock(&pmm.scrubLock);
     PushStack(&pmm.scrubStack, frame, count);
@@ -531,7 +569,8 @@ void PmmCleanProcess(void)
 //    -------------------------------------------
 void pmm_LateInit(void)
 {
-    SchProcessCreate("PMM Cleaner", PmmCleanProcess);
+    KernelPrintf("Starting PMM Cleaner process\n");
+//    SchProcessCreate("PMM Cleaner", PmmCleanProcess, GetAddressSpace());
     KernelPrintf("PMM Late Initialization Complete!\n");
 }
 

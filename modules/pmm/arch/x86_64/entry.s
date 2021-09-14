@@ -31,17 +31,20 @@
 ;; -- Set up the header structure for parsing from the kernel
 ;;    -------------------------------------------------------
 header:
-                db          'C','e','n','t','u','r','y',' ','O','S',' ','6','4',0,0,0   ; Sig
-                db          'P','M','M',0,0,0,0,0,0,0,0,0,0,0,0,0                       ; Name
-                dq          PmmInitEarly                                                ; Early Init
-                dq          pmm_LateInit                                                ; Late Init
-                dq          0                                                           ; interrupts
-                dq          2                                                           ; internal Services
-                dq          0                                                           ; OS services
-                dq          10                                                          ; internal function 1
-                dq          pmm_PmmAllocateAligned                                      ; .. target address
-                dq          11                                                          ; internal function 2
-                dq          pmm_PmmReleaseFrame                                         ; .. target address
+                db          'C','e','n','t','u','r','y',' ','O','S',' ','6','4',0,0,0   ;; Sig
+                db          'P','M','M',0,0,0,0,0,0,0,0,0,0,0,0,0                       ;; Name
+                dq          PmmInitEarly                                                ;; Early Init
+                dq          pmm_LateInit                                                ;; Late Init
+                dq          0xffffaf4000000000                                          ;; Stack Locations
+                dq          0                                                           ;; interrupts
+                dq          2                                                           ;; internal Services
+                dq          0                                                           ;; OS services
+                dq          0x050                                                       ;; internal function 1
+                dq          pmm_PmmAllocateAligned                                      ;; .. target address
+                dq          0                                                           ;; .. stack
+                dq          0x051                                                       ;; internal function 2
+                dq          pmm_PmmReleaseFrame                                         ;; .. target address
+                dq          0                                                           ;; .. stack
 
 
 GetCr3:

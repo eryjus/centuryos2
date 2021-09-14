@@ -195,10 +195,10 @@ static int EarlyInit(BootInterface_t *loaderInterface)
         // -- enable the APIC and x2apic mode
         WRMSR(IA32_APIC_BASE_MSR, 0
                 | IA32_APIC_BASE_MSR__EN
-                | (apicBaseMsr & ~0xfff));
+                | (apicBaseMsr & ~(PAGE_SIZE-1)));
 
         MmuMapPage(xapic.baseAddr, apicFrame, PG_WRT|PG_DEV);
-//        MmuDumpTables(xapic.baseAddr);
+        MmuDump(xapic.baseAddr);
     }
 
     //
@@ -211,8 +211,8 @@ static int EarlyInit(BootInterface_t *loaderInterface)
 
 
     if (isBoot) {
-        SetInterruptHandler(32, 0x08, (Addr_t)LApicInitTimeout, 0, 0);
-        SetInterruptHandler(32, 0x08, (Addr_t)LApicSpurious, 0, 0);
+        SetVectorHandler(32, (Addr_t)LApicInitTimeout, GetAddressSpace(), 0);
+        SetVectorHandler(32, (Addr_t)LApicSpurious, GetAddressSpace(), 0);
     }
 
 
@@ -233,6 +233,7 @@ static int EarlyInit(BootInterface_t *loaderInterface)
 
     // -- enable the PIC timer in one-shot mode
     if (isBoot) {
+        KernelPrintf(".. Setting up the boot LAPIC\n");
         OUTB(0x61, (INB(0x61) & 0xfd) | 1);
         OUTB(0x43, 0xb2);
 

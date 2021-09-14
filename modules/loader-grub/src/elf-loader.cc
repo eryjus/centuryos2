@@ -15,7 +15,7 @@
 //===================================================================================================================
 
 
-//#define USE_SERIAL
+#define USE_SERIAL
 
 #include "types.h"
 #include "mmu.h"
@@ -216,14 +216,14 @@ Addr_t ElfLoadImage(Addr_t location)
                 int64_t fSize = pHdr[i].pFileSz;
                 int64_t mSize = pHdr[i].pMemSz;
 
-                SerialPutString(".. type = ");
-                SerialPutHex32(pHdr[i].pType);
-                SerialPutChar('\n');
+//                SerialPutString(".. type = ");
+//                SerialPutHex32(pHdr[i].pType);
+//                SerialPutChar('\n');
 
                 while (mSize >= 0) {
-                    SerialPutString(".. mapping elf; mSize = ");
-                    SerialPutHex64(mSize);
-                    SerialPutChar('\n');
+//                    SerialPutString(".. mapping elf; mSize = ");
+//                    SerialPutHex64(mSize);
+//                    SerialPutChar('\n');
 
                     Frame_t f = phys >> 12;
 

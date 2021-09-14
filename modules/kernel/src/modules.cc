@@ -15,18 +15,23 @@
 //===================================================================================================================
 
 
-//#define USE_SERIAL
+#define USE_SERIAL
 
 #include "types.h"
 #include "printf.h"
 #include "boot-interface.h"
 #include "kernel-funcs.h"
-#include "internal.h"
+#include "internals.h"
 #include "mmu.h"
 #include "elf.h"
 #include "idt.h"
 #include "modules.h"
 
+
+//
+// -- The module handler stack size
+//    -----------------------------
+#define MODULE_STACK_SIZE   0x1000
 
 //
 // -- This is the structure that will be available to determine how to load a module
@@ -36,12 +41,14 @@ typedef struct Module_t {
     char name[16];
     uint64_t earlyInit;
     uint64_t lateInit;
+    uint64_t stacksStart;
     uint64_t intCnt;
     uint64_t internalCnt;
     uint64_t osCnt;
     struct {
         uint64_t loc;
         uint64_t target;
+        uint64_t stack;
     } hooks [0];
 } Module_t;
 
@@ -118,6 +125,7 @@ Module_t *ModuleCheck(Addr_t addr)
 void ModuleEarlyInit()
 {
     uint64_t *cr3 = (uint64_t *)0xfffffffffffff000;
+    uint64_t currentStack;
 
 //    kprintf("Checking recursive mapping %p\n", cr3[511]);
 //    kprintf("Checking kernel mapping %p\n", cr3[0x100]);
@@ -131,7 +139,7 @@ void ModuleEarlyInit()
 
 //        kprintf("Preparing to map address %p to frame %p\n", modInternal[i].cr3Addr, cr3Frame);
 
-        MmuMapPage(modInternal[i].cr3Addr, cr3Frame, PG_WRT);
+        MmuMapPage(modInternal[i].cr3Addr, cr3Frame, PG_WRT);       // This is identity mapped!
 
         kprintf("Mapping the module\n");
 
@@ -155,7 +163,6 @@ void ModuleEarlyInit()
         kprintf("Loading Module located at %p\n", moduleAddr);
         kprintf(".. Old CR3: %p; New: %p\n", oldCr3, modInternal[i].cr3Addr);
         kprintf(".. Module Address is getting mapped to %p\n", moduleAddr);
-        MmuMapPage(moduleAddr, moduleAddr >> 12, PG_NONE);
 
         kprintf(".. Image header mapped\n");
         modInternal[i].entries = ElfLoadImage(moduleAddr);
@@ -183,22 +190,46 @@ void ModuleEarlyInit()
 
 
         if (modInternal[i].loaded) {
+            currentStack = mod->stacksStart;
+
             kprintf(".. Hooking services: %d interrupts; %d internal functions; %d OS services\n", mod->intCnt, mod->internalCnt, mod->osCnt);
+
             // -- Now install the hooks
             unsigned long h;
             for (h = 0; h < mod->intCnt; h ++) {
                 kprintf(".... Hooking Interrupt Vector %d: %p from %p\n", mod->hooks[h].loc, mod->hooks[h].target, modInternal[i].cr3Addr);
-                krn_SetVectorHandler(mod->hooks[h].loc, (IdtHandlerFunc_t)mod->hooks[h].target, modInternal[i].cr3Addr);
+                kprintf("...... stack at %p\n", currentStack);
+
+                if (currentStack) {
+                    krn_MmuMapPage(0, currentStack, PmmAlloc(), PG_WRT);
+                    currentStack += MODULE_STACK_SIZE;
+                }
+
+                krn_SetVectorHandler(0, mod->hooks[h].loc, mod->hooks[h].target, modInternal[i].cr3Addr, currentStack);
             }
 
             for ( ; h < mod->intCnt + mod->internalCnt; h ++) {
                 kprintf(".... Hooking Internal Function %d: %p from %p\n", mod->hooks[h].loc, mod->hooks[h].target, modInternal[i].cr3Addr);
-                SetInternalHandler(mod->hooks[h].loc, mod->hooks[h].target, modInternal[i].cr3Addr);
+                kprintf("...... stack at %p\n", currentStack);
+
+                if (currentStack) {
+                    krn_MmuMapPage(0, currentStack, PmmAlloc(), PG_WRT);
+                    currentStack += MODULE_STACK_SIZE;
+                }
+
+                krn_SetInternalHandler(0, mod->hooks[h].loc, mod->hooks[h].target, modInternal[i].cr3Addr, currentStack);
             }
 
             for ( ; h < mod->intCnt + mod->internalCnt + mod->osCnt; h ++) {
                 kprintf(".... Hooking OS Service %d: %p from %p\n", mod->hooks[h].loc, mod->hooks[h].target, modInternal[i].cr3Addr);
-                SetInternalService(mod->hooks[h].loc, mod->hooks[h].target, modInternal[i].cr3Addr);
+                kprintf("...... stack at %p\n", currentStack);
+
+                if (currentStack) {
+                    krn_MmuMapPage(0, currentStack, PmmAlloc(), PG_WRT);
+                    currentStack += MODULE_STACK_SIZE;
+                }
+
+                krn_SetServiceHandler(0, mod->hooks[h].loc, mod->hooks[h].target, modInternal[i].cr3Addr, currentStack);
             }
         } else {
             // -- unload the module
@@ -206,8 +237,6 @@ void ModuleEarlyInit()
 
 
         // -- Clean up from loading the module
-//        kprintf(".. The entry point is at %p\n", modInternal[i].entries);
-        MmuUnmapPage(moduleAddr);
         LoadCr3(oldCr3);
     }
 }
@@ -219,12 +248,16 @@ void ModuleEarlyInit()
 void ModuleLateInit(void)
 {
     for (int i = 0; i < loaderInterface->modCount; i ++) {
+        kprintf("Checking module %d\n", i);
         if (modInternal[i].loaded) {
             Addr_t oldCr3 = LoadCr3(modInternal[i].cr3Addr);
             Addr_t moduleAddr = loaderInterface->modAddr[i];
             MmuMapPage(moduleAddr, moduleAddr >> 12, PG_NONE);
             Module_t *mod = ModuleCheck(modInternal[i].entries);
+
             if (mod->lateInit) {
+                kprintf("Performing the Late initialization for module %s\n",mod->name);
+
                 LateInit_t init = (LateInit_t)mod->lateInit;
                 init();
             }

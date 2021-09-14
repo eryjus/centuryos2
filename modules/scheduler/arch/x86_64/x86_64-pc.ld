@@ -29,6 +29,9 @@ STACK_START = 0xffffaf0000000000;
 STACK_COUNT = 32;
 STACK_SIZE = 0x1000 * 4;
 
+HEAP_START = 0xffffb80000000000;
+HEAP_END   = 0xffffc00000000000;
+
 
 SECTIONS
 {
@@ -90,6 +93,7 @@ SECTIONS
         {
             KEEP (*(SORT_NONE(.fini)))
         }
+    . = ALIGN(4096);
     PROVIDE (__etext = .);
     PROVIDE (_etext = .);
     PROVIDE (etext = .);
@@ -118,6 +122,7 @@ SECTIONS
             *(.tdata .tdata.* .gnu.linkonce.td.*)
         }
     .tbss		            : { *(.tbss .tbss.* .gnu.linkonce.tb.*) *(.tcommon) }
+    . = ALIGN(4096);
     .preinit_array :
         {
             PROVIDE_HIDDEN (__preinit_array_start = .);
@@ -130,6 +135,7 @@ SECTIONS
             KEEP (*(SORT_BY_INIT_PRIORITY(.init_array.*) SORT_BY_INIT_PRIORITY(.ctors.*)))
             KEEP (*(.init_array EXCLUDE_FILE (*crtbegin.o *crtbegin?.o *crtend.o *crtend?.o ) .ctors))
             PROVIDE_HIDDEN (__init_array_end = .);
+            QUAD(0);
         }
     .fini_array :
         {
@@ -184,9 +190,11 @@ SECTIONS
     .got.plt                : { *(.got.plt) *(.igot.plt) }
     .data :
         {
-            __stackStart = .;       LONG(STACK_START);
-            __stackSize = .;        LONG(STACK_SIZE);
-            __stackCount = .;       LONG(STACK_COUNT);
+            __stackStart = .;       QUAD(STACK_START);
+            __stackSize = .;        QUAD(STACK_SIZE);
+            __stackCount = .;       QUAD(STACK_COUNT);
+            __heapStart = .;        QUAD(HEAP_START);
+            __heapEnd = .;          QUAD(HEAP_END);
 
             *(.data .data.* .gnu.linkonce.d.*)
             SORT(CONSTRUCTORS)

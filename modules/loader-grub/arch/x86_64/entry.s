@@ -31,6 +31,7 @@
                 global      JumpKernel
                 global      kernelInterface
                 global      pml4
+                global      GetCr3
 
 
 ;;
@@ -146,10 +147,10 @@ kernelInterface:
 ;;
 ;; -- we will use these variables to keep track of the paging tables
 ;;    --------------------------------------------------------------
-pml4:           dd          0
-pdpt:           dd          0
-pd:             dd          0
-pt:             dd          0
+pml4:           dq          0
+pdpt:           dq          0
+pd:             dq          0
+pt:             dq          0
 
 
 ;;
@@ -382,6 +383,16 @@ JumpKernel:
                 mov         rax,rdi
                 mov         rdi,[kernelInterface]
                 mov         rsp,rsi
+
                 jmp         rax
+
+
+
+;;
+;; -- return the current CR3 value
+;;    ----------------------------
+GetCr3:
+                mov         rax,cr3
+                ret
 
 

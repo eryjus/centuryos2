@@ -50,6 +50,8 @@
 //===================================================================================================================
 
 
+//#define USE_SERIAL
+
 #include "types.h"
 #include "heap.h"
 #include "cpu.h"
@@ -65,17 +67,12 @@
 // -- Some local function prototypes
 //    ------------------------------
 extern "C" {
-    Return_t ProcessInit(BootInterface_t *loaderInterface);
-    void ProcessSchedule(void);
-    void ProcessSwitch(Process_t *nextProcess);
-    void ProcessDoReady(Process_t *proc);
     void ProcessUpdateTimeUsed(void);
 
-    Return_t sch_Tick(int, uint64_t now);
-    Return_t sch_ProcessBlock(int, ProcStatus_t reason);
-    Return_t sch_ProcessReady(int, Process_t *proc);
-    Return_t sch_ProcessUnblock(int, Process_t *proc);
-    Return_t sch_ProcessMicroSleepUntil(int, uint64_t when);
+    void ProcessLockAndPostpone(void);
+    void ProcessUnlockAndSchedule(void);
+    void ProcessLockScheduler(bool save);
+    void ProcessUnlockScheduler(void);
 }
 
 
@@ -106,6 +103,7 @@ Scheduler_t scheduler = {
 Spinlock_t schedulerLock = {0};
 
 
+#ifdef USE_SERIAL
 //
 // -- Convert a ProcStatus_t to a string
 //    -----------------------------------
@@ -122,6 +120,7 @@ static const char *ProcStatusStr(ProcStatus_t s) {
 }
 
 
+
 //
 // -- Convert a ProcStatus_t to a string
 //    -----------------------------------
@@ -133,6 +132,7 @@ static const char *ProcPriorityStr(ProcPriority_t p) {
     else if (p == PTY_OS)       return "OS";
     else                        return "Unknown!";
 }
+#endif
 
 
 
@@ -141,25 +141,27 @@ static const char *ProcPriorityStr(ProcPriority_t p) {
 //    -----------------------------------------------
 void DumpProcess(Process_t *proc)
 {
-    KernelPrintf("=========================================================\n");
-    KernelPrintf("Dumping Process_t structure at address %p\n", proc);
+#ifdef USE_SERIAL
+    kprintf("=========================================================\n");
+    kprintf("Dumping Process_t structure at address %p\n", proc);
 
     if (!proc) goto exit;
 
-    KernelPrintf("---------------------------------------------------------\n");
-    KernelPrintf("  TOS (last preemption)..: %p\n", proc->tosProcessSwap);
-    KernelPrintf("  Virtual Address Space..: %p\n", proc->virtAddrSpace);
-    KernelPrintf("  Process Status.........: %d (%s)\n", proc->status, ProcStatusStr(proc->status));
-    KernelPrintf("  Process Priority.......: %d (%s)\n", proc->priority, ProcPriorityStr(proc->priority));
-    KernelPrintf("  Quantum left this slice: %d\n", AtomicRead(&proc->quantumLeft));
-    KernelPrintf("  Process ID.............: %d\n", proc->pid);
-    KernelPrintf("  Command Line...........: %s\n", proc->command);
-    KernelPrintf("  Micros used............: %lu\n", proc->timeUsed);
-    KernelPrintf("  Wake tick number.......: %d\n", proc->wakeAtMicros);
-    KernelPrintf("  Pending Error Number...: %d\n", proc->pendingErrno);
+    kprintf("---------------------------------------------------------\n");
+    kprintf("  TOS (last preemption)..: %p\n", proc->tosProcessSwap);
+    kprintf("  Virtual Address Space..: %p\n", proc->virtAddrSpace);
+    kprintf("  Process Status.........: %d (%s)\n", proc->status, ProcStatusStr(proc->status));
+    kprintf("  Process Priority.......: %d (%s)\n", proc->priority, ProcPriorityStr(proc->priority));
+    kprintf("  Quantum left this slice: %d\n", AtomicRead(&proc->quantumLeft));
+    kprintf("  Process ID.............: %d\n", proc->pid);
+    kprintf("  Command Line...........: %s\n", proc->command);
+    kprintf("  Micros used............: %lu\n", proc->timeUsed);
+    kprintf("  Wake tick number.......: %d\n", proc->wakeAtMicros);
+    kprintf("  Pending Error Number...: %d\n", proc->pendingErrno);
 
 exit:
-    KernelPrintf("=========================================================\n");
+    kprintf("=========================================================\n");
+#endif
 }
 
 
@@ -169,67 +171,68 @@ exit:
 //    ------------------------------------------
 void DumpReadyQueue(void)
 {
+#ifdef USE_SERIAL
     ListHead_t::List_t *wrk = NULL;
-    KernelPrintf("=========================================================\n");
-    KernelPrintf("Dumping OS Priority Ready Queue\n");
-    KernelPrintf("---------------------------------------------------------\n");
+    kprintf("=========================================================\n");
+    kprintf("Dumping OS Priority Ready Queue\n");
+    kprintf("---------------------------------------------------------\n");
 
     wrk = scheduler.queueOS.list.next;
     while (wrk != &scheduler.queueOS.list) {
         Process_t *proc = FIND_PARENT(wrk, Process_t, stsQueue);
-        KernelPrintf("  Process %s at %p\n", proc->command, proc);
+        kprintf("  Process %s at %p\n", proc->command, proc);
         wrk = wrk->next;
     }
 
-    KernelPrintf("\nDumping High Priority Ready Queue\n");
-    KernelPrintf("---------------------------------------------------------\n");
+    kprintf("\nDumping High Priority Ready Queue\n");
+    kprintf("---------------------------------------------------------\n");
 
     wrk = scheduler.queueHigh.list.next;
     while (wrk != &scheduler.queueHigh.list) {
         Process_t *proc = FIND_PARENT(wrk, Process_t, stsQueue);
-        KernelPrintf("  Process %s at %p\n", proc->command, proc);
+        kprintf("  Process %s at %p\n", proc->command, proc);
         wrk = wrk->next;
     }
 
-    KernelPrintf("\nDumping Normal Priority Ready Queue\n");
-    KernelPrintf("---------------------------------------------------------\n");
+    kprintf("\nDumping Normal Priority Ready Queue\n");
+    kprintf("---------------------------------------------------------\n");
 
     wrk = scheduler.queueNormal.list.next;
     while (wrk != &scheduler.queueNormal.list) {
         Process_t *proc = FIND_PARENT(wrk, Process_t, stsQueue);
-        KernelPrintf("  Process %s at %p\n", proc->command, proc);
+        kprintf("  Process %s at %p\n", proc->command, proc);
         wrk = wrk->next;
     }
 
-    KernelPrintf("\nDumping Low Priority Ready Queue\n");
-    KernelPrintf("---------------------------------------------------------\n");
+    kprintf("\nDumping Low Priority Ready Queue\n");
+    kprintf("---------------------------------------------------------\n");
 
     wrk = scheduler.queueLow.list.next;
     while (wrk != &scheduler.queueLow.list) {
         Process_t *proc = FIND_PARENT(wrk, Process_t, stsQueue);
-        KernelPrintf("  Process %s at %p\n", proc->command, proc);
+        kprintf("  Process %s at %p\n", proc->command, proc);
         wrk = wrk->next;
     }
 
-    KernelPrintf("\nDumping idle Priority Ready Queue\n");
-    KernelPrintf("---------------------------------------------------------\n");
+    kprintf("\nDumping idle Priority Ready Queue\n");
+    kprintf("---------------------------------------------------------\n");
 
     wrk = scheduler.queueIdle.list.next;
     while (wrk != &scheduler.queueIdle.list) {
         Process_t *proc = FIND_PARENT(wrk, Process_t, stsQueue);
-        KernelPrintf("  Process %s at %p\n", proc->command, proc);
+        kprintf("  Process %s at %p\n", proc->command, proc);
         wrk = wrk->next;
     }
 
-    KernelPrintf("\nSome other interesting information\n");
-    KernelPrintf("---------------------------------------------------------\n");
-    KernelPrintf("  Scheduler Process Change Pending: %s\n", scheduler.processChangePending?"yes":"no");
-    KernelPrintf("  Scheduler Lock Count: %d\n", AtomicRead(&scheduler.schedulerLockCount));
-    KernelPrintf("  Scheduler Postpone Count: %d\n", AtomicRead(&scheduler.postponeCount));
+    kprintf("\nSome other interesting information\n");
+    kprintf("---------------------------------------------------------\n");
+    kprintf("  Scheduler Process Change Pending: %s\n", scheduler.processChangePending?"yes":"no");
+    kprintf("  Scheduler Lock Count: %d\n", AtomicRead(&scheduler.schedulerLockCount));
+    kprintf("  Scheduler Postpone Count: %d\n", AtomicRead(&scheduler.postponeCount));
 
-    KernelPrintf("=========================================================\n");
+    kprintf("=========================================================\n");
+#endif
 }
-
 
 
 
@@ -238,6 +241,7 @@ void DumpReadyQueue(void)
 //    --------------------------------
 static void ProcessIdle(void)
 {
+    kprintf("Starting the idle process\n");
     CurrentThread()->priority = PTY_IDLE;
 
     while (true) {
@@ -252,12 +256,14 @@ static void ProcessIdle(void)
 //
 // -- Lock the scheduler in preparation for changes
 //    ---------------------------------------------
-static void ProcessLockScheduler(bool save)
+void ProcessLockScheduler(bool save)
 {
-    Addr_t flags = DisableInt();
-    SpinLock(&schedulerLock);
+    if (AtomicRead(&scheduler.schedulerLockCount) == 0 || scheduler.lockCpu != ThisCpu()->cpuNum) {
+        Addr_t flags = DisableInt();
+        SpinLock(&schedulerLock);
 
-    if (AtomicRead(&scheduler.schedulerLockCount) == 0) {
+        scheduler.lockCpu = ThisCpu()->cpuNum;
+
         if (save) scheduler.flags = flags;
     }
 
@@ -269,7 +275,7 @@ static void ProcessLockScheduler(bool save)
 //
 // -- Scheduler locking, postponing, unlocking, and scheduling functions
 //    ------------------------------------------------------------------
-static void ProcessLockAndPostpone(void)
+void ProcessLockAndPostpone(void)
 {
     ProcessLockScheduler(true);
     AtomicInc(&scheduler.postponeCount);
@@ -280,7 +286,7 @@ static void ProcessLockAndPostpone(void)
 //
 // -- Unlock the scheduler after changes
 //    ----------------------------------
-static void ProcessUnlockScheduler(void)
+void ProcessUnlockScheduler(void)
 {
     assert_msg(AtomicRead(&scheduler.schedulerLockCount) > 0, "schedulerLockCount out if sync");
 
@@ -295,9 +301,10 @@ static void ProcessUnlockScheduler(void)
 //
 // -- decrease the lock count on the scheduler
 //    ----------------------------------------
-static void ProcessUnlockAndSchedule(void)
+void ProcessUnlockAndSchedule(void)
 {
     assert_msg(AtomicRead(&scheduler.postponeCount) > 0, "postponeCount out if sync");
+    assert_msg(!(AtomicRead(&scheduler.postponeCount) < 0), "postponeCount is negative");
 
     if (AtomicDecAndTest0(&scheduler.postponeCount) == true) {
         if (scheduler.processChangePending != false) {
@@ -308,7 +315,6 @@ static void ProcessUnlockAndSchedule(void)
 
     ProcessUnlockScheduler();
 }
-
 
 
 
@@ -330,7 +336,7 @@ static Process_t *ProcessNext(ProcPriority_t pty)
     } else if (IsListEmpty(&scheduler.queueIdle) == false && PTY_IDLE >= pty) {
         return FIND_PARENT(scheduler.queueIdle.list.next, Process_t, stsQueue);
     } else {
-        KernelPrintf(".. no next process\n");
+//        kprintf(".. no next process\n");
         return NULL;
     }
 }
@@ -358,24 +364,15 @@ void ProcessUpdateTimeUsed(void)
 //
 // -- Add a process to the global process List
 //    ----------------------------------------
-static void ProcessDoAddGlobal(Process_t *proc)
-{
-    ListAddTail(&scheduler.globalProcesses, &proc->globalList);
-}
-
-
-
-#if 0
-//
-// -- Add a process to the global process List
-//    ----------------------------------------
 static void ProcessAddGlobal(Process_t *proc)
 {
     ProcessLockAndPostpone();
-    ProcessDoAddGlobal(proc);
+
+    kprintf(".. Checking scheduler Global Process List: %p (%p)\n", &scheduler.globalProcesses, scheduler.globalProcesses);
+    ListAddTail(&scheduler.globalProcesses, &proc->globalList);
+
     ProcessUnlockAndSchedule();
 }
-#endif
 
 
 
@@ -384,6 +381,7 @@ static void ProcessAddGlobal(Process_t *proc)
 //    -----------------------------------------------------------------------
 static void ProcessListRemove(Process_t *proc)
 {
+    DumpReadyQueue();
     if (!assert(proc != NULL)) return;
 
 
@@ -435,40 +433,396 @@ static void ProcessListRemove(Process_t *proc)
 
 
 //
-// -- Block the current process
-//    -------------------------
-static void ProcessDoBlock(ProcStatus_t reason)
+// -- Output the state of the scheduler
+//    ---------------------------------
+void ProcessCheckQueue(void)
 {
-    if (!assert(reason >= PROC_INIT && reason <= PROC_MSGW)) return;
-    if (!assert(CurrentThread() != NULL)) return;
-    assert_msg(AtomicRead(&scheduler.schedulerLockCount) > 0, "Calling `ProcessDoBlock()` without the proper lock");
-
-    CurrentThread()->status = reason;
-    CurrentThread()->pendingErrno = 0;
-    scheduler.processChangePending = true;
-    ProcessSchedule();
+    ProcessLockAndPostpone();
+    kprintf("Dumping the status of the scheduler on CPU%d\n", ThisCpu()->cpuNum);
+    kprintf("The scheduler is %s\n", schedulerLock.lock?"locked":"unlocked");
+    if (schedulerLock.lock) kprintf("...  on CPU%d\n", scheduler.lockCpu);
+    assert(schedulerLock.lock != 0);
+    assert(scheduler.lockCpu == ThisCpu()->cpuNum);
+    kprintf(".. postpone count %d\n", AtomicRead(&scheduler.postponeCount));
+    kprintf(".. currently, a reschedule is %spending\n", scheduler.processChangePending ? "" : "not ");
+    kprintf("..     OS Queue process count: %d\n", ListCount(&scheduler.queueOS));
+    kprintf("..   High Queue process count: %d\n", ListCount(&scheduler.queueHigh));
+    kprintf(".. Normal Queue process count: %d\n", ListCount(&scheduler.queueNormal));
+    kprintf("..    Low Queue process count: %d\n", ListCount(&scheduler.queueLow));
+    kprintf("..   Idle Queue process count: %d\n", ListCount(&scheduler.queueIdle));
+    kprintf(".. There are %d processes on the terminated list\n", ListCount(&scheduler.listTerminated));
+    ProcessUnlockAndSchedule();
 }
 
 
 
 //
-// -- Make a process ready to run; called from ProcessSwitch()
-//    --------------------------------------------------------
-void ProcessDoReady(Process_t *proc)
+// -- pick the next process to execute and execute it
+//
+//    CRITICAL: ProcessLockScheduler() must be called before calling
+//    --------------------------------------------------------------
+void ProcessSchedule(void)
+{
+    assert_msg(AtomicRead(&scheduler.schedulerLockCount) > 0,
+            "Calling `ProcessSchedule()` without holding the proper lock");
+    if (!assert(CurrentThread() != NULL)) {
+        kprintf("FATAL: currentThread is NULL entering ProcessSchedule");
+        while (true) {
+            __asm volatile ("cli");
+            __asm volatile ("hlt");
+        }
+    }
+
+    Process_t *next = NULL;
+
+    if (AtomicRead(&scheduler.postponeCount) != 0) {
+        scheduler.processChangePending = true;
+        return;
+    }
+
+    next = ProcessNext(CurrentThread()?CurrentThread()->priority:PTY_IDLE);
+
+    if (next != NULL) {
+        ProcessListRemove(next);
+        assert(AtomicRead(&scheduler.postponeCount) == 0);
+        ProcessSwitch(next);
+    } else if (CurrentThread()->status == PROC_RUNNING) {
+        // -- Do nothing; the current process can continue; reset quantum
+        AtomicAdd(&(CurrentThread()->quantumLeft), CurrentThread()->priority);
+        return;
+    } else {
+        // -- No tasks available; so we go into idle mode
+        Process_t *save = CurrentThread();          // we will save this process for later
+        CurrentThreadAssign(NULL);                  // nothing is running!
+
+        do {
+            // -- -- temporarily unlock the scheduler and enable interrupts for the timer to fire
+            ProcessUnlockScheduler();
+            EnableInt();
+            __asm volatile("hlt" ::: "memory");
+            DisableInt();
+            ProcessLockScheduler(false);     // make sure that this does not overwrite the process's flags
+            next = ProcessNext(PTY_IDLE);
+        } while (next == NULL);
+        ProcessListRemove(next);
+
+        // -- restore the current Process and change if needed
+        ProcessUpdateTimeUsed();
+        CurrentThreadAssign(save);
+        AtomicSet(&next->quantumLeft, next->priority);
+
+        if (next != CurrentThread()) ProcessSwitch(next);
+
+    }
+}
+
+
+
+//
+// -- Terminate a task
+//    ----------------
+void ProcessTerminate(Process_t *proc)
 {
     if (!assert(proc != NULL)) return;
-    assert_msg(AtomicRead(&scheduler.schedulerLockCount) > 0, "Calling `ProcessDoReady()` without the proper lock");
+
+    ProcessLockAndPostpone();
+
+    if (proc == CurrentThread()) {
+        assert(proc->stsQueue.next == &proc->stsQueue);
+        Enqueue(&scheduler.listTerminated, &proc->stsQueue);
+        sch_ProcessBlock(0, PROC_TERM);
+    } else {
+        kprintf(".. termianting another process\n");
+        ProcessListRemove(proc);
+        Enqueue(&scheduler.listTerminated, &proc->stsQueue);
+        proc->status = PROC_TERM;
+    }
+
+    ProcessUnlockAndSchedule();
+}
+
+
+
+//
+// -- complete any new task initialization
+//    ------------------------------------
+void ProcessStart(void)
+{
+    assert_msg(AtomicRead(&scheduler.schedulerLockCount) > 0,
+            "`ProcessStart()` is executing for a new process without holding the proper lock");
+    assert_msg(AtomicRead(&scheduler.schedulerLockCount) == 1,
+            "`ProcessStart()` is executing while too many locks are held");
+
+    kprintf("Starting new process with address space %p\n", GetAddressSpace());
+
+    ProcessUnlockScheduler();
+
+    assert_msg(AtomicRead(&scheduler.schedulerLockCount) == 0,
+            "`ProcessStart()` still has a scheduler lock remaining");
+
+    assert_msg(AtomicRead(&scheduler.postponeCount) == 0, "`ProcessStart()` with a pending process change");
+
+    EnableInt();
+}
+
+
+//
+// -- End current process
+//    -------------------
+void ProcessEnd(void)
+{
+    ProcessLockAndPostpone();
+
+    Process_t *proc = CurrentThread();
+    assert(proc->stsQueue.next == &proc->stsQueue);
+    Enqueue(&scheduler.listTerminated, &proc->stsQueue);
+    sch_ProcessBlock(0, PROC_TERM);
+
+    // -- send a message with the scheduler already locked
+//    _MessageQueueSend(butlerMsgq, BUTLER_CLEAN_PROCESS, 0, 0, false);
+
+    ProcessUnlockAndSchedule();
+}
+
+
+
+
+//
+// -- The scheduler timer resccheduling function
+//    ------------------------------------------
+Return_t sch_Tick(int, uint64_t now)
+{
+    kprintf("*");
+    ProcessLockAndPostpone();
+
+
+    //
+    // -- here we look for any sleeping tasks to wake
+    //    -------------------------------------------
+    if (now >= scheduler.nextWake && IsListEmpty(&scheduler.listSleeping) == false) {
+        uint64_t newWake = (uint64_t)-1;
+
+
+        //
+        // -- loop through and find the processes to wake up
+        //    ----------------------------------------------
+        ListHead_t::List_t *list = scheduler.listSleeping.list.next;
+        while (list != &scheduler.listSleeping.list) {
+            ListHead_t::List_t *next = list->next;      // must be saved before it is changed below
+            Process_t *wrk = FIND_PARENT(list, Process_t, stsQueue);
+            if (now >= wrk->wakeAtMicros) {
+                wrk->wakeAtMicros = 0;
+                ListRemoveInit(&wrk->stsQueue);
+                sch_ProcessUnblock(0, wrk);
+            } else if (wrk->wakeAtMicros < newWake) newWake = wrk->wakeAtMicros;
+
+            list = next;
+        }
+
+        scheduler.nextWake = newWake;
+    }
+
+
+    //
+    // -- adjust the quantum and see if it is time to change tasks
+    //    --------------------------------------------------------
+    if (CurrentThread() != NULL) {
+        AtomicDec(&(CurrentThread()->quantumLeft));
+        if (AtomicRead(&CurrentThread()->quantumLeft) <= 0) {
+            scheduler.processChangePending = true;
+        }
+    }
+
+    ProcessUnlockAndSchedule();
+
+    return 0;
+}
+
+
+//
+// -- Create a new process structure and leave it on the Ready Queue
+//    --------------------------------------------------------------
+Process_t *sch_ProcessCreate(int, const char *name, Addr_t startingAddr, Addr_t addrSpace)
+{
+    kprintf("Creating a new process named at %p (%s), starting at %p\n", name, name, startingAddr);
+    kprintf(".. the address space for this process in %p\n", addrSpace);
+
+    Process_t *rv = NEW(Process_t);
+    if (!assert_msg(rv != NULL, "Out of memory allocating a new Process_t")) {
+        kprintf("Out of memory allocating a new Process_t");
+        while (true) {
+            __asm volatile("hlt");
+        }
+    }
+
+    kMemSetB(rv, 0, sizeof(Process_t));
+
+    // -- set the name of the process
+    kprintf(".. naming the process: %s\n", name);
+    int len = kStrLen(name + 1);
+    rv->command[len + 1] = 0;
+    kStrCpy(rv->command, name);
+
+
+    rv->policy = POLICY_0;
+    rv->priority = PTY_OS;
+    rv->status = PROC_INIT;
+    AtomicSet(&rv->quantumLeft, rv->priority);
+    rv->timeUsed = 0;
+    rv->wakeAtMicros = 0;
+    ListInit(&rv->stsQueue);
+    ListInit(&rv->references.list);
+    ListInit(&rv->globalList);
+
+
+    //
+    // -- Construct the stack for the architecture
+    //    ----------------------------------------
+    kprintf(".. Creating the new Process's stack\n");
+    rv->virtAddrSpace = addrSpace;
+    ProcessNewStack(rv, startingAddr);
+
+
+    //
+    // -- Put this process on the queue to execute
+    //    ----------------------------------------
+    kprintf(".. Readying the new process to be scheduled: %p\n", rv);
+    DumpProcess(rv);
+    sch_ProcessReady(0, rv);
+
+
+    return rv;
+}
+
+
+//
+// -- Initialize the process structures
+//    ---------------------------------
+Return_t ProcessInit(BootInterface_t *loaderInterface)
+{
+    ProcessInitTable();
+
+    // -- map/unmap this address to build out the intermediate tables
+    MmuMapPage(MMU_STACK_INIT_VADDR, 1, 0);
+    MmuUnmapPage(MMU_STACK_INIT_VADDR);
+
+    kprintf("ProcessInit() called\n");
+
+    kprintf("Process table offsets:\n");
+    kprintf("  TOS: %d\n", offsetof(Process_t, tosProcessSwap));
+    kprintf("  Virtual Address Space: %d\n", offsetof(Process_t, virtAddrSpace));
+    kprintf("  Status: %d\n", offsetof(Process_t, status));
+    kprintf("  Priority: %d\n", offsetof(Process_t, priority));
+    kprintf("  Quantum Left: %d\n", offsetof(Process_t, quantumLeft));
+    kprintf("Scheduler structure offsets:\n");
+    kprintf("  Change pending: %d (%d)\n", offsetof(Scheduler_t, processChangePending), sizeof(bool));
+    kprintf("  Lock count: %d (%d)\n", offsetof(Scheduler_t, schedulerLockCount), sizeof (AtomicInt_t));
+    kprintf("  Postpone count: %d (%d)\n", offsetof(Scheduler_t, postponeCount), sizeof(AtomicInt_t));
+
+
+    ListInit(&scheduler.queueOS.list);
+    ListInit(&scheduler.queueHigh.list);
+    ListInit(&scheduler.queueNormal.list);
+    ListInit(&scheduler.queueLow.list);
+    ListInit(&scheduler.queueIdle.list);
+    ListInit(&scheduler.listBlocked.list);
+    ListInit(&scheduler.listSleeping.list);
+    ListInit(&scheduler.listTerminated.list);
+    ListInit(&scheduler.globalProcesses.list);
+
+    Process_t *proc = NEW(Process_t);
+
+    kprintf(".. the current process is located at %p\n", proc);
+
+    if (!assert(proc != NULL)) {
+        kprintf("FATAL: Unable to allocate Current Process structure\n");
+
+        while (true) {
+            __asm volatile ("hlt");
+        }
+    }
+
+    kMemSetB(proc, 0, sizeof(Process_t));
+
+    proc->tosProcessSwap = 0;
+    proc->virtAddrSpace = loaderInterface->bootVirtAddrSpace;
+    proc->pid = scheduler.nextPID ++;          // -- this is the butler process ID
+
+
+    // -- set the process name
+    kMemSetB(proc->command, 0, CMD_LEN);
+    kStrCpy(proc->command, "kInit");
+
+    proc->policy = POLICY_0;
+    proc->priority = PTY_OS;
+    proc->status = PROC_RUNNING;
+    AtomicSet(&proc->quantumLeft, PTY_OS);
+    proc->timeUsed = 0;
+    proc->wakeAtMicros = 0;
+    ListInit(&proc->stsQueue);
+    ListInit(&proc->references.list);
+    ProcessAddGlobal(proc);           // no lock required -- still single threaded
+    CurrentThreadAssign(proc);
+
+    kprintf("Process Init:\n");
+    DumpProcess(proc);
+
+
+    //
+    // -- Create an idle process for each CPU
+    //    -----------------------------------
+    for (int i = 0; i < loaderInterface->cpuCount; i ++) {
+        kprintf("starting idle process %d\n", i, ProcessIdle);
+        sch_ProcessCreate(0, "Idle Process", (Addr_t)ProcessIdle, GetAddressSpace());
+    }
+
+
+    ThisCpu()->lastTimer = TmrCurrentCount();
+    kprintf("ProcessInit() complete\n");
+
+    return 0;
+}
+
+
+
+//
+// -- Functions to block the current process
+//    --------------------------------------
+Return_t sch_ProcessBlock(int, ProcStatus_t reason)
+{
+    if (!assert(reason >= PROC_INIT && reason <= PROC_MSGW)) return -EINVAL;
+    if (!assert(CurrentThread() != NULL)) return -EINVAL;
+
+//    kprintf("Blocking current process %p\n", CurrentThread());
+
+    ProcessLockAndPostpone();
+    CurrentThread()->status = reason;
+    CurrentThread()->pendingErrno = 0;
+    ProcessSchedule();
+
+    ProcessUnlockAndSchedule();
+
+    return 0;
+}
+
+
+
+//
+// -- Place a process on the correct ready queue
+//    ------------------------------------------
+Return_t sch_ProcessReady(int, Process_t *proc)
+{
+    if (!assert(proc != NULL)) return -EINVAL;
+
+    ProcessLockAndPostpone();
 
     if (proc->globalList.next == &proc->globalList) {
         proc->pid = scheduler.nextPID ++;
 
-        DumpProcess(proc);
-
         proc->status = PROC_READY;
-        ProcessDoAddGlobal(proc);
-    }
 
-    KernelPrintf("Readying process at %p\n", proc);
+        ProcessAddGlobal(proc);
+    }
 
     proc->status = PROC_READY;
 
@@ -499,427 +853,8 @@ void ProcessDoReady(Process_t *proc)
         break;
     }
 
-    DumpReadyQueue();
-}
-
-
-
-//
-// -- sleep until we get to the number of micros since boot
-//    -----------------------------------------------------
-static void ProcessDoMicroSleepUntil(uint64_t when)
-{
-    assert_msg(AtomicRead(&scheduler.schedulerLockCount) > 0,
-            "Calling `ProcessDoMicroSleepUntil()` without the proper lock");
-    assert_msg(CurrentThread() != NULL, "scheduler.currentProcess is NULL");
-
-    if (when <= TmrCurrentCount()) return;
-
-    CurrentThread()->wakeAtMicros = when;
-    if (when < scheduler.nextWake) scheduler.nextWake = when;
-
-    Enqueue(&scheduler.listSleeping, &(CurrentThread()->stsQueue));
-
-    ProcessDoBlock(PROC_DLYW);
-}
-
-
-
-//
-// -- Output the state of the scheduler
-//    ---------------------------------
-static void ProcessDoCheckQueue(void)
-{
-    ProcessLockAndPostpone();
-    KernelPrintf("Dumping the status of the scheduler on CPU%d\n", ThisCpu()->cpuNum);
-    KernelPrintf("The scheduler is %s\n", schedulerLock.lock?"locked":"unlocked");
-    if (schedulerLock.lock) KernelPrintf("...  on CPU%d\n", scheduler.lockCpu);
-    assert(schedulerLock.lock != 0);
-    assert(scheduler.lockCpu == ThisCpu()->cpuNum);
-    KernelPrintf(".. postpone count %d\n", AtomicRead(&scheduler.postponeCount));
-    KernelPrintf(".. currently, a reschedule is %spending\n", scheduler.processChangePending ? "" : "not ");
-    KernelPrintf("..     OS Queue process count: %d\n", ListCount(&scheduler.queueOS));
-    KernelPrintf("..   High Queue process count: %d\n", ListCount(&scheduler.queueHigh));
-    KernelPrintf(".. Normal Queue process count: %d\n", ListCount(&scheduler.queueNormal));
-    KernelPrintf("..    Low Queue process count: %d\n", ListCount(&scheduler.queueLow));
-    KernelPrintf("..   Idle Queue process count: %d\n", ListCount(&scheduler.queueIdle));
-    KernelPrintf(".. There are %d processes on the terminated list\n", ListCount(&scheduler.listTerminated));
-    ProcessUnlockAndSchedule();
-}
-
-
-
-//
-// -- Block the current process
-//    -------------------------
-static void ProcessDoUnblock(Process_t *proc)
-{
-    if (!assert(proc != NULL)) return;
-    assert_msg(AtomicRead(&scheduler.schedulerLockCount) > 0,
-            "Calling `ProcessDoUnblock()` without holding the proper lock");
-
-    proc->status = PROC_READY;
-    ProcessDoReady(proc);
-}
-
-
-
-//
-// -- pick the next process to execute and execute it; ProcessLockScheduler() must be called before calling
-//    -----------------------------------------------------------------------------------------------------
-void ProcessSchedule(void)
-{
-    KernelPrintf("Dumping the process being swapped out\n");
-    DumpProcess(CurrentThread());
-
-    assert_msg(AtomicRead(&scheduler.schedulerLockCount) > 0,
-            "Calling `ProcessSchedule()` without holding the proper lock");
-    if (!assert(CurrentThread() != NULL)) {
-        KernelPrintf("FATAL: currentThread is NULL entering ProcessSchedule");
-        while (true) {
-            __asm volatile ("hlt");
-        }
-    }
-
-    Process_t *next = NULL;
-    ProcessUpdateTimeUsed();
-
-    if (AtomicRead(&scheduler.postponeCount) != 0) {
-        if (CurrentThread() && AtomicRead(&(CurrentThread()->quantumLeft)) <= 0) {
-            scheduler.processChangePending = true;
-        }
-        KernelPrintf(".");
-        return;
-    }
-
-    next = ProcessNext(CurrentThread()?CurrentThread()->priority:PTY_IDLE);
-    KernelPrintf(".. next process is at %p\n", next);
-    if (next != NULL) {
-        KernelPrintf("!");
-        ProcessListRemove(next);
-        assert(AtomicRead(&scheduler.postponeCount) == 0);
-        ProcessSwitch(next);
-    } else if (CurrentThread()->status == PROC_RUNNING) {
-        // -- Do nothing; the current process can continue; reset quantum
-        KernelPrintf("+");
-        AtomicAdd(&(CurrentThread()->quantumLeft), CurrentThread()->priority);
-        return;
-    } else {
-        // -- No tasks available; so we go into idle mode
-        Process_t *save = CurrentThread();          // we will save this process for later
-        CurrentThreadAssign(NULL);                  // nothing is running!
-
-        do {
-            KernelPrintf(";");
-            // -- -- temporarily unlock the scheduler and enable interrupts for the timer to fire
-            ProcessUnlockScheduler();
-            EnableInt();
-            __asm volatile("hlt" ::: "memory");
-            DisableInt();
-            ProcessLockScheduler(false);     // make sure that this does not overwrite the process's flags
-            next = ProcessNext(PTY_IDLE);
-        } while (next == NULL);
-        ProcessListRemove(next);
-
-        // -- restore the current Process and change if needed
-        ProcessUpdateTimeUsed();
-        CurrentThreadAssign(save);
-        AtomicSet(&next->quantumLeft, next->priority);
-
-        if (next != CurrentThread()) ProcessSwitch(next);
-    }
-}
-
-
-
-//
-// -- Terminate a task
-//    ----------------
-void ProcessTerminate(Process_t *proc)
-{
-    assert_msg(false, "`ProcessTerminate() is flawed!! do not use");
-    return;
-
-    if (!assert(proc != NULL)) return;
-
-    ProcessLockAndPostpone();
-
-    KernelPrintf("Terminating process at address %p on CPU%d\n", proc, ThisCpu()->cpuNum);
-    KernelPrintf(".. this process is %sRunning\n", proc == CurrentThread() ? "" : "not ");
-
-    if (proc == CurrentThread()) {
-        KernelPrintf(".. ending the current process\n");
-        assert(proc->stsQueue.next == &proc->stsQueue);
-        Enqueue(&scheduler.listTerminated, &proc->stsQueue);
-        ProcessDoBlock(PROC_TERM);
-    } else {
-        KernelPrintf(".. termianting another process\n");
-        ProcessListRemove(proc);
-        Enqueue(&scheduler.listTerminated, &proc->stsQueue);
-        proc->status = PROC_TERM;
-    }
-
-    KernelPrintf("..  terminated; giving up the CPU\n");
-    ProcessUnlockAndSchedule();
-}
-
-
-
-//
-// -- complete any new task initialization
-//    ------------------------------------
-void ProcessStart(void)
-{
-    assert_msg(AtomicRead(&scheduler.schedulerLockCount) > 0,
-            "`ProcessStart()` is executing for a new process without holding the proper lock");
-
-    assert_msg(AtomicRead(&scheduler.schedulerLockCount) == 1,
-            "`ProcessStart()` is executing while too many locks are held");
-
-    KernelPrintf("Starting new process with address space %p\n", GetAddressSpace());
-
-    ProcessUnlockScheduler();
-//    EnableInt();
-}
-
-
-//
-// -- End current process
-//    -------------------
-void ProcessEnd(void)
-{
-    ProcessLockAndPostpone();
-
-    Process_t *proc = CurrentThread();
-    assert(proc->stsQueue.next == &proc->stsQueue);
-    Enqueue(&scheduler.listTerminated, &proc->stsQueue);
-    ProcessDoBlock(PROC_TERM);
-
-    // -- send a message with the scheduler already locked
-//    _MessageQueueSend(butlerMsgq, BUTLER_CLEAN_PROCESS, 0, 0, false);
-
-    ProcessUnlockAndSchedule();
-}
-
-
-
-
-//
-// -- The scheduler timer resccheduling function
-//    ------------------------------------------
-Return_t sch_Tick(int, uint64_t now)
-{
-    KernelPrintf("*");
-    ProcessLockAndPostpone();
-
-
-    //
-    // -- here we look for any sleeping tasks to wake
-    //    -------------------------------------------
-    if (now >= scheduler.nextWake && IsListEmpty(&scheduler.listSleeping) == false) {
-        uint64_t newWake = (uint64_t)-1;
-
-
-        //
-        // -- loop through and find the processes to wake up
-        //    ----------------------------------------------
-        ListHead_t::List_t *list = scheduler.listSleeping.list.next;
-        while (list != &scheduler.listSleeping.list) {
-            ListHead_t::List_t *next = list->next;      // must be saved before it is changed below
-            Process_t *wrk = FIND_PARENT(list, Process_t, stsQueue);
-            if (now >= wrk->wakeAtMicros) {
-                wrk->wakeAtMicros = 0;
-                ListRemoveInit(&wrk->stsQueue);
-                ProcessDoUnblock(wrk);
-            } else if (wrk->wakeAtMicros < newWake) newWake = wrk->wakeAtMicros;
-
-            list = next;
-        }
-
-        scheduler.nextWake = newWake;
-    }
-
-
-    //
-    // -- adjust the quantum and see if it is time to change tasks
-    //    --------------------------------------------------------
-    if (CurrentThread() != NULL) {
-        AtomicDec(&(CurrentThread()->quantumLeft));
-        if (AtomicRead(&CurrentThread()->quantumLeft) <= 0) {
-            scheduler.processChangePending = true;
-        }
-    }
-
     ProcessUnlockAndSchedule();
 
-    return 0;
-}
-
-
-//
-// -- Create a new process structure and leave it on the Ready Queue
-//    --------------------------------------------------------------
-Process_t *sch_ProcessCreate(int, const char *name, void (*startingAddr)(void), Addr_t addrSpace)
-{
-    KernelPrintf("Creating a new process named at %p (%s), starting at %p\n", name, name, startingAddr);
-
-    Process_t *rv = NEW(Process_t);
-    if (!assert_msg(rv != NULL, "Out of memory allocating a new Process_t")) {
-        KernelPrintf("Out of memory allocating a new Process_t");
-        while (true) {
-            __asm volatile("hlt");
-        }
-    }
-
-    kMemSetB(rv, 0, sizeof(Process_t));
-
-    // -- set the name of the process
-    KernelPrintf(".. naming the process: %s\n", name);
-    int len = kStrLen(name + 1);
-    rv->command[len + 1] = 0;
-    kStrCpy(rv->command, name);
-
-
-    rv->policy = POLICY_0;
-    rv->priority = PTY_OS;
-    rv->status = PROC_INIT;
-    AtomicSet(&rv->quantumLeft, rv->priority);
-    rv->timeUsed = 0;
-    rv->wakeAtMicros = 0;
-    ListInit(&rv->stsQueue);
-    ListInit(&rv->references.list);
-    ListInit(&rv->globalList);
-
-
-    //
-    // -- Construct the stack for the architecture
-    //    ----------------------------------------
-    KernelPrintf(".. Creating the new Process's stack\n");
-    ProcessNewStack(rv, startingAddr);
-
-
-    //
-    // -- Construct the new addres space for the process
-    //    ----------------------------------------------
-    rv->virtAddrSpace = addrSpace;
-
-
-    //
-    // -- Put this process on the queue to execute
-    //    ----------------------------------------
-    KernelPrintf(".. Readying the new process to be scheduled\n");
-    sch_ProcessReady(0, rv);
-
-
-    return rv;
-}
-
-
-//
-// -- Initialize the process structures
-//    ---------------------------------
-Return_t ProcessInit(BootInterface_t *loaderInterface)
-{
-    ProcessInitTable();
-
-//    KernelPrintf("ProcessInit() called\n");
-
-    KernelPrintf("Process table offsets:\n");
-    KernelPrintf("  TOS: %d\n", offsetof(Process_t, tosProcessSwap));
-    KernelPrintf("  Virtual Address Space: %d\n", offsetof(Process_t, virtAddrSpace));
-    KernelPrintf("  Status: %d\n", offsetof(Process_t, status));
-    KernelPrintf("  Priority: %d\n", offsetof(Process_t, priority));
-    KernelPrintf("  Quantum Left: %d\n", offsetof(Process_t, quantumLeft));
-    KernelPrintf("Scheduler structure offsets:\n");
-    KernelPrintf("  Change pending: %d (%d)\n", offsetof(Scheduler_t, processChangePending), sizeof(bool));
-    KernelPrintf("  Lock count: %d (%d)\n", offsetof(Scheduler_t, schedulerLockCount), sizeof (AtomicInt_t));
-    KernelPrintf("  Postpone count: %d (%d)\n", offsetof(Scheduler_t, postponeCount), sizeof(AtomicInt_t));
-
-
-    ListInit(&scheduler.queueOS.list);
-    ListInit(&scheduler.queueHigh.list);
-    ListInit(&scheduler.queueNormal.list);
-    ListInit(&scheduler.queueLow.list);
-    ListInit(&scheduler.queueIdle.list);
-    ListInit(&scheduler.listBlocked.list);
-    ListInit(&scheduler.listSleeping.list);
-    ListInit(&scheduler.listTerminated.list);
-    ListInit(&scheduler.globalProcesses.list);
-
-    Process_t *proc = NEW(Process_t);
-    KernelPrintf(".. the current process is located at %p\n", proc);
-    CurrentThreadAssign(proc);
-
-    if (!assert(proc != NULL)) {
-        KernelPrintf("FATAL: Unable to allocate Current Process structure\n");
-
-        while (true) {
-            __asm volatile ("hlt");
-        }
-    }
-
-    kMemSetB(proc, 0, sizeof(Process_t));
-
-    proc->tosProcessSwap = 0;
-    proc->virtAddrSpace = loaderInterface->bootVirtAddrSpace;
-    proc->pid = scheduler.nextPID ++;          // -- this is the butler process ID
-
-
-    // -- set the process name
-    kMemSetB(proc->command, 0, CMD_LEN);
-    kStrCpy(proc->command, "kInit");
-
-    proc->policy = POLICY_0;
-    proc->priority = PTY_OS;
-    proc->status = PROC_RUNNING;
-    AtomicSet(&proc->quantumLeft, PTY_OS);
-    proc->timeUsed = 0;
-    proc->wakeAtMicros = 0;
-    ListInit(&proc->stsQueue);
-    ListInit(&proc->references.list);
-    ProcessDoAddGlobal(proc);           // no lock required -- still single threaded
-
-    DumpProcess(proc);
-
-
-    //
-    // -- Create an idle process for each CPU
-    //    -----------------------------------
-    for (int i = 0; i < loaderInterface->cpuCount; i ++) {
-        KernelPrintf("starting idle process %d\n", i, ProcessIdle);
-        sch_ProcessCreate(0, "Idle Process", ProcessIdle, GetAddressSpace());
-    }
-
-
-    ThisCpu()->lastTimer = TmrCurrentCount();
-//    KernelPrintf("ProcessInit() complete\n");
-
-    return 0;
-}
-
-
-
-//
-// -- Functions to block the current process
-//    --------------------------------------
-Return_t sch_ProcessBlock(int, ProcStatus_t reason)
-{
-    ProcessLockAndPostpone();
-    ProcessDoBlock(reason);
-    ProcessUnlockAndSchedule();
-    return 0;
-}
-
-
-
-//
-// -- Place a process on the correct ready queue
-//    ------------------------------------------
-Return_t sch_ProcessReady(int, Process_t *proc)
-{
-    ProcessLockAndPostpone();
-    ProcessDoReady(proc);
-    ProcessUnlockAndSchedule();
     return 0;
 }
 
@@ -930,9 +865,13 @@ Return_t sch_ProcessReady(int, Process_t *proc)
 //    -----------------
 Return_t sch_ProcessUnblock(int, Process_t *proc)
 {
+    if (!assert(proc != NULL)) return -EINVAL;
+
     ProcessLockAndPostpone();
-    ProcessDoUnblock(proc);
+    proc->status = PROC_READY;
+    sch_ProcessReady(0, proc);
     ProcessUnlockAndSchedule();
+
     return 0;
 }
 
@@ -943,22 +882,16 @@ Return_t sch_ProcessUnblock(int, Process_t *proc)
 //    ---------------------------------------------------------------
 Return_t sch_ProcessMicroSleepUntil(int, uint64_t when)
 {
+    if (when <= TmrCurrentCount()) return 0;
+
     ProcessLockAndPostpone();
-    ProcessDoMicroSleepUntil(when);
+    CurrentThread()->wakeAtMicros = when;
+    if (when < scheduler.nextWake) scheduler.nextWake = when;
+    Enqueue(&scheduler.listSleeping, &(CurrentThread()->stsQueue));
+    sch_ProcessBlock(0, PROC_DLYW);
     ProcessUnlockAndSchedule();
+
     return 0;
-}
-
-
-
-//
-// -- Debugging functions to output the scheduler state
-//    -------------------------------------------------
-void ProcessCheckQueue(void)
-{
-    ProcessLockAndPostpone();
-    ProcessDoCheckQueue();
-    ProcessUnlockAndSchedule();
 }
 
 

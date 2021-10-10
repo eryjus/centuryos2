@@ -32,18 +32,20 @@ Spinlock_t mmuStackInitLock = {0};
 //
 // -- build the stack needed to start a new process
 //    ---------------------------------------------
-void ProcessNewStack(Process_t *proc, void (*startingAddr)(void))
+void ProcessNewStack(Process_t *proc, Addr_t startingAddr)
 {
     Addr_t *stack;
-    Frame_t *stackFrames;
+    Frame_t *stackFrames = NULL;
     const size_t frameCount = STACK_SIZE / PAGE_SIZE;
 
     KernelPrintf("Creating a new Process stack\n");
     KernelPrintf(".. allocating frames for the stack\n");
     stackFrames = (Frame_t *)HeapAlloc(sizeof (Frame_t *) * frameCount, false);
+    assert_msg(stackFrames != NULL, "HeapAlloc() ran out of memory allocating stack frames!");
+    KernelPrintf(".. Temporary Stack Frames are located at %p\n", stackFrames);
+
     for (int i = 0; i < frameCount; i ++) {
         KernelPrintf(".. allocating stack frame %d of %d\n", i + 1, frameCount);
-BOCHS_INSTRUMENTATION
         stackFrames[i] = PmmAlloc();
     }
 
@@ -58,12 +60,20 @@ BOCHS_INSTRUMENTATION
         KernelPrintf(".. Building the stack contents\n");
         stack = (Addr_t *)(MMU_STACK_INIT_VADDR + STACK_SIZE);
 
-//        *--stack = ProcessEnd;               // -- just in case, we will self-terminate
-        *--stack = (Addr_t)startingAddr;       // -- this is the process starting point
+        *--stack = (Addr_t)ProcessEnd;         // -- just in case, we will self-terminate
+        *--stack = startingAddr;               // -- this is the process starting point
         *--stack = (Addr_t)ProcessStart;       // -- initialize a new process
         *--stack = 0;                          // -- rax
         *--stack = 0;                          // -- rbx
+        *--stack = 0;                          // -- rcx
+        *--stack = 0;                          // -- rdx
+        *--stack = 0;                          // -- rsi
+        *--stack = 0;                          // -- rdi
         *--stack = 0;                          // -- rbp
+        *--stack = 0;                          // -- r8
+        *--stack = 0;                          // -- r9
+        *--stack = 0;                          // -- r10
+        *--stack = 0;                          // -- r11
         *--stack = 0;                          // -- r12
         *--stack = 0;                          // -- r13
         *--stack = 0;                          // -- r14
@@ -74,7 +84,7 @@ BOCHS_INSTRUMENTATION
             MmuUnmapPage(MMU_STACK_INIT_VADDR + (PAGE_SIZE * i));
         }
 
-        KernelPrintf(".. Unlocking the spinlock");
+        KernelPrintf(".. Unlocking the spinlock\n");
         SpinUnlock(&mmuStackInitLock);
         RestoreInt(flags);
     }
@@ -84,11 +94,15 @@ BOCHS_INSTRUMENTATION
     assert(stackLoc != 0);
     proc->tosProcessSwap = ((Addr_t)stack - MMU_STACK_INIT_VADDR) + stackLoc;
 
-    KernelPrintf(".. Mapping the stack into address space %p\n", GetAddressSpace());
+    KernelPrintf("Mapping the stack into address space %p\n", GetAddressSpace());
     for (int i = 0; i < frameCount; i ++) {
-        KernelPrintf(".. frame %d (%p to %p)\n", i, stackLoc + (PAGE_SIZE * i), stackFrames[i]);
-        MmuMapPage(stackLoc + (PAGE_SIZE * i), stackFrames[i], PG_WRT);
+        KernelPrintf(".. in space %p: frame %d (%p to %p)\n", proc->virtAddrSpace, i,
+                stackLoc + (PAGE_SIZE * i), stackFrames[i]);
+        MmuMapPageEx(proc->virtAddrSpace, stackLoc + (PAGE_SIZE * i), stackFrames[i], PG_WRT);
+        KernelPrintf(".. page mapped in the other address space\n");
     }
+
+    HeapFree(stackFrames);
 }
 
 

@@ -37,13 +37,13 @@ ServiceRoutine_t serviceTable[MAX_HANDLERS] = { { 0 } };
 //
 // -- Read an service function handler address from the table
 //    -------------------------------------------------------
-Return_t krn_GetServiceHandler(int, int i)
+Addr_t krn_GetServiceHandler(int, int i)
 {
     if (i < 0 || i >= MAX_HANDLERS) return -EINVAL;
 
     kprintf("Getting service handler: %p\n", serviceTable[i].handler);
 
-    return (Return_t)serviceTable[i].handler;
+    return serviceTable[i].handler;
 }
 
 

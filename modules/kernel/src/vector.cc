@@ -25,6 +25,8 @@
 #include "printf.h"
 #include "serial.h"
 #include "internals.h"
+#include "scheduler.h"
+#include "kernel-funcs.h"
 #include "idt.h"
 
 
@@ -38,13 +40,13 @@ ServiceRoutine_t vectorTable[256] = { { 0 }};
 //
 // -- Get an interrupt vector handler
 //    -------------------------------
-Return_t krn_GetVectorHandler(int, int i)
+Addr_t krn_GetVectorHandler(int, int i)
 {
     if (i < 0 || i >= 256) return -EINVAL;
 
     kprintf("Getting internal handler: %p\n", vectorTable[i].handler);
 
-    return (Return_t)vectorTable[i].handler;
+    return vectorTable[i].handler;
 }
 
 
@@ -67,6 +69,20 @@ Return_t krn_SetVectorHandler(int, int i, Addr_t handler, Addr_t cr3, Addr_t sta
 
     return 0;
 }
+
+
+
+//
+// -- This is the timer vector
+//    ------------------------
+extern "C" void TimerVector(Addr_t *);
+void TimerVector(Addr_t *)
+{
+    uint64_t now = TmrTick();
+    TmrEoi();
+    sch_Tick(0, now);
+}
+
 
 
 //
@@ -115,6 +131,8 @@ void VectorInit(void)
     krn_SetVectorHandler(0, 29, (Addr_t)IdtGenericHandler, 0, 0);
     krn_SetVectorHandler(0, 30, (Addr_t)IdtGenericHandler, 0, 0);
     krn_SetVectorHandler(0, 31, (Addr_t)IdtGenericHandler, 0, 0);
+
+    krn_SetVectorHandler(0, 32, (Addr_t)TimerVector, 0, 0);
 }
 
 

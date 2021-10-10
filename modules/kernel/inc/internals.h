@@ -44,18 +44,18 @@ extern "C" int krn_KernelPrintf(const char *, ...);
 extern "C" {
     // -- Internal Functions operations
     void InternalInit(void);
-    Return_t krn_GetInternalHandler(int, int i);
+    Addr_t krn_GetInternalHandler(int, int i);
     Return_t krn_SetInternalHandler(int, int i, Addr_t handler, Addr_t cr3, Addr_t stack);
     void InternalTableDump(void);
 
     // -- Vector Handlers
+    Addr_t krn_GetVectorHandler(int, int i);
     Return_t krn_SetVectorHandler(int, int i, Addr_t handler, Addr_t cr3, Addr_t stack);
-    Return_t krn_GetVectorHandler(int, int i);
     void VectorTableDump(void);
 
     // -- OS Services
     void ServiceInit(void);
-    Return_t krn_GetServiceHandler(int, int i);
+    Addr_t krn_GetServiceHandler(int, int i);
     Return_t krn_SetServiceHandler(int, int i, Addr_t service, Addr_t cr3, Addr_t stack);
     void ServiceTableDump(void);
 

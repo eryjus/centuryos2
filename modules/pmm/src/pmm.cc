@@ -20,6 +20,9 @@
 #include "kernel-funcs.h"
 
 
+//#define PMM_DEBUG
+
+
 //
 // -- Some function prototypes
 //    ------------------------
@@ -207,14 +210,18 @@ static void PmmScrubFrame(Frame_t frame)
 {
     SpinLock(&pmm.clearLock);
 
-//    KernelPrintf("!!!!! PmmScrubFrame() preparing to map a page\n");
+#ifdef PMM_DEBUG
+    KernelPrintf("!!!!! PmmScrubFrame() preparing to map a page\n");
+#endif
     MmuMapPage(clearAddr, frame, PG_WRT);
-//    KernelPrintf("!!!!! PmmScrubFrame() page mapped\n");
+#ifdef PMM_DEBUG
+    KernelPrintf("!!!!! PmmScrubFrame() page mapped\n");
     MmuDump(clearAddr);
+#endif
 
     uint64_t *wrk = (uint64_t *)clearAddr;
 
-    for (int i = 0; i < 512; i ++) wrk[i] = 0;
+    for (int i = 0; i < PAGE_SIZE / sizeof(uint64_t); i ++) wrk[i] = 0;
 
     MmuUnmapPage(clearAddr);
 
@@ -240,9 +247,11 @@ static Frame_t PmmDoRemoveFrame(PmmFrameInfo_t **stack, bool scrub)
 {
     Frame_t rv = 0;         // assume we will not find anything
 
-//    KernelPrintf("Removing a single frame; some interesting facts:\n");
-//    KernelPrintf(".. stack = %p\n", stack);
-//    KernelPrintf(".. *stack = %p\n", stack?*stack:0);
+#ifdef PMM_DEBUG
+    KernelPrintf("Removing a single frame; some interesting facts:\n");
+    KernelPrintf(".. stack = %p\n", stack);
+    KernelPrintf(".. *stack = %p\n", stack?*stack:0);
+#endif
 
     if ((Addr_t)(*stack)) {
         rv = (*stack)->frame + (*stack)->count - 1;
@@ -256,13 +265,17 @@ static Frame_t PmmDoRemoveFrame(PmmFrameInfo_t **stack, bool scrub)
         return 0;
     }
 
-//    KernelPrintf(".. Found the frame to use: %p\n", rv);
+#ifdef PMM_DEBUG
+    KernelPrintf(".. Found the frame to use: %p\n", rv);
+#endif
 
 
     // -- scrub the frame if requested
     if (scrub) PmmScrubFrame(rv);
 
-//    KernelPrintf(".. all good!\n");
+#ifdef PMM_DEBUG
+    KernelPrintf(".. all good!  Returning frame %p\n", rv);
+#endif
 
     return rv;
 }
@@ -333,10 +346,15 @@ static Frame_t PmmAllocate(bool low)
     // -- check the normal stack for a frame to allocate
     //    ----------------------------------------------
     if (!low) {
-//        KernelPrintf("Allocating a single frame from the normal stack\n");
+#ifdef PMM_DEBUG
+        KernelPrintf("Allocating a single frame from the normal stack\n");
+#endif
         SpinLock(&pmm.normLock);
         rv = PmmDoRemoveFrame(&pmm.normStack, false);
         SpinUnlock(&pmm.normLock);
+#ifdef PMM_DEBUG
+        KernelPrintf("Frame Allocated: %p\n", rv);
+#endif
     }
     if (rv != 0) return rv;
 
@@ -345,11 +363,15 @@ static Frame_t PmmAllocate(bool low)
     // -- check the scrub queue for a frame to allocate
     //    ---------------------------------------------
     if (!low) {
-//        KernelPrintf("Allocating a single frame from the scrub stack\n");
+#ifdef PMM_DEBUG
+        KernelPrintf("Allocating a single frame from the scrub stack\n");
+#endif
         SpinLock(&pmm.scrubLock);
         rv = PmmDoRemoveFrame(&pmm.scrubStack, true);       // -- scrub the frame when it is removed
         SpinUnlock(&pmm.scrubLock);
-//        KernelPrintf("Frame Allocated: %p\n", rv);
+#ifdef PMM_DEBUG
+        KernelPrintf("Frame Allocated: %p\n", rv);
+#endif
     }
     if (rv != 0) return rv;
 
@@ -357,10 +379,15 @@ static Frame_t PmmAllocate(bool low)
     //
     // -- check the low stack for a frame to allocate
     //    -------------------------------------------
-//    KernelPrintf("Allocating a single frame from the low stack\n");
+#ifdef PMM_DEBUG
+    KernelPrintf("Allocating a single frame from the low stack\n");
+#endif
     SpinLock(&pmm.lowLock);
     rv = PmmDoRemoveFrame(&pmm.lowStack, false);
     SpinUnlock(&pmm.lowLock);
+#ifdef PMM_DEBUG
+    KernelPrintf("Frame Allocated: %p\n", rv);
+#endif
     if (rv != 0) return rv;
 
     return -ENOMEM;
@@ -486,13 +513,25 @@ exit:
 //    -------------------------
 Frame_t pmm_PmmAllocateAligned(int, bool low, int bitsAligned, size_t count)
 {
-//    KernelPrintf("Internal Function to allocate aligned frames (pmm_PmmAllocateAligned)\n");
-//    KernelPrintf(".. low = %s; alignment bits = %d; count = %d\n", low?"true":"false", bitsAligned, count);
+#ifdef PMM_DEBUG
+    KernelPrintf("Internal Function to allocate aligned frames (pmm_PmmAllocateAligned)\n");
+    KernelPrintf(".. low = %s; alignment bits = %d; count = %d\n", low?"true":"false", bitsAligned, count);
+#endif
+
     if (bitsAligned < 12) bitsAligned = 12;
-    if (count == 1 && bitsAligned == 12) return PmmAllocate(low);
+    if (count == 1 && bitsAligned == 12) {
+        Frame_t rv = PmmAllocate(low);
+#ifdef PMM_DEBUG
+        KernelPrintf(".. Returning back to the user frame %p\n", rv);
+#endif
+
+        return rv;
+    }
 
     // -- TODO: add some detail here to allocate aligned/multiple frames
-//    KernelPrintf(".. More than a trivial allocation\n");
+#ifdef PMM_DEBUG
+    KernelPrintf(".. More than a trivial allocation\n");
+#endif
     Addr_t flags = DisableInt();
     Frame_t rv = 0;
 
@@ -570,7 +609,7 @@ void PmmCleanProcess(void)
 void pmm_LateInit(void)
 {
     KernelPrintf("Starting PMM Cleaner process\n");
-//    SchProcessCreate("PMM Cleaner", PmmCleanProcess, GetAddressSpace());
+    SchProcessCreate("PMM Cleaner", (Addr_t)PmmCleanProcess, GetAddressSpace());
     KernelPrintf("PMM Late Initialization Complete!\n");
 }
 

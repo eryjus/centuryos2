@@ -46,12 +46,14 @@ static void LApicSpurious(Addr_t *regs)
 }
 
 
+#if 0
 //
 // -- this is used during initialization to calibrate the timer
 //    ---------------------------------------------------------
 static void LApicInitTimeout(Addr_t *regs)
 {
 }
+#endif
 
 
 
@@ -218,10 +220,8 @@ static int EarlyInit(BootInterface_t *loaderInterface)
     WriteApicRegister(APIC_SIVR, 39 | APIC_SOFTWARE_ENABLE);
     NOP();
 
-
     if (isBoot) {
-        SetVectorHandler(32, (Addr_t)LApicInitTimeout, GetAddressSpace(), 0);
-        SetVectorHandler(32, (Addr_t)LApicSpurious, GetAddressSpace(), 0);
+        SetVectorHandler(39, (Addr_t)LApicSpurious, GetAddressSpace(), 0);
     }
 
     // -- here we initialize the LAPIC to a defined state

@@ -19,8 +19,9 @@
 
                 extern      X2ApicInitEarly
                 extern      Init
-                extern      tmr_Interrupt
                 extern      tmr_GetCurrentTimer
+                extern      tmr_Tick
+                extern      tmr_Eoi
 
                 section     .text
 
@@ -34,13 +35,16 @@ header:
                 dq          X2ApicInitEarly                                             ;; Early Init
                 dq          Init                                                        ;; Late Init
                 dq          0xffffaf4000000000                                          ;; Stack Locations
-                dq          1                                                           ;; interrupts
-                dq          1                                                           ;; internal Services
+                dq          0                                                           ;; interrupts
+                dq          3                                                           ;; internal Services
                 dq          0                                                           ;; OS services
-                dq          32                                                          ;; Interrupt 32 (IRQ0)
-                dq          tmr_Interrupt                                               ;; .. target address
-                dq          0                                                           ;; .. stack
                 dq          0x040                                                       ;; Internal fctn 0x040 (Tmr Cnt)
                 dq          tmr_GetCurrentTimer                                         ;; .. target address
+                dq          0                                                           ;; .. stack
+                dq          0x041                                                       ;; Internal fctn 0x041 (Tick)
+                dq          tmr_Tick                                                    ;; .. target address
+                dq          0                                                           ;; .. stack
+                dq          0x042                                                       ;; Internal fctn 0x042 (EOI)
+                dq          tmr_Eoi                                                     ;; .. target address
                 dq          0                                                           ;; .. stack
 

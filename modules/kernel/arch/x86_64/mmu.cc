@@ -239,6 +239,40 @@ int krn_MmuMapPage(int, Addr_t a, Frame_t f, int flags)
 }
 
 
+
+//
+// -- Map a page in another address space
+//    -----------------------------------
+int krn_MmuMapPageEx(int, Addr_t space, Addr_t a, Frame_t f, int flags)
+{
+    kprintf("Preparing to map a page in another address space\n");
+    Addr_t cr3 = GetAddressSpace();
+    LoadCr3(space);
+    int rv = krn_MmuMapPage(0, a, f, flags);
+
+    LoadCr3(cr3);
+    kprintf("..done\n");
+
+    return rv;
+}
+
+
+//
+// -- Unmap a page in another address space
+//    -------------------------------------
+int krn_MmuUnmapEx(int, Addr_t space, Addr_t a)
+{
+    Addr_t cr3 = GetAddressSpace();
+    LoadCr3(space);
+
+    int rv = krn_MmuUnmapPage(0, a);
+
+    LoadCr3(cr3);
+
+    return rv;
+}
+
+
 #ifdef kprintf
 #undef kprintf
 extern "C" int kprintf(const char *, ...);

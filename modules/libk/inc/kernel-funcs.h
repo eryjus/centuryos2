@@ -46,13 +46,18 @@ enum {
     INT_KRN_MMU_UNMAP       = 0x019,
     INT_KRN_MMU_IS_MAPPED   = 0x01a,
     INT_KRN_MMU_DUMP        = 0x01b,
+    INT_KRN_MMU_MAP_EX      = 0x01c,
+    INT_KRN_MMU_UNMAP_EX    = 0x01d,
 
     // -- Kernel Utility Functions
     INT_KRN_COPY_MEM        = 0x020,
     INT_KRN_RLS_MEM         = 0x021,
+    INT_KRN_PROCESS_SWITCH  = 0x022,
 
     // -- Timer Module Functions
     INT_TMR_CURRENT_COUNT   = 0x040,
+    INT_TMR_TICK            = 0x041,
+    INT_TMR_EOI             = 0x042,
 
     // -- PMM Module Functions
     INT_PMM_ALLOC           = 0x050,
@@ -132,87 +137,302 @@ extern "C" {
 }
 
 
+#define INTERNAL0(type,name,func)                                                                               \
+    inline type name(void) {                                                                                    \
+        return (type)InternalDispatch0(func);                                                                   \
+    }
+
+#define INTERNAL1(type,name,func,type1)                                                                         \
+    inline type name(type1 p1) {                                                                                \
+        return (type)InternalDispatch1(func, (Addr_t)p1);                                                       \
+    }
+
+#define INTERNAL2(type,name,func,type1,type2)                                                                   \
+    inline type name(type1 p1, type2 p2) {                                                                      \
+        return (type)InternalDispatch2(func, (Addr_t)p1, (Addr_t)p2);                                           \
+    }
+
+#define INTERNAL3(type,name,func,type1,type2,type3)                                                             \
+    inline type name(type1 p1, type2 p2, type3 p3) {                                                            \
+        return (type)InternalDispatch3(func, (Addr_t)p1, (Addr_t)p2, (Addr_t)p3);                               \
+    }
+
+#define INTERNAL4(type,name,func,type1,type2,type3,type4)                                                       \
+    inline type name(type1 p1, type2 p2, type3 p3, type4 p4) {                                                  \
+        return (type)InternalDispatch4(func, (Addr_t)p1, (Addr_t)p2, (Addr_t)p3, (Addr_t)p4);                   \
+    }
+
+#define INTERNAL5(type,name,func,type1,type2,type3,type4,type5)                                                 \
+    inline type name(type1 p1, type2 p2, type3 p3, type4 p4, type5 p5) {                                        \
+        return (type)InternalDispatch5(func, (Addr_t)p1, (Addr_t)p2, (Addr_t)p3, (Addr_t)p4, (Addr_t)p5);       \
+    }
+
+
+// ====================================================================
+// == Start with the fundamental internal table management functions ==
+// ====================================================================
+
 
 //
-// -- all the function prototypes
-//    ---------------------------
-extern "C" {
-    // -- Function 0
-    Return_t GetInternalHandler(int number);
-
-    // -- Function 1
-    Return_t SetInternalHandler(int number, Addr_t handlerAddr, Addr_t cr3, Addr_t stack);
-
-    // -- Function 2
-    Return_t GetVectorHandler(int number);
-
-    // -- Function 3
-    Return_t SetVectorHandler(int number, Addr_t vectorAddr, Addr_t cr3, Addr_t stack);
-
-    // -- Function 4
-    Return_t GetServiceHandler(int number);
-
-    // -- Function 5
-    Return_t SetServiceHandler(int number, Addr_t serviceAddr, Addr_t cr3, Addr_t stack);
+// -- Function 0x000 -- Get an Internal Handler Function Address
+//
+//    Prototype: Return_t GetInternalHandler(int number);
+//    ----------------------------------------------------------
+INTERNAL1(Addr_t, GetInternalHandler, INT_GET_INTERNAL, int)
 
 
-    // -- Function 8
-    Return_t KernelPrintf(const char *fmt, ...);
+//
+// -- Function 0x001 -- Set an Internal Handler Function Address
+//
+//    Prototype: Return_t SetInternalHandler(int number, Addr_t address, Addr_t addrSpace, Addr_t stack);
+//    ---------------------------------------------------------------------------------------------------
+INTERNAL4(Return_t, SetInternalHandler, INT_SET_INTERNAL, int, Addr_t, Addr_t, Addr_t)
 
 
-    // -- Function 16
-    Return_t SpinLock(Spinlock_t *lock);
-
-    // -- Function 17
-    Return_t SpinTry(Spinlock_t *lock, size_t timeout);
-
-    // -- Function 18
-    Return_t SpinUnlock(Spinlock_t *lock);
+//
+// -- Function 0x002 -- Get an Interrupt Vector Handler Function Address
+//
+//    Prototype: Return_t GetVectorHandler(int number);
+//    ------------------------------------------------------------------
+INTERNAL1(Addr_t, GetVectorHandler, INT_GET_VECTOR, int)
 
 
-    // -- Function 24
+//
+// -- Function 0x003 -- Set an Interrupt Vector Handler Function Address
+//
+//    Prototype: Return_t SetVectorHandler(int number, Addr_t address, Addr_t addrSpace, Addr_t stack);
+//    -------------------------------------------------------------------------------------------------
+INTERNAL4(Return_t, SetVectorHandler, INT_SET_VECTOR, int, Addr_t, Addr_t, Addr_t)
+
+
+//
+// -- Function 0x004 -- Get an OS Service Handler Function Address
+//
+//    Prototype: Return_t GetServiceHandler(int number);
+//    ------------------------------------------------------------
+INTERNAL1(Addr_t, GetServiceHandler, INT_GET_SERVICE, int)
+
+
+//
+// -- Function 0x005 -- Set an OS Service Handler Function Address
+//
+//    Prototype: Return_t SetServiceHandler(int number, Addr_t address, Addr_t addrSpace, Addr_t stack);
+//    --------------------------------------------------------------------------------------------------
+INTERNAL4(Return_t, SetServiceHandler, INT_SET_SERVICE, int, Addr_t, Addr_t, Addr_t)
+
+
+// =============================
+// == Kernel output functions ==
+// =============================
+
+
+//
+// -- Function 0x008 -- Handle the Kernel's limited version of printf()
+//
+//    Note: this function is implemented in assembly -- no macro here.
+//    -----------------------------------------------------------------
+extern "C" int KernelPrintf(const char *fmt, ...);
+
+
+
+// ========================
+// == Spinlock functions ==
+// ========================
+
+
+//
+// -- Function 0x010 -- Lock a spinlock
+//
+//    Prototype: Return_t SpinLock(Spinlock_t *lock);
+//    -----------------------------------------------
+INTERNAL1(Return_t, SpinLock, INT_KRN_SPIN_LOCK, Spinlock_t *)
+
+
+//
+// -- Function 0x011 -- Try a spinlock; timing out after some timeout value
+//
+//    Note: The timeout is not yet implemented
+//
+//    Prototype: Return_t SpinTry(Spinlock_t *lock, size_t timeout);
+//    --------------------------------------------------------------
+INTERNAL2(Return_t, SpinTry, INT_KRN_SPIN_TRY, Spinlock_t *, size_t)
+
+
+//
+// -- Function 0x012 -- Unlock a spinlock
+//
+//    Prototype: Return_t SpinUnlock(Spinlock_t *lock);
+//    -------------------------------------------------
+INTERNAL1(Return_t, SpinUnlock, INT_KRN_SPIN_UNLOCK, Spinlock_t *)
+
+
+// ==================================
+// == MMU (Page Mapping) functions ==
+// ==================================
+
+
+//
+// -- Function 0x018 -- Map a page in the current address space
+//
+//    Prototype: Return_t MmuMapPage(Addr_t addr, Frame_t frame, int flags);
+//    ----------------------------------------------------------------------
 #define PG_NONE     (0)
 #define PG_WRT      (1<<0)
 #define PG_KRN      (1<<1)
 #define PG_DEV      (1<<15)
-    Return_t MmuMapPage(Addr_t addr, Frame_t frame, int flags);
-
-    // -- Function 25
-    Return_t MmuUnmapPage(Addr_t addr);
-
-    // -- Function 26
-    bool MmuIsMapped(Addr_t addr);
-
-    // -- Function 27
-    Return_t MmuDump(Addr_t addr);
+INTERNAL3(Return_t, MmuMapPage, INT_KRN_MMU_MAP, Addr_t, Frame_t, int)
 
 
-    // -- Function 32
-    void *KrnCopyMem(void *mem, size_t size);
-
-    // -- Function 33
-    Return_t KrnReleaseMem(void *mem);
-
-
-
+//
+// -- Function 0x019 -- Unmap a page in the current address space
+//
+//    Prototype: Return_t MmuUnmapPage(Addr_t addr);
+//    -----------------------------------------------------------
+INTERNAL1(Return_t, MmuUnmapPage, INT_KRN_MMU_UNMAP, Addr_t)
 
 
-    // -- Function 10
-    Frame_t PmmAllocAligned(bool lowMem, int numBitsAligned, size_t count);
-    Frame_t PmmAllocLow(void);
-    Frame_t PmmAlloc(void);
+//
+// -- Function 0x01a -- Check if a page is mapped in the current address space
+//
+//    Prototype: bool MmuIsMapped(Addr_t addr);
+//    ------------------------------------------------------------------------
+INTERNAL1(bool, MmuIsMapped, INT_KRN_MMU_IS_MAPPED, Addr_t)
 
-    // -- Function 11
-    Return_t PmmReleaseRange(Frame_t frame, size_t count);
-    Return_t PmmRelease(Frame_t frame);
 
-    // -- Function 13
-    uint64_t TmrCurrentCount(void);
+//
+// -- Function 0x01b -- Dump the page tables for an address in the current address space
+//
+//    Prototype: Return_t MmuDump(Addr_t addr);
+//    ----------------------------------------------------------------------------------
+INTERNAL1(Return_t, MmuDump, INT_KRN_MMU_DUMP, Addr_t)
 
-    // -- Function 25
-    Return_t SchTimerTick(uint64_t now);
 
-    // -- Function 26
+//
+// -- Function 0x01c -- Map a page in the specified address space
+//
+//    Prototype: Return_t MmuMapPageEx(Addr_t space, Addr_t addr, Frame_t frame, int flags);
+//    --------------------------------------------------------------------------------------
+INTERNAL4(Return_t, MmuMapPageEx, INT_KRN_MMU_MAP_EX, Addr_t, Addr_t, Frame_t, int)
+
+
+//
+// -- Function 0x01d -- Unmap a page in the specified address space
+//
+//    Prototype: Return_t MmuUnmapPageEx(Addr_t space, Addr_t addr);
+//    --------------------------------------------------------------
+INTERNAL2(Return_t, MmuUnmapPageEx, INT_KRN_MMU_UNMAP_EX, Addr_t, Addr_t)
+
+
+
+// ==============================
+// == Kernel Utility functions ==
+// ==============================
+
+
+//
+// -- Function 0x020 -- Copy user-space memory into kernel memory
+//
+//    Prototype: void *KrnCopyMem(void *mem, size_t size);
+//    -----------------------------------------------------------
+INTERNAL2(void *, KrnCopyMem, INT_KRN_COPY_MEM, void *, size_t)
+
+
+//
+// -- Function 0x021 -- Release memory back to the kernel heap
+//
+//    Prototype: Return_t KrnReleaseMem(void *mem);
+//    --------------------------------------------------------
+INTERNAL1(Return_t, KrnReleaseMem, INT_KRN_RLS_MEM, void *)
+
+
+
+// =====================
+// == Timer functions ==
+// =====================
+
+
+//
+// -- Function 0x040 -- Get the current timer counter
+//
+//    Prototype: uint64_t TmrCurrentCount(void);
+//    -----------------------------------------------
+INTERNAL0(uint64_t, TmrCurrentCount, INT_TMR_CURRENT_COUNT)
+
+
+//
+// -- Function 0x041 -- Perform the timer functions related to a timer tick
+//
+//    Prototype: uint64_t TmrTick(void);
+//    ---------------------------------------------------------------------
+INTERNAL0(uint64_t, TmrTick, INT_TMR_TICK)
+
+
+//
+// -- Function 0x042 -- Perform an EOI realted to a interrupt (LAPIC handles)
+//
+//    Prototype: Return_t TmrEoi(void);
+//    -----------------------------------------------------------------------
+INTERNAL0(uint64_t, TmrEoi, INT_TMR_EOI)
+
+
+// =======================================
+// == Physical Memory Manager functions ==
+// =======================================
+
+
+//
+// -- Function 0x050 -- Allocate memory from the PMM
+//
+//    Prototype: Frame_t PmmAllocAligned(bool lowMem, int numBitsAligned, size_t count);
+//    ----------------------------------------------------------------------------------
+INTERNAL3(Frame_t, PmmAllocAligned, INT_PMM_ALLOC, bool, int, size_t)
+inline Frame_t PmmAllocLow(void) { return PmmAllocAligned(true, 12, 1); }
+inline Frame_t PmmAlloc(void) { return PmmAllocAligned(false, 12, 1); }
+
+
+//
+// -- Function 0x051 -- Release memory back to the PMM
+//
+//    Prototype: Return_t PmmReleaseRange(Frame_t frame, size_t count);
+//    -----------------------------------------------------------------
+INTERNAL2(Return_t, PmmReleaseRange, INT_PMM_RELEASE, Frame_t, size_t)
+inline Return_t PmmRelease(Frame_t frame) { return PmmReleaseRange(frame, 1); }
+
+
+// =========================
+// == Scheduler functions ==
+// =========================
+
+
+//
+// -- Function 0x060 -- Perform the Scheduler Tick function
+//
+//    Prototype: Return_t SchTimerTick(uint64_t now);
+//    -----------------------------------------------------
+INTERNAL1(Return_t, SchTimerTick, INT_SCH_TICK, uint64_t)
+
+
+//
+// -- Function 0x061 -- Create a new Process and add it to the scheduler
+//
+//    Prototype: Process_t *SchProcessCreate(const char *name, Addr_t startingAddr, Addr_t addrSpace)
+//    ---------------------------------------------------------------------------------------------
+INTERNAL3(Process_t *, SchProcessCreate, INT_SCH_CREATE, const char *, Addr_t, Addr_t)
+
+
+//
+// -- Function 0x062 -- Make a process Ready to execute
+//
+//    Prototype: Return_t SchProcessReady(Process_t *proc);
+//    -----------------------------------------------------
+INTERNAL1(Return_t, SchProcessReady, INT_SCH_READY, Process_t *)
+
+
+//
+// -- Function 0x063 -- Block the current process with the specified status code
+//
+//    Prototype: Return_t SchProcessBlock(int status);
+//    --------------------------------------------------------------------------
 #define PRC_INIT        0
 #define PRC_RUNNING     1
 #define PRC_READY       2
@@ -221,21 +441,27 @@ extern "C" {
 #define PRC_SEMW        5
 #define PRC_DLYW        6
 #define PRC_MSGW        7
-    Return_t SchProcessBlock(int status);
+INTERNAL1(Return_t, SchProcessBlock, INT_SCH_BLOCK, int)
 
-    // -- Function 27
-    Return_t SchProcessReady(Process_t *proc);
 
-    // -- Function 28
-    Return_t SchProcessUnblock(Process_t *proc);
+//
+// -- Function 0x064 -- Unblock the specified Process, placing it on the Ready queue
+//
+//    Prototype: Return_t SchProcessUnblock(Process_t *proc);
+//    ------------------------------------------------------------------------------
+INTERNAL1(Return_t, SchProcessUnblock, INT_SCH_UNBLOCK, Process_t *)
 
-    // -- Function 29
-    Return_t SchProcessMicroSleepUntil(uint64_t when);
-    inline Return_t ProcessMicroSleep(uint64_t micros) { return SchProcessMicroSleepUntil(TmrCurrentCount() + micros); }
-    inline Return_t ProcessMilliSleep(uint64_t ms) { return SchProcessMicroSleepUntil(TmrCurrentCount() + (ms * 1000)); }
-    inline Return_t ProcessSleep(uint64_t s) { return SchProcessMicroSleepUntil(TmrCurrentCount() + (s * 1000000)); }
 
-    // -- Function 30
-    Return_t SchProcessCreate(const char *name, void (*startingAddr)(void), Addr_t addrSpace);
-}
+//
+// -- Function 0x065 -- Put the current process to sleep until a microsecond mark has passed
+//
+//    Prototype: Return_t SchProcessMicroSleepUntil(uint64_t when);
+//    --------------------------------------------------------------------------------------
+INTERNAL1(Return_t, SchProcessMicroSleepUntil, INT_SCH_SLEEP_UNTIL, uint64_t)
+inline Return_t SchProcessMicroSleep(uint64_t u) { return SchProcessMicroSleepUntil(TmrCurrentCount() + u); }
+inline Return_t SchProcessMilliSleep(uint64_t m) { return SchProcessMicroSleepUntil(TmrCurrentCount() + (m * 1000)); }
+inline Return_t SchProcessSleep(uint64_t s) { return SchProcessMicroSleepUntil(TmrCurrentCount() + (s * 1000000)); }
+
+
+
 

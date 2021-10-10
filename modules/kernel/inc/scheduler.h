@@ -54,6 +54,7 @@
 
 
 #include "types.h"
+#include "boot-interface.h"
 #include "printf.h"
 
 
@@ -183,9 +184,23 @@ typedef struct Scheduler_t {
 // -- Exposed function prototypes
 //    ---------------------------
 extern "C" {
+    void ProcessSwitch(Process_t *next);
+    void ProcessSchedule(void);
+
+
     void ProcessStart(void);
-    void ProcessNewStack(Process_t *proc, void (*startingAddr)(void));
-    Process_t *sch_ProcessCreate(int, const char *name, void (*startingAddr)(void), Addr_t addrSpace);
+    void ProcessNewStack(Process_t *proc, Addr_t startingAddr);
+    Process_t *sch_ProcessCreate(int, const char *name, Addr_t startingAddr, Addr_t addrSpace);
+    Return_t sch_Tick(int, uint64_t now);
+    Return_t sch_ProcessBlock(int, ProcStatus_t reason);
+    Return_t sch_ProcessReady(int, Process_t *proc);
+    Return_t sch_ProcessUnblock(int, Process_t *proc);
+    Return_t sch_ProcessMicroSleepUntil(int, uint64_t when);
+    Return_t ProcessInit(BootInterface_t *loaderInterface);
+    void ProcessTerminate(Process_t *proc);
+    void ProcessEnd(void);
 }
 
+
+extern Scheduler_t scheduler;
 

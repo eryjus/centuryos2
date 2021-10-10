@@ -301,6 +301,7 @@ extern Addr_t isr254;
 extern Addr_t isr255;
 
 extern Addr_t InternalTarget;
+extern Addr_t TimerVector;
 
 
 
@@ -459,6 +460,7 @@ void IntInit(void)
     INT_VECTOR(29)
     INT_VECTOR(30)
     INT_VECTOR(31)
+
     ISR_VECTOR(32)
     ISR_VECTOR(33)
     ISR_VECTOR(34)

@@ -478,6 +478,11 @@ Einval:
 ;; -- All targets execute from here
 ;;    -----------------------------
 CommonTarget:
+        ;; -- check the function; exit if none to call
+        cmp     qword [rbx+0],0
+        je      Exit
+
+        ;; -- Push general purpose registers
         push    rcx
         push    rdx
         push    rbp
@@ -492,15 +497,18 @@ CommonTarget:
         push    r14
         push    r15
 
+        ;; -- Push control registers
         mov     rbp,cr0
         push    rbp
         mov     rbp,cr2
         push    rbp
         mov     rbp,cr3
+        mov     r12,rbp         ;; save for later
         push    rbp
         mov     rbp,cr4
         push    rbp
 
+        ;; -- Push segment registers
         xor     rbp,rbp
         mov     bp,ds
         push    rbp
@@ -511,48 +519,72 @@ CommonTarget:
         mov     bp,gs
         push    rbp
 
-        cmp     qword [rbx+0],0
-        je      SameStack               ;; jump past the call
-
-        cmp     qword [rbx+8],0
-        je      NoCr3
-
-        mov     rbp,[rbx+8]
-        mov     cr3,rbp
-
-NoCr3:
-        mov     [rbx+24],rsp            ;; save the stack pointer containing the regs
-        xor     r11,r11                 ;; clear old stack value
+        ;; -- Now we need to lock the stack until the address space and the stack are replaced
         cmp     qword [rbx+16],0
-        je      NoStack
+        je      NoLock
 
-        ;; -- if there is a stack to protect, then get a spinlock for it
         PUSHA
         lea     rsi,[rbx+32]
         call    krn_SpinLock
         POPA
 
+        ;; -- save the old stack location for register values
+NoLock:
+        mov     [rbx+24],rsp            ;; save the stack pointer containing the regs
+
+        ;; -- no more stack activity!
+        mov     rbp,[rbx+8]
+        cmp     rbp,0
+        je      NoCr3
+
+        mov     cr3,rbp                 ;; maps the new address space
+
+NoCr3:
+        mov     r11,rsp                 ;; save the stack location for later
         mov     rbp,[rbx+16]
-        mov     r11,rsp
+        cmp     rbp,0
+        je      NoStack
+
+        ;; -- get the new stack location
         mov     rsp,rbp
 
 NoStack:
-        mov     rdi,rbx
-        push    r11
+        ;; -- restore stack operations
+        mov     rdi,rbx                 ;; function call parameter
+
+        push    r11                     ;; save the old stack value
+        push    r12                     ;; save the old cr3 value
+        push    rbx                     ;; save the structure location
+
         call    [rbx+0]                 ;; make the actual handler function call
 
-        pop     rbp
-        cmp     rbp,0
-        je      SameStack
+        pop     rbx                     ;; restore the structure location
+        pop     r12                     ;; get the old cr3
+        pop     r11                     ;; get the old stack value
 
-        mov     rsp,rbp
+        ;; -- lock stack operations again; address space not static
+        mov     rsp,r11                 ;; unconditionally restore the stack
 
-SameStack:
+        ;; -- do we need to restore a virtual address context?
+        mov     r11,cr3
+        cmp     r11,r12
+        je      NoCr3Restore
+
+        mov     cr3,r12                 ;; restore the old cr3
+
+NoCr3Restore:
+        ;; -- Restore stack operations -- back in an original context
+        cmp     qword [rbx+16],0
+        je      NoUnlock
+
+NoUnlock:
+        ;; -- Unlock the stack
         PUSHA
         lea     rsi,[rbx+32]
         call    krn_SpinUnlock
         POPA
 
+        ;; -- pop the segment registers
         pop     rbp                     ;; discard gs
         pop     rbp                     ;; discard fs
 
@@ -561,22 +593,13 @@ SameStack:
         pop     rbp
         mov     ds,bp
 
+        ;; -- pop the control registers
         pop     rbp                     ;; discard cr4
-
-        pop     rbp                     ;; old cr3
-        cmp     rbp,0
-        je      SameCr3
-
-        mov     rbx,cr3                 ;; current cr3
-        cmp     rbx,rbp
-        je      SameCr3
-
-        mov     cr3,rbp
-
-SameCr3:
+        pop     rbp                     ;; discard cr3 -- already handled
         pop     rbp                     ;; discard cr2
         pop     rbp                     ;; discard cr0
 
+        ;; -- pop the general purpose registers
         pop     r15
         pop     r14
         pop     r13
@@ -591,6 +614,7 @@ SameCr3:
         pop     rdx
         pop     rcx
 
+Exit:
         ret
 
 ExitPoint:

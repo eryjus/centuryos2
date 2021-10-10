@@ -24,6 +24,7 @@
 #include "scheduler.h"
 #include "heap.h"
 #include "kernel-funcs.h"
+#include "stacks.h"
 #include "internals.h"
 
 
@@ -38,13 +39,13 @@ ServiceRoutine_t internalTable[MAX_HANDLERS] = { { 0 } };
 //
 // -- Read an internal function handler address from the table
 //    --------------------------------------------------------
-Return_t krn_GetInternalHandler(int, int i)
+Addr_t krn_GetInternalHandler(int, int i)
 {
     if (i < 0 || i >= MAX_HANDLERS) return -EINVAL;
 
     kprintf("Getting internal handler: %p\n", internalTable[i].handler);
 
-    return (Return_t)internalTable[i].handler;
+    return internalTable[i].handler;
 }
 
 
@@ -129,14 +130,29 @@ void InternalInit(void)
     internalTable[INT_KRN_MMU_UNMAP].handler =      (Addr_t)krn_MmuUnmapPage;
     internalTable[INT_KRN_MMU_IS_MAPPED].handler =  (Addr_t)krn_MmuIsMapped;
     internalTable[INT_KRN_MMU_DUMP].handler =       (Addr_t)krn_MmuDump;
+    internalTable[INT_KRN_MMU_MAP_EX].handler =     (Addr_t)krn_MmuMapPageEx;
+    internalTable[INT_KRN_MMU_MAP_EX].stack =       0xffffff0000008000 + 0x1000;
+    internalTable[INT_KRN_MMU_MAP_EX].cr3 =         GetAddressSpace();
+    internalTable[INT_KRN_MMU_UNMAP_EX].handler =   (Addr_t)krn_MmuUnmapEx;
+    internalTable[INT_KRN_MMU_UNMAP_EX].stack =     0xffffff0000009000 + 0x1000;
+    internalTable[INT_KRN_MMU_UNMAP_EX].cr3 =       GetAddressSpace();
 
     internalTable[INT_KRN_COPY_MEM].handler =       (Addr_t)krn_AllocAndCopy;
     internalTable[INT_KRN_RLS_MEM].handler =        (Addr_t)krn_ReleaseCopy;
-
-
-
+    internalTable[INT_KRN_PROCESS_SWITCH].handler = (Addr_t)ProcessSwitch;
 
     internalTable[INT_PMM_ALLOC].handler =          (Addr_t)PmmEarlyFrame;
+
+    internalTable[INT_SCH_TICK].handler =           (Addr_t)sch_Tick;
+    internalTable[INT_SCH_CREATE].handler =         (Addr_t)sch_ProcessCreate;
+    internalTable[INT_SCH_READY].handler =          (Addr_t)sch_ProcessReady;
+    internalTable[INT_SCH_BLOCK].handler =          (Addr_t)sch_ProcessBlock;
+    internalTable[INT_SCH_UNBLOCK].handler =        (Addr_t)sch_ProcessUnblock;
+    internalTable[INT_SCH_SLEEP_UNTIL].handler =    (Addr_t)sch_ProcessMicroSleepUntil;
+
+
+    krn_MmuMapPage(0, 0xffffff0000008000, PmmAlloc(), PG_WRT);
+    krn_MmuMapPage(0, 0xffffff0000009000, PmmAlloc(), PG_WRT);
 }
 
 

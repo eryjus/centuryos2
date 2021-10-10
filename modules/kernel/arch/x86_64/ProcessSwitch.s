@@ -43,9 +43,12 @@
 ;;
 ;; -- Some global variables that are referenced
 ;;    -----------------------------------------
-    extern  scheduler
     extern  ProcessDoReady
     extern  ProcessUpdateTimeUsed
+;;    extern  _SchCheckPostpone
+    extern  sch_ProcessReady
+
+    extern  scheduler
 
 
 ;;
@@ -82,7 +85,10 @@ bits        64
 
 ;;
 ;; -- Execute a process switch
-;;    ------------------------
+;;
+;;    CRITICAL: the scheduler lock must be held before calling this function.  If it is not,
+;;    undesireable results will occur.
+;;    --------------------------------------------------------------------------------------
 ProcessSwitch:
 ;;
 ;; -- before we do too much, do we need to postpone?
@@ -106,7 +112,47 @@ ProcessSwitch:
 ;;    ------------------------------------
 .cont:
         push    rbx                         ;; save rbx
+        push    rcx                         ;; save rcx
+        push    rdx                         ;; save rdx
+        push    rsi                         ;; save rsi
+        push    rdi                         ;; save rdi
         push    rbp                         ;; save rbp
+        push    r8                          ;; save r8
+        push    r9                          ;; save r9
+        push    r10                         ;; save r10
+        push    r11                         ;; save r11
+        push    r12                         ;; save r12
+        push    r13                         ;; save r13
+        push    r14                         ;; save r14
+        push    r15                         ;; save r15
+
+        call    ProcessUpdateTimeUsed
+
+        pop     r15                         ;; restore r15
+        pop     r14                         ;; restore r14
+        pop     r13                         ;; restore r13
+        pop     r12                         ;; restore r12
+        pop     r11                         ;; restore r11
+        pop     r10                         ;; restore r10
+        pop     r9                          ;; restore r9
+        pop     r8                          ;; restore r8
+        pop     rbp                         ;; restore rbp
+        pop     rdi                         ;; restore rdi
+        pop     rsi                         ;; restore rsi
+        pop     rdx                         ;; restore rdx
+        pop     rcx                         ;; restore rcx
+        pop     rbx                         ;; restore rbx
+
+        push    rbx                         ;; save rbx
+        push    rcx                         ;; save rcx
+        push    rdx                         ;; save rdx
+        push    rsi                         ;; save rsi
+        push    rdi                         ;; save rdi
+        push    rbp                         ;; save rbp
+        push    r8                          ;; save r8
+        push    r9                          ;; save r9
+        push    r10                         ;; save r10
+        push    r11                         ;; save r11
         push    r12                         ;; save r12
         push    r13                         ;; save r13
         push    r14                         ;; save r14
@@ -117,17 +163,18 @@ ProcessSwitch:
 ;; -- Get the current task structure
 ;;    ------------------------------
         mov     r14,[gs:8]                  ;; get the address of the current process
+        mov     r15,rdi                     ;; save the target process to a preserved register
 
         cmp     dword [r14+PROC_STATUS],PROC_STS_RUNNING    ;; is this the current running process
-        jne     .saveStack
+        jne     .saveStack                  ;; if not RUNNING, do not make the process ready
 
-        mov     r15,rdi                     ;; save the target process to a preserved register
-        mov     rdi,r14                     ;; get the current process to make it ready
-        call    ProcessDoReady
+        mov     rsi,r14                     ;; get the current process to make it ready
+
+        push    r14
+        call    sch_ProcessReady
+        pop     r14
 
 .saveStack:
-        call    ProcessUpdateTimeUsed       ;; update the time used for the current process
-
         mov     [r14+PROC_TOS_PROCESS_SWAP],rsp ;; save the top of the current stack
 
 
@@ -158,7 +205,15 @@ ProcessSwitch:
         pop     r14                         ;; restore r14
         pop     r13                         ;; restore r13
         pop     r12                         ;; restore r12
+        pop     r11                         ;; restore r11
+        pop     r10                         ;; restore r10
+        pop     r9                          ;; restore r9
+        pop     r8                          ;; restore r8
         pop     rbp                         ;; restore rbp
+        pop     rdi                         ;; restore rdi
+        pop     rsi                         ;; restore rsi
+        pop     rdx                         ;; restore rdx
+        pop     rcx                         ;; restore rcx
         pop     rbx                         ;; restore rbx
         pop     rax                         ;; restore rax (from the very first push)
 

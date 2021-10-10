@@ -33,15 +33,10 @@ typedef struct StackManager_t {
     Addr_t startStart;
     Addr_t stackSize;
     size_t stackCount;
+    size_t elementCount;
+    size_t bits;
     Bitmap_t stacks[0];
 } StackManager_t;
-
-
-
-//
-// -- make sure we initialize the stack handlers on first call
-//    --------------------------------------------------------
-bool initialized = false;
 
 
 
@@ -68,18 +63,25 @@ static void StackInit(void)
     extern Addr_t __stackCount;
     extern Addr_t __stackSize;
 
+    KernelPrintf("===================================================================\n");
+    KernelPrintf("Initializing %d stacks for address space %p\n", __stackCount, GetAddressSpace());
+    KernelPrintf("===================================================================\n");
+
     int bits = sizeof(Bitmap_t) * 8;
     int stacksCount = (__stackCount + (bits - 1)) / bits;
+
+    KernelPrintf(".. initializing %d stack indices in address space %p\n", stacksCount, GetAddressSpace());
 
     stackManager = (StackManager_t *)HeapAlloc(sizeof(StackManager_t) + (stacksCount * sizeof(Bitmap_t)), false);
     if (!assert(stackManager != NULL)) return;
 
     stackManager->stackCount = __stackCount;
+    stackManager->elementCount = stacksCount;
+    stackManager->bits = bits;
     stackManager->stackSize = __stackSize;
     stackManager->startStart = __stackStart;
 
     kMemSetB(stackManager->stacks, 0, stacksCount * sizeof(Bitmap_t));
-    initialized = true;
 }
 
 
@@ -89,16 +91,20 @@ static void StackInit(void)
 //    ------------------------------
 static void StackDoAlloc(Addr_t stack)
 {
-    if (unlikely(!initialized)) StackInit();
+    KernelPrintf("stackManager = %p\n", stackManager);
+    if (unlikely(stackManager == NULL)) StackInit();
 
+    KernelPrintf("Preparing to allocate stack at %p (starts at %p)\n", stack, stackManager->startStart);
+    KernelPrintf(".. (end of stacks is at %p\n", stackManager->startStart + (stackManager->stackCount * stackManager->stackSize));
     stack &= ~(stackManager->stackSize - 1);
 
-    int bits = sizeof(Bitmap_t) * 8;
-    int idx = (stack - stackManager->startStart) / bits;
-    int off = (stack - stackManager->startStart) % bits;
+    int idx = ((stack - stackManager->startStart) / stackManager->stackSize) / stackManager->bits;
+    int off = ((stack - stackManager->startStart) / stackManager->stackSize) % stackManager->bits;
 
     if (!assert(stack >= stackManager->startStart)) return;
     if (!assert(stack < stackManager->startStart + (stackManager->stackCount * stackManager->stackSize))) return;
+
+    KernelPrintf("Marking the stack %p at index %d and offset %d as used\n", stack, idx, off);
 
     stackManager->stacks[idx] |= (1 << off);
 }
@@ -110,11 +116,9 @@ static void StackDoAlloc(Addr_t stack)
 //    ----------------
 void StackAlloc(Addr_t stack)
 {
-    Addr_t flags = DisableInt();
-    SpinLock(&lock);
-    StackDoAlloc(stack);
-    SpinUnlock(&lock);
-    RestoreInt(flags);
+    SpinLock(&lock); {
+        StackDoAlloc(stack);
+    } SpinUnlock(&lock);
 }
 
 
@@ -125,15 +129,16 @@ void StackAlloc(Addr_t stack)
 Addr_t StackFind(void)
 {
     Addr_t rv = 0;
-    Addr_t flags = DisableInt();
-    SpinLock(&lock); {
-        if (unlikely(!initialized)) StackInit();
 
-        for (int i = 0; i < stackManager->stackCount; i ++) {
+    SpinLock(&lock); {
+        KernelPrintf("stackManager = %p\n", stackManager);
+        if (unlikely(stackManager == NULL)) StackInit();
+
+        for (int i = 0; i < stackManager->elementCount; i ++) {
             if (stackManager->stacks[i] != (Addr_t)-1) {
-                for (int j = 0; j < 32; j ++) {
+                for (int j = 0; j < stackManager->bits; j ++) {
                     if ((stackManager->stacks[i] & (1 << j)) == 0) {
-                        rv = stackManager->startStart + (stackManager->stackSize * ((i * 32) + j));
+                        rv = stackManager->startStart + (stackManager->stackSize * ((i * stackManager->bits) + j));
                         StackDoAlloc(rv);
                         KernelPrintf("In address space %p, allocating stack %p\n", GetAddressSpace(), rv);
                         goto exit;
@@ -144,7 +149,6 @@ Addr_t StackFind(void)
 
 exit:
         SpinUnlock(&lock);
-        RestoreInt(flags);
     }
 
     return rv;
@@ -157,18 +161,15 @@ exit:
 //    ---------------
 void StackRelease(Addr_t stack)
 {
-    int bits = sizeof(Bitmap_t) * 8;
-    int idx = (stack - stackManager->startStart) / bits;
-    int off = (stack - stackManager->startStart) % bits;
+    int idx = ((stack - stackManager->startStart) / stackManager->stackSize) / stackManager->bits;
+    int off = ((stack - stackManager->startStart) / stackManager->stackSize) % stackManager->bits;
 
     if (!assert(stack >= stackManager->startStart)) return;
     if (!assert(stack < stackManager->startStart + (stackManager->stackCount * stackManager->stackSize))) return;
 
-    Addr_t flags = DisableInt();
     SpinLock(&lock); {
         stackManager->stacks[idx] &= ~(1 << off);
         SpinUnlock(&lock);
-        RestoreInt(flags);
     }
 }
 

@@ -1593,13 +1593,571 @@ I can say for certain that when I do not create the PMM Cleaner process (comment
 
 So, I think this is going to boil down to the design decision I made to split the scheduler into its own module.  The scheduler just cannot develop the proper context for building a process stack.  That whole process creation logic needs to be revisited and handled differently.  Most likely I will need to start with a change to the MMU code so that I can pass in an address space in which to make the change.
 
-I have interrupts enabled and without the PMM Cleaner process the code boots properly.  I do not yet have the idle processes getting CPU -- so no task swapping.  But I have enough changes I really should commit something.  It's time for a micro-commit.
+I have interrupts enabled and without the PMM Cleaner process the code boots properly.  I do not yet have the idle processes getting CPU -- so no task swapping.  But I have enough changes I really should commit something.  It's time for a (not-so)micro-commit.
 
+---
 
+## Version 0.0.9e -- Update the scheduler code
 
+In this micro-version, there are a few things to complete:
+1. Update the MMU code to be able to change to a new address space and make the updates therein.
+1. Revisit the scheduler and perform the necessary updates.
+1. Complete the task changes.
 
+These may not all work perfectly, but the majority of the work needs to be completed so I can have a purposeful debugging micro-version.
 
+---
 
+Now, to start with the MMU code.  What I really need are 2 new Internal Functions that can pass in the address space to update and this code can change to that address space and then call the original functions.  The address space change needs to happen in the kernel code (since this is common among all address spaces).
 
+The problem is that there are 4 functions already and only space for 4 more before I have to start pushing things around again.  I might be able to get away with only 2 of these functions.  I could also use some C++ features to set default arguments for function calls and only worry about the things I really need to update (in the scheduler).
 
+I think I will add the 2 new functions and hope that I can get away with just that.  It will be the least intrusive to the existing code.
+
+---
+
+### 2021-Sep-14
+
+Today, I will start evaluating the `scheduler` functions to see what will need to be updated.  At the moment, I believe the only thing that is required is `ProcessCreate()` and its subfunctions.  Anything that calls `MmuMapPage()` is suspect as well.
+
+So, these functions are:
+* `ProcessNewStack()`
+
+Well, the reality here is fascinating.  I actually should be able to test this quite simply by commenting out this function call.  Ha!!  It works with this function call disabled.  No triple fault.
+
+---
+
+I have started some exhausting commenting debugging -- commenting out all lines of code and releasing them one at a time to see what breaks.  I have 2 issues at the moment.
+
+The first being a call to `PmmAlloc()`.  This call before entry has the following stack:
+
+```
+Stack address size 8
+ | STACK 0xffffaf4000001f58 [0x00000000:0x00200046] (<unknown>)
+ | STACK 0xffffaf4000001f60 [0xffffaf40:0x00001f78] (<unknown>)
+ | STACK 0xffffaf4000001f68 [0xffffa000:0x00001b20] (<unknown>)
+ | STACK 0xffffaf4000001f70 [0xffffb800:0x00000358] (<unknown>)
+ | STACK 0xffffaf4000001f78 [0xfffff800:0x00003e58] (<unknown>)
+ | STACK 0xffffaf4000001f80 [0xffffb800:0x00000358] (<unknown>)
+ | STACK 0xffffaf4000001f88 [0xffff9000:0x00000018] (<unknown>)
+ | STACK 0xffffaf4000001f90 [0xffffa000:0x00004cf0] (<unknown>)
+ | STACK 0xffffaf4000001f98 [0xffffa000:0x00001b20] (<unknown>)
+ | STACK 0xffffaf4000001fa0 [0x00000000:0x01065000] (<unknown>)
+ | STACK 0xffffaf4000001fa8 [0xffffaf40:0x00002000] (<unknown>)
+ | STACK 0xffffaf4000001fb0 [0xffffa000:0x000028ae] (<unknown>)
+ | STACK 0xffffaf4000001fb8 [0x00000000:0x00000000] (<unknown>)
+ | STACK 0xffffaf4000001fc0 [0x00000000:0x00000000] (<unknown>)
+ | STACK 0xffffaf4000001fc8 [0xffff8000:0x00014240] (<unknown>)
+ | STACK 0xffffaf4000001fd0 [0x00000000:0x01004000] (<unknown>)
+ | STACK 0xffffaf4000001fd8 [0x00000000:0x0017f000] (<unknown>)
+ | STACK 0xffffaf4000001fe0 [0x00000000:0x01065000] (<unknown>)
+ | STACK 0xffffaf4000001fe8 [0xffffa000:0x00001b20] (<unknown>)
+ | STACK 0xffffaf4000001ff0 [0xffff8000:0x000043e5] (<unknown>)
+ | STACK 0xffffaf4000001ff8 [0xfffff800:0x00003e58] (<unknown>)
+```
+
+... and after the call is:
+
+```
+Stack address size 8
+ | STACK 0xffffaf4000001de0 [0x00000000:0x000002a0] (<unknown>)
+ | STACK 0xffffaf4000001de8 [0xffff8000:0x0002b510] (<unknown>)
+ | STACK 0xffffaf4000001df0 [0x00000000:0x00000000] (<unknown>)
+ | STACK 0xffffaf4000001df8 [0xffff8000:0x000043e5] (<unknown>)
+ | STACK 0xffffaf4000001e00 [0x00000000:0x00000000] (<unknown>)
+ | STACK 0xffffaf4000001e08 [0x00000000:0x00000048] (<unknown>)
+ | STACK 0xffffaf4000001e10 [0x00000000:0x00000000] (<unknown>)
+ | STACK 0xffffaf4000001e18 [0x00000000:0x00000000] (<unknown>)
+ | STACK 0xffffaf4000001e20 [0x00000000:0x00000000] (<unknown>)
+ | STACK 0xffffaf4000001e28 [0x00000000:0x000000a0] (<unknown>)
+ | STACK 0xffffaf4000001e30 [0x00000000:0x01065000] (<unknown>)
+ | STACK 0xffffaf4000001e38 [0x00000000:0x00000000] (<unknown>)
+ | STACK 0xffffaf4000001e40 [0x00000000:0xe0000011] (<unknown>)
+ | STACK 0xffffaf4000001e48 [0x00000000:0x00000000] (<unknown>)
+ | STACK 0xffffaf4000001e50 [0x00000000:0x00000000] (<unknown>)
+ | STACK 0xffffaf4000001e58 [0x00000000:0x00000000] (<unknown>)
+ | STACK 0xffffaf4000001e60 [0x00000000:0x00000000] (<unknown>)
+ | STACK 0xffffaf4000001e68 [0x00000000:0x00000000] (<unknown>)
+ | STACK 0xffffaf4000001e70 [0x00000000:0x00000000] (<unknown>)
+ | STACK 0xffffaf4000001e78 [0x00000000:0x00000000] (<unknown>)
+ | STACK 0xffffaf4000001e80 [0x00000000:0x00000000] (<unknown>)
+ | STACK 0xffffaf4000001e88 [0x00000000:0x00000000] (<unknown>)
+ | STACK 0xffffaf4000001e90 [0x00000000:0x00000000] (<unknown>)
+ | STACK 0xffffaf4000001e98 [0x00000000:0x00000000] (<unknown>)
+ | STACK 0xffffaf4000001ea0 [0x00000000:0x00000000] (<unknown>)
+ | STACK 0xffffaf4000001ea8 [0x00000000:0x00000000] (<unknown>)
+ | STACK 0xffffaf4000001eb0 [0xffff8000:0x000042a8] (<unknown>)
+ | STACK 0xffffaf4000001eb8 [0xffff8000:0x00013f10] (<unknown>)
+ | STACK 0xffffaf4000001ec0 [0x00000000:0x001fffb0] (<unknown>)
+ | STACK 0xffffaf4000001ec8 [0x00000000:0x0000000e] (<unknown>)
+ | STACK 0xffffaf4000001ed0 [0x00000000:0x00000000] (<unknown>)
+ | STACK 0xffffaf4000001ed8 [0x00000000:0x00000000] (<unknown>)
+ | STACK 0xffffaf4000001ee0 [0x00000000:0x00000008] (<unknown>)
+ | STACK 0xffffaf4000001ee8 [0x00000000:0x00210046] (<unknown>)
+ | STACK 0xffffaf4000001ef0 [0xffffaf40:0x00001f08] (<unknown>)
+ | STACK 0xffffaf4000001ef8 [0x00000000:0x00000010] (<unknown>)
+ | STACK 0xffffaf4000001f00 [0x00000000:0x00000000] (<unknown>)
+ | STACK 0xffffaf4000001f08 [0x00000000:0x00000000] (<unknown>)
+ | STACK 0xffffaf4000001f10 [0x00000000:0x00000000] (<unknown>)
+ | STACK 0xffffaf4000001f18 [0x00000000:0x00000000] (<unknown>)
+ | STACK 0xffffaf4000001f20 [0x00000000:0x00000000] (<unknown>)
+ | STACK 0xffffaf4000001f28 [0x00000000:0x00000000] (<unknown>)
+ | STACK 0xffffaf4000001f30 [0x00000000:0x00000000] (<unknown>)
+ | STACK 0xffffaf4000001f38 [0x00000000:0x00000000] (<unknown>)
+ | STACK 0xffffaf4000001f40 [0x00000000:0x00000000] (<unknown>)
+ | STACK 0xffffaf4000001f48 [0x00000000:0x00000000] (<unknown>)
+ | STACK 0xffffaf4000001f50 [0x00000000:0x00000000] (<unknown>)
+ | STACK 0xffffaf4000001f58 [0x00000000:0x00000000] (<unknown>)
+ | STACK 0xffffaf4000001f60 [0x00000000:0x00000000] (<unknown>)
+ | STACK 0xffffaf4000001f68 [0x00000000:0x00000000] (<unknown>)
+ | STACK 0xffffaf4000001f70 [0x00000000:0x00000000] (<unknown>)
+ | STACK 0xffffaf4000001f78 [0x00000000:0x00000000] (<unknown>)
+ | STACK 0xffffaf4000001f80 [0x00000000:0x00000000] (<unknown>)
+ | STACK 0xffffaf4000001f88 [0x00000000:0x00000000] (<unknown>)
+ | STACK 0xffffaf4000001f90 [0x00000000:0x00000000] (<unknown>)
+ | STACK 0xffffaf4000001f98 [0x00000000:0x00000000] (<unknown>)
+ | STACK 0xffffaf4000001fa0 [0x00000000:0x00000000] (<unknown>)
+ | STACK 0xffffaf4000001fa8 [0x00000000:0x00000000] (<unknown>)
+ | STACK 0xffffaf4000001fb0 [0x00000000:0x00000000] (<unknown>)
+ | STACK 0xffffaf4000001fb8 [0x00000000:0x00000000] (<unknown>)
+ | STACK 0xffffaf4000001fc0 [0x00000000:0x00000000] (<unknown>)
+ | STACK 0xffffaf4000001fc8 [0x00000000:0x00000000] (<unknown>)
+ | STACK 0xffffaf4000001fd0 [0x00000000:0x00000000] (<unknown>)
+ | STACK 0xffffaf4000001fd8 [0x00000000:0x00000000] (<unknown>)
+ | STACK 0xffffaf4000001fe0 [0x00000000:0x00000000] (<unknown>)
+ | STACK 0xffffaf4000001fe8 [0x00000000:0x00000000] (<unknown>)
+ | STACK 0xffffaf4000001ff0 [0x00000000:0x00000000] (<unknown>)
+ | STACK 0xffffaf4000001ff8 [0x00000000:0x00000000] (<unknown>)
+```
+
+This is where my 0 values are coming from.  It confirms that something is zeroing out the bottom of the stack.
+
+Let's redo this.
+
+Before the errant function call:
+
+```
+<bochs:3> page rsp
+PML4: 0x00000001fffca063    ps         A pcd pwt S W P
+PDPE: 0x00000001fffc9063    ps         A pcd pwt S W P
+ PDE: 0x00000001fffc8063    ps         A pcd pwt S W P
+ PTE: 0x00000001fffc7063       g pat D A pcd pwt S W P
+linear page 0xffffaf4000001000 maps to physical page 0x0001fffc7000
+```
+
+... and after the errant function call (or more specifically, at the crash point):
+
+```
+<bochs:5> page rsp
+PML4: 0x00000001ffffe063    ps         A pcd pwt S W P
+PDPE: 0x00000001ffffd063    ps         A pcd pwt S W P
+ PDE: 0x00000001ffffc063    ps         A pcd pwt S W P
+ PTE: 0x00000001ffffb063       g pat D A pcd pwt S W P
+linear page 0xffffaf4000001000 maps to physical page 0x0001ffffb000
+```
+
+Now, we are getting somewhere!  We have a different mapping!
+
+One more time.
+
+Before the function call:
+
+```
+<bochs:3> creg
+CR0=0xe0000011: PG CD NW ac wp ne ET ts em mp PE
+CR2=page fault laddr=0x0000000000000000
+CR3=0x0001fffe9000
+    PCD=page-level cache disable=0
+    PWT=page-level write-through=0
+CR4=0x000000a0: cet pke smap smep osxsave pcid fsgsbase smx vmx osxmmexcpt umip osfxsr pce PGE mce PAE pse de tsd pvi vme
+CR8: 0x0
+EFER=0x00000500: ffxsr nxe LMA LME sce
+```
+
+... and after the crash:
+
+```
+<bochs:5> creg
+CR0=0xe0000011: PG CD NW ac wp ne ET ts em mp PE
+CR2=page fault laddr=0x0000000000000000
+CR3=0x000001065000
+    PCD=page-level cache disable=0
+    PWT=page-level write-through=0
+CR4=0x000000a0: cet pke smap smep osxsave pcid fsgsbase smx vmx osxmmexcpt umip osfxsr pce PGE mce PAE pse de tsd pvi vme
+CR8: 0x0
+EFER=0x00000500: ffxsr nxe LMA LME sce
+```
+
+Different address spaces!
+
+So, the sequence things take place are:
+1. Push general purpose registers
+1. Push control registers
+1. Push segment registers
+1. Change cr3.
+1. Lock the stack.
+1. Change the stack.
+1. Push the old stack.
+1. Call the actual function
+1. Pop the old stack; replace.
+1. Unlock the stack.
+1. Pop the segment registers.
+1. Pop cr3; replace.    <-- THIS!
+1. Pop general purpose registers
+
+So ultimately, the problem is that I am not operating on this with any symmetry.  Both the stack and cr3 replacement/restore must be handled close to the function call.
+
+I think I have this worked out!  I need to confirm.
+
+I do for the `PmmAlloc()` call.  Not for the `MmuMapPageEx()` call.
+
+Looks like `MmuMapPageEx()` and `MmuUnmapPageEx()` need stacks.
+
+---
+
+### 2021-Sep-16
+
+I figured it out today: I was not adding the size of the stack to the stack address being loaded into the internal functions table, so the first push put the stack outside of the mapped space.  Having fixed that, this is working now.
+
+So, the next thing to do is going to be to turn on the Scheduler Tick functions and see if I can get an actual task swap.
+
+It looks like the `ProcessStart()` function needs some attention, as a new process just cannot get underway.
+
+---
+
+### 2021-Sep-17
+
+Something is not getting unlocked properly with the `ProcessStart()` function.
+
+The problem is the asymmetric entry/exit on the timer interrupt.  I am getting a spinlock on the way in but the exit from the interrupt does not follow the same path back out.  As a result the lock is never released.  Time for some thinking....  On top of all that, the stack is going to be clobbered.
+
+---
+
+### 2021-Sep-21
+
+I spent the last few days considering options (and without looking at code).  I think I know what needs to happen here:
+* The `sch_Tick()` function will return whether a process change is needed.
+* The timer interrupt needs to be moved from the lapic to the kernel, which will then call a new timer `tmr_Tick()` internal function (with its own stack).  The timer interrupt will now use the process stack.  This eliminates the timer interrupt stack (and associated lock).  The interrupt will then call the `sch_Tick()` function which will return whether the quantum has expired and if it has call `ProcessSchedule()` to get a new process.  This may require publishing and calling `ProcessLockAndPostpone()` and `ProcessUnlockAndSchedule()` internal functions from the kernel timer interrupt.
+* The `ProcessSwitch()` function also needs to be moved to the kernel, responsible for the actual process change.  Additionally, this will be called from the timer interrupt already in the kernel, so it's on the same stack and at priveleged execution.
+
+Now, I will need to review the code and think some more on this to make sure it does not create any new problems.  For example, I am not yet certain if `ProcessStart()` will need to move to the kernel as well.
+
+First of all, looking through the LAPIC `tmr_Interrupt()` function, the following needs to be done:
+1. The LAPIC needs to publish a `TmrTick()` internal function
+1. The LAPIC needs to publish a `TmrEoi()` internal function (unfortunately named at this point)
+1. The the logic from this function needs to be moved to the new kernel function
+1. `vectorTable` needs to be updated with the proper interrupt address
+1. The `lapic`'s entry table needs to be updated appropriately
+
+The scheduler's `sch_Tick()` function needs to be updated in the following ways:
+1. New `SchLockAndPostpone()` and `SchUnlockAndSchedule()` internal functions need to be published.  These calls need to move to the kernel interrupt.
+1. A new `SchWakeSleepers()` internal function needs to be created.  This will also be called from the kernel interrupt.
+1. `sch_Tick()` needs to return whether a change is required.
+
+In the scheduler, `ProcessSchedule()` is actually called from 2 places: `ProcessUnlockAndSchedule()` and `ProcessDoBlock()`.  Since `ProcessSchedule()` can be called from both a voluntary and involuntary process change, there really needs to be 2 flavors of the `ProcessSchedule()` function: one called from `ProcessDoBlock()` and one published as an internal function called from the kernel to get the next process -- `sch_ProcessSchedule()`.
+
+`sch_ProcessSchedule()` has the following restrictions:
+* `SchLockAndPostpone()` needs to be called before calling this function
+* It needs to return 1 of 3 values:
+  * `NULL` when there is nothing else to run
+  * `CurrentProcess()` when the current process remains in control
+  * Some new `Process_t *` when there is a process change to take place
+* `SchUnlockAndSchedule()` needs to be called after the work is complete
+
+`ProcessSchedule()` and the kernel timer interrupt need to both take care of the requirements above.  This may be able to be done with a new kernel internal function to perform a process change, whereby `ProcessDoBlock()` calls this kernel function instead of calling `ProcessSchedule()` directly.
+
+Finally, since `ProcessStart()` will need an `iret` instruction to change to user space, this will need to be a kernel function.  To build the stack, `ProcessNewStack()` will need to call an internal kernel function to get the address of `ProcessStart()`.
+
+This seems like a lot to do, but most should be relatively simple to accomplish.
+
+Let's start with the LAPIC internal functions.
+
+---
+
+### 2021-Sep-22
+
+The LAPIC code appears to be corrected.  I am working on the mess that is the scheduler code.
+
+Moving `ProcessSwitch()` into the scheduler is going to be a little rougher than I expected.
+
+---
+
+### 2021-Sep-23
+
+I was able to get a compile again.  I know I do not have the meat of these functions taken care of yet.
+
+---
+
+### 2021-Sep-24
+
+Today I start to redo the audit of the functions to back the internal functions table and make certain everything get mapped and hooked properly.
+
+Yeah, the [wiki](http://eryjus.ddns.net:3000/projects/century-os-v2/wiki/Internal_Functions) needs some serious updating!
+
+---
+
+### 2021-Sep-25
+
+At this point, I am going to need to compeltely redesign the scheduler.  There is too much that needs to be addresses to make things work and rather than half-assing it I feel it is better to take a comprehensive approach.
+
+---
+
+### 2021-Sep-26
+
+I am going back to Brendan's document on how to build a multi-process kernel.  It's time for some baby steps in updating this scheduler.
+
+That said, step 1 is going to be to build out and test `ProcessSwitch()`.  This function has been moved to the kernel, so building and testing should be relatively simple from within the kernel.  The key here is going to be to make sure `ProcessCreate()` works properly as well.  This is probablly going to be the bulk of my debugging.
+
+TODO: Update the wiki for `ProcessCreate()` (I'm on a plane and do not have internet).
+
+The Process Structures are located in the Scheduler address space, not in kernel space.  The question is: is that really correct?  I am working on a micro-kernel -- I believe they belong in their own space.  However, I think keeping the address spaces separate will actually slow the whole OS down (based on the software interrupts required and address space changes [think TLB shootdown]).  It would certainly simplify things.  But so would a monolithic kernel.  I just don't want to fall into the trap of moving everything into the kernel.
+
+The underlying problem here is that there are several underlying structures that need access to the `Process_t` data, which is available from `gs` and therefore available from everywhere.  So, can that dependency be removed?
+
+Maybe....  The only thing outside of the scheduler that references the CurrentThread is `ProcessSwitch()` and my test code for `ProcessSwitch()`.  But with the numer of times I expect to call `ProcessSwitch()`, we are going to have a TLB shootdown for each timer interrupt and then another one for each read/write in the `Process_t` struture.
+
+I think most of these elements need to be brought closer to the kernel, as the structures all need to be available for many different things.  While it is not my favorite thought, I think this one makes sense for now.
+
+---
+
+I have Brendan's *Step 1* working.  I need to look at the printed documentation next.
+
+Step 2 is to create a trivial `Schedule()` function.  I have gutted the existing `ProcessSchedule()` function in order to complete this step.  However, it is not working.  Plus, somehow, inerrupts are being enabled at the same time.
+
+---
+
+### 2021-Sep-27
+
+I foind that an idle process was also being started -- which was enabling interrupts and halting.  But interrupts was not calling the scheduler to switch to the next process.  Commenting this out solved this issue and I am scheduling again.
+
+This wraps up Brendan's Part 2.
+
+So, I move on to Part 3: Time Accounting.
+
+---
+
+### 2021-Sep-28
+
+So, I never really paid any attention to the time accounting section.  It was optional and I figured my options were limited for the codition of the kernel (early!).  However, there are mentions of the HPET, which I think I should research for the counter (compare to the timer definition).  So, the question is: do I implement the HPET?
+
+I'm thinking not yet.  I can always add that later and replace `TmrCurrentCount()` with a different driver.  That said, the current time accounting should work.  Gotta test and confirm since I have never vetted this code.
+
+---
+
+### 2021-Oct-01
+
+I have been idly thinking about how to test this.  I think I need to dump output the new total quantum counts with each process change.
+
+```
+=========================================================
+Dumping Process_t structure at address 0xffff900000000110
+---------------------------------------------------------
+  TOS (last preemption)..: 0xffffaf0000003fb8
+  Virtual Address Space..: 0x0000000001004000
+  Process Status.........: 0 (INIT)
+  Process Priority.......: 30 (OS)
+  Quantum left this slice: 30
+  Process ID.............: 1
+  Command Line...........: B
+  Micros used............: 0
+  Wake tick number.......: 0
+  Pending Error Number...: 0
+=========================================================
+.. Checking scheduler Global Process List: 0xffff8000000121d8 (0x0000000000000000)
+A?+Dumping the next process structure to get the CPU:
+=========================================================
+Dumping Process_t structure at address 0xffff900000000110
+---------------------------------------------------------
+  TOS (last preemption)..: 0xffffaf0000003fb8
+  Virtual Address Space..: 0x0000000001004000
+  Process Status.........: 2 (READY)
+  Process Priority.......: 30 (OS)
+  Quantum left this slice: 30
+  Process ID.............: 1
+  Command Line...........: B
+  Micros used............: 0
+  Wake tick number.......: 0
+  Pending Error Number...: 0
+=========================================================
+```
+
+```
+00183790283i[      ] ----------------------------------------------------------
+00183790283i[      ] CPU 0 at 0xffff800000001279: jz .+3 (0x0000000000000005)   (reg results):
+00183790283i[      ] LEN 2	BYTES: 7403
+00183790283i[      ]   RAX: 0x6f74410031003e4c; RBX: 0xffff80000000a2d0; RCX 0x0000000001004000; RDX: 0xffff8000000121d8
+00183790283i[      ]   RSP: 0x4c554e3c003f0041; RBP: 0x0000000000100b80; RSI 0xffff80000000f69e; RDI: 0xffff900000000110
+00183790283i[      ]   R8 : 0x0000000100000000; R9 : 0xffff8000000121d8; R10 0xffff8000000512b8; R11: 0x0000000000000000
+00183790283i[      ]   R12: 0xffff80000000cc40; R13: 0xffff80000000cd00; R14 0xffff900000000110; R15: 0xffff80000000f6a0
+00183790283i[      ]   CS: 0x0008; DS: 0x0028; ES: 0x0028; FS: 0x0000; GS: 0x0048; SS: 0x0010;
+00183790283i[      ]   RFLAGS: 0x0000000000200086 (ID vip vif ac vm rf nt IOPL=0 of df if tf SF zf af PF cf)
+00183790283i[      ] 	BRANCH (NOT TAKEN)
+00183790283i[      ] Instruction prepared
+00183790283e[CPU0  ] SetCR3(): Attempt to write to reserved bits of CR3 !
+```
+
+`rax` is being loaded to `cr3`.  So it appears I have a problem with the `Process_t` structure alignment between C++ and asm.  Now, what bothers me about that is the addition of some debugging code appears to break the code and removal fixes the code.
+
+---
+
+### 2021-Oct-02
+
+Today I figured out that the `ProcessSwitch()` function was not protecting itself by saving enough registers.  I corrected that.  Now I need to work on a parameter passing problem.
+
+Simple fix; now to the `#PF`....
+
+Still a problem in `ProcessSwitch()`.  I have a call to `ProcessUpdateTimeUsed()` which may not be cleaned up after properly.
+
+A brute force fix addresses this, but now I have a stack underflow problem.  This will be corrected in the function to create a stack for a new process.
+
+And with that, things appear to be working properly.  At least I am not faulting.  But do I have the correct precision?
+
+OK, so enabling interrupts was a requirement (to get the timer keepng score).  The timer is working now.
+
+---
+
+### 2021-Oct-03
+
+Brendan's Step 4 is to add process states and to slightly improve the scheduler.  I think I already have most of this worked out.  There are really only a couple of things that will change.  Should be easy to change/validate.
+
+That was easy!
+
+Step 5 should also be relatively easy as well.  However, I think I want to revisit the logic here.  I certainly want to consider using a spinlock (which I do not recall if I am).  Actually I am.
+
+So, what I do have at this point is (I believe) too much.  I am maintaining a lock count (which with a spinlock cannot be anything but 1).
+
+One problem I believe I am having is that one process is disabling interrupts (and saving the interrupt state with the spinlock) while another process is unlocking the scheduler (which take the interrupt state from the spinlock) and restores interrupts -- from the other process where interrupts might be deliberately disabled.
+
+To get around this, the `ProcessLockScheduler()` function explicitly disables interrupts and saves that state on the scheduler structure.  But that does not address the problem with a process where interrupts are disabled and artifically gets enabled....  This is handled by the fact that with interrupts disabled, the scheduler cannot preempt -- no timer interrupts get through.  So, this is OK.
+
+Now, I did make a change to the LockScheduler code -- this should address the problem where I needed to create special functions when the scheduler was already locked.  This will work as long as there is 1 CPU.  However, when there is more than 1 CPU, the lock will already been held and will allow other CPUs to manipulate the structures.  To accomodate, I need to also keep track of the CPU that holds the lock.  I already have a field for this, but it is not maintained.  Simple change.  With that, I still need to keep track of the number of locks.  So that field stays as well.  However, I should be able to eliminate the `ProcesDoXxxx()` functions and put the code back into the `ProcessXxxx()` functions -- which will be taken care of later.  A quick test confirms I have not hurt anything critical yet.
+
+Well, having compied with the requirement to lock the scheduler, I am not getting any interrupts firing after the first.  This means there is an extra lock (with interrupts disabled) to find.
+
+Ahhh.....  the start of Proess B is not unlocking the scheduler.  Quick change and successful test.
+
+Part 6 deals with blocking and unblocking.  Consolidating the functions I thought would be simple.  However, I have a deadlock to deal with.
+
+I'm getting a triple fault again in Bochs.  I need to review the `ProcessSwitch()` function for the call to `ProcessReady()`.
+
+---
+
+### 2021-Oct-04
+
+I did find and correct an obsure bug in `ProcessSwitch()`.  Blocking and unblocking is complete.
+
+---
+
+### 2021-Oct-05
+
+So, Brendan's Step 7 is actually setting up a problem related to multiple process becoming available.  It's an important read, but does not result in any code to complete and/or debug.  Step 8 is related to a postpone flag, which is already implemented and working properly.
+
+This brings us to Step 9.  In this step we implement a `SleepUntil()` function.  Again, I have these all build at the moment, but most of the code is commented out at the moment.  I also need to remove the `Do()` functions from this set of code.
+
+---
+
+### 2021-Oct-07
+
+I decided to look at `ProcessSchedule()` to adjust for a more robust check with the ready queue before I added in the sleep calls into the test processes.  I had some work to complete.  It's done.
+
+---
+
+### 2021-Oct-08
+
+Sleeping now works.  I'm hoping things will move along quickly now.  This completes Brendan's Step 9.
+
+Step 10 is idle time.  I think I have that figured out as well.  I just need to read and make sure I have a solid implementation.  While I do plan to have an idle process for each CPU, this is not required at the moment -- the scheduler will handle halting the CPU and counting time that passes.  So, Step 10 is complete.
+
+Step 11 implements a proper scheduler.  I also think I have that.  A quick test confirms that as well.
+
+Step 12 implements task termination.  I am not certain I ever really had that working properly.  So, let's see.  And as I expected, it even reports it's flawed:
+
+```
+This is process C and it will terminate immediately.
+******
+!!! ASSERT FAILURE !!!
+/home/adam/workspace/centuryos2/modules/kernel/src/scheduler.cc(598) false `ProcessTerminate() is flawed!! do not use
+
+An exception has occurred
+An error (interrupt 0xe) has occurred (Error Code 0x0000000000000000)
+  RAX: 0x0000000000000000       R8 : 0xffff80000000f3b8
+  RBX: 0x0000000000000000       R9 : 0xffff80000000e6d0
+  RCX: 0xffff80000000cfd0       R10: 0x0000000000000000
+  RDX: 0x0000000000000256       R11: 0x0000000000000000
+  RBP: 0x0000000000000000       R12: 0x0000000000000000
+  RSI: 0xffff80000000f52c       R13: 0x0000000000000000
+  RDI: 0xffff8000000107fa       R14: 0x0000000000000000
+                                R15: 0x0000000000000000
+   SS: 0x10     RSP: 0xffffaf0000008000
+   CS: 0x8      RIP: 0xffff80000000d009
+   DS: 0x28      ES: 0x28
+   FS: 0x0       GS: 0x48       RFLAGS: 0x0000000000200246
+
+CR0: 0x0000000080000011
+CR2: 0xffffaf0000008000
+CR3: 0x0000000001004000
+CR4: 0x00000000000000a0
+```
+
+---
+
+### 2021-Oct-09
+
+Actually `ProcessTerminate()` does work for self-termination.  There are some pieces missing for terminating another process with ultiple CPUs.  A quick test also reveals that `ProcessEnd()` also works for self-termination.
+
+Now, Step 12 also mentions a cleaner task.  At this point, I am not going to build that task -- it will wait until I have several other things dialled in.
+
+This brings us to Step 13 which is some synchronization primitives.  However, I do not believe I am there yet.  I want to complete the boot at this piont.  I also want to complete the cleanup of the scheduler code.
+
+So, for the additional processes, the stacks are being reused:
+
+```
+In address space 0x0000000001004000, allocating stack 0xffffaf0000004000
+[snip]
+In address space 0x0000000001004000, allocating stack 0xffffaf0000004000
+In address space 0x0000000001004000, request was made to map address 0xffffaf0000004000 to frame 0x00000000001fffe4
+!!! CHECK THE CODE!!! The page is already mapped and will be unmapped!
+In address space 0x0000000001004000, request was made to map address 0xffffaf0000005000 to frame 0x00000000001fffe3
+!!! CHECK THE CODE!!! The page is already mapped and will be unmapped!
+In address space 0x0000000001004000, request was made to map address 0xffffaf0000006000 to frame 0x00000000001fffe2
+!!! CHECK THE CODE!!! The page is already mapped and will be unmapped!
+In address space 0x0000000001004000, request was made to map address 0xffffaf0000007000 to frame 0x00000000001fffe1
+!!! CHECK THE CODE!!! The page is already mapped and will be unmapped!
+```
+
+So my stack allocation functions need to be revisited.
+
+---
+
+It looks like all the stack code needs to be revisited.  For example, I am getting a count of stacks from the linker, but I am not converting that to the bitmap properly.  The whole of the stacks code needs to be fixed.
+
+---
+
+It feels like `StackIniIt()` is not being executed.  I need to start with that.
+
+---
+
+So, I was looking in the wrong spot for the stack init....  However, after confirming the init is happening properly, I found the following:
+
+```
+Preparing to allocate stack at 0xffffaf0000004000 (starts at 0xffffaf0000000000)
+.. (end of stacks is at 0xffffaf0000080000
+Marking the stack 0xffffaf0000004000 at index 256 and offset 0 as used
+```
+
+Index 256 is incorrect.
+
+Now that I have that cleaned up, this is good.
+
+---
+
+I am very close here.  I need to perform some cleanup with the published scheduler functions from the kernel.  And perhaps some of the debugging code.
+
+---
+
+### 2021-Oct-10
+
+This morning I am going to commit this code.  I may still have a few things to do, but I also need to commit this version since it appears to be working the way I want it to -- I need a fall-back position.
+
+And then, I will be moving on to version 0.0.10.
 

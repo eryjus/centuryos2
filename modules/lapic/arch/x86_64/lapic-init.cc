@@ -170,20 +170,26 @@ uint64_t tmr_GetCurrentTimer(void)
 }
 
 
-
 //
-// -- Handle a timer IRQ
-//    ------------------
-extern "C" void tmr_Interrupt(int, Addr_t *reg);
-void tmr_Interrupt(int, Addr_t *reg)
+// -- Handle a timer tick
+//    -------------------
+extern "C" Return_t tmr_Tick(int);
+Return_t tmr_Tick(int)
 {
     KernelPrintf("*");
-    if (apic->tick && ThisCpu()->cpuNum == 0) apic->tick();
-    apic->eoi();     // take care of this while interrupts are disabled!
-//    uint64_t now = apic->currentTimer();
-apic->currentTimer();
+    if (unlikely(ThisCpu()->cpuNum == 0) && likely(apic->tick != NULL)) apic->tick();
+    return apic->currentTimer();
+}
 
-//    SchTimerTick(now);
+
+//
+// -- Handle an EOI for this LAPIC
+//    ----------------------------
+extern "C" Return_t tmr_Eoi(int);
+Return_t tmr_Eoi(int)
+{
+    apic->eoi();
+    return 0;
 }
 
 

@@ -1,54 +1,58 @@
-//===================================================================================================================
-//
-//  scheduler.cc --Functions for the Process management
-//
-//        Copyright (c)  2017-2021 -- Adam Clark
-//        Licensed under "THE BEER-WARE LICENSE"
-//        See License.md for details.
-//
-//  This file contains the structures and prototypes needed to manage processes.  This file was copied from
-//  Century32 and will need to be updated for this kernel.
-//
-//  The process structure will be allocated with the new process stack -- adding it to the overhead of the process
-//  itself.  Since the stacks will be multiples of 4K, one extra page will be allocated for the process stucture
-//  overhead.  This will be placed below the stack in a manner where a stack underflow will not impact this
-//  structure unless something really goes horrible and deliberately wrong.  The scheduler will be able to check
-//  that the stack is within bounds properly and kill the process if needed (eventually anyway).  This simple
-//  decision will eliminate the need for process structures or the need to allocate a process from the heap.
-//
-//  There are several statuses for processes that should be noted.  They are:
-//  * INIT -- the process is initializing and is not ready to run yet.
-//  * RUN -- the process is in a runnable state.  In this case, the process may or may not be the current process.
-//  * END -- the process has ended and the Butler process needs to clean up the structures, memory, IPC, locks, etc.
-//  * MTXW -- the process is waiting for a mutex and is ineligible to run.
-//  * SEMW -- the process is waiting for a semaphore and is ineligible to run.
-//  * DLYW -- the process is waiting for a timed delay and is ineligible to run.
-//  * MSGW -- the process is waiting for the delivery of a message and is ineligible to run.
-//  * ZOMB -- the process has died at the OS level for some reason or violation and the Butler process is going to
-//            clean it up.
-//
-//  Additionally, we are going to support the ability for a user to hold a process.  In this case, the process will
-//  also be ineligible to run.  These held processes will be moved into another list which will maintain the
-//  overall status of the process.
-//
-//  The process priorities will serve 2 functions.  It will 1) provide a sequence of what is eligibe to run and
-//  when from a scheduler perspective.  It will also 2) provide the quantum duration for which a process is able to
-//  use the CPU.  In this case, a higher priority process will be able use the CPU longer than a low priority
-//  process.  Additionally, the Idle process is also the Butler process.  When there is something that needs to
-//  be done, the Butler will artificially raise its CPU priority to be an OS process while it is completing this
-//  work.  When complete the Butler will reduce its priority again.
-//
-//  Finally, threads will be supported not yet be supported at the OS level.  If needed, they will be added at a
-//  later time.
-//
-// ------------------------------------------------------------------------------------------------------------------
-//
-//     Date      Tracker  Version  Pgmr  Description
-//  -----------  -------  -------  ----  ---------------------------------------------------------------------------
-//  2021-May-10  Initial  v0.0.9   ADCL  Initial version
-//
-//===================================================================================================================
-
+/****************************************************************************************************************//**
+*   @file       scheduler.cc
+*   @brief      Functions for the Process and Scheduler management.
+*   @author     Adam Clark (hobbyos@eryjus.com)
+*   @date       2021-May-10
+*   @since      v0.0.9
+*
+*   @copyright  Copyright (c)  2017-2021 -- Adam Clark\n
+*               Licensed under "THE BEER-WARE LICENSE"\n
+*               See License.md for details.\n
+*
+*
+*   This file contains the structures and prototypes needed to manage processes.  This file was copied from
+*   Century32 and will need to be updated for this kernel.
+*
+*   The process structure will be allocated with the new process stack -- adding it to the overhead of the process
+*   itself.  Since the stacks will be multiples of 4K, one extra page will be allocated for the process stucture
+*   overhead.  This will be placed below the stack in a manner where a stack underflow will not impact this
+*   structure unless something really goes horrible and deliberately wrong.  The scheduler will be able to check
+*   that the stack is within bounds properly and kill the process if needed (eventually anyway).  This simple
+*   decision will eliminate the need for process structures or the need to allocate a process from the heap.
+*
+*   There are several statuses for processes that should be noted.  They are:
+*   * INIT -- the process is initializing and is not ready to run yet.
+*   * RUN -- the process is in a runnable state.  In this case, the process may or may not be the current process.
+*   * END -- the process has ended and the Butler process needs to clean up the structures, memory, IPC, locks, etc.
+*   * MTXW -- the process is waiting for a mutex and is ineligible to run.
+*   * SEMW -- the process is waiting for a semaphore and is ineligible to run.
+*   * DLYW -- the process is waiting for a timed delay and is ineligible to run.
+*   * MSGW -- the process is waiting for the delivery of a message and is ineligible to run.
+*   * ZOMB -- the process has died at the OS level for some reason or violation and the Butler process is going to
+*             clean it up.
+*
+*   Additionally, we are going to support the ability for a user to hold a process.  In this case, the process will
+*   also be ineligible to run.  These held processes will be moved into another list which will maintain the
+*   overall status of the process.
+*
+*   The process priorities will serve 2 functions.  It will 1) provide a sequence of what is eligibe to run and
+*   when from a scheduler perspective.  It will also 2) provide the quantum duration for which a process is able to
+*   use the CPU.  In this case, a higher priority process will be able use the CPU longer than a low priority
+*   process.  Additionally, the Idle process is also the Butler process.  When there is something that needs to
+*   be done, the Butler will artificially raise its CPU priority to be an OS process while it is completing this
+*   work.  When complete the Butler will reduce its priority again.
+*
+*   Finally, threads will be supported not yet be supported at the OS level.  If needed, they will be added at a
+*   later time.
+*
+* ------------------------------------------------------------------------------------------------------------------
+*
+*   |     Date    | Tracker |  Version | Pgmr | Description
+*   |:-----------:|:-------:|:--------:|:----:|:--------------------------------------------------------------------
+*   | 2021-May-10 | Initial |  v0.0.9  | ADCL | Initial version
+*
+* ===================================================================================================================
+*/
 
 //#define USE_SERIAL
 
@@ -73,6 +77,10 @@ extern "C" {
     void ProcessUnlockAndSchedule(void);
     void ProcessLockScheduler(bool save);
     void ProcessUnlockScheduler(void);
+
+#if IS_ENABLED(KERNEL_DEBUGGER)
+    void SchedulerDebugInit(void);
+#endif
 }
 
 
@@ -101,138 +109,6 @@ Scheduler_t scheduler = {
 
 
 Spinlock_t schedulerLock = {0};
-
-
-#ifdef USE_SERIAL
-//
-// -- Convert a ProcStatus_t to a string
-//    -----------------------------------
-static const char *ProcStatusStr(ProcStatus_t s) {
-    if (s == PROC_INIT)         return "INIT";
-    else if (s == PROC_RUNNING) return "RUNNING";
-    else if (s == PROC_READY)   return "READY";
-    else if (s == PROC_TERM)    return "TERM";
-    else if (s == PROC_MTXW)    return "MTXW";
-    else if (s == PROC_SEMW)    return "SEMW";
-    else if (s == PROC_DLYW)    return "DLYW";
-    else if (s == PROC_MSGW)    return "MSGW";
-    else                        return "Unknown!";
-}
-
-
-
-//
-// -- Convert a ProcStatus_t to a string
-//    -----------------------------------
-static const char *ProcPriorityStr(ProcPriority_t p) {
-    if (p == PTY_IDLE)          return "IDLE";
-    else if (p == PTY_LOW)      return "LOW";
-    else if (p == PTY_NORM)     return "NORMAL";
-    else if (p == PTY_HIGH)     return "HIGH";
-    else if (p == PTY_OS)       return "OS";
-    else                        return "Unknown!";
-}
-#endif
-
-
-
-//
-// -- Dump a Process structure for debugging purposes
-//    -----------------------------------------------
-void DumpProcess(Process_t *proc)
-{
-#ifdef USE_SERIAL
-    kprintf("=========================================================\n");
-    kprintf("Dumping Process_t structure at address %p\n", proc);
-
-    if (!proc) goto exit;
-
-    kprintf("---------------------------------------------------------\n");
-    kprintf("  TOS (last preemption)..: %p\n", proc->tosProcessSwap);
-    kprintf("  Virtual Address Space..: %p\n", proc->virtAddrSpace);
-    kprintf("  Process Status.........: %d (%s)\n", proc->status, ProcStatusStr(proc->status));
-    kprintf("  Process Priority.......: %d (%s)\n", proc->priority, ProcPriorityStr(proc->priority));
-    kprintf("  Quantum left this slice: %d\n", AtomicRead(&proc->quantumLeft));
-    kprintf("  Process ID.............: %d\n", proc->pid);
-    kprintf("  Command Line...........: %s\n", proc->command);
-    kprintf("  Micros used............: %lu\n", proc->timeUsed);
-    kprintf("  Wake tick number.......: %d\n", proc->wakeAtMicros);
-    kprintf("  Pending Error Number...: %d\n", proc->pendingErrno);
-
-exit:
-    kprintf("=========================================================\n");
-#endif
-}
-
-
-
-//
-// -- Dump the current status of the Ready Queue
-//    ------------------------------------------
-void DumpReadyQueue(void)
-{
-#ifdef USE_SERIAL
-    ListHead_t::List_t *wrk = NULL;
-    kprintf("=========================================================\n");
-    kprintf("Dumping OS Priority Ready Queue\n");
-    kprintf("---------------------------------------------------------\n");
-
-    wrk = scheduler.queueOS.list.next;
-    while (wrk != &scheduler.queueOS.list) {
-        Process_t *proc = FIND_PARENT(wrk, Process_t, stsQueue);
-        kprintf("  Process %s at %p\n", proc->command, proc);
-        wrk = wrk->next;
-    }
-
-    kprintf("\nDumping High Priority Ready Queue\n");
-    kprintf("---------------------------------------------------------\n");
-
-    wrk = scheduler.queueHigh.list.next;
-    while (wrk != &scheduler.queueHigh.list) {
-        Process_t *proc = FIND_PARENT(wrk, Process_t, stsQueue);
-        kprintf("  Process %s at %p\n", proc->command, proc);
-        wrk = wrk->next;
-    }
-
-    kprintf("\nDumping Normal Priority Ready Queue\n");
-    kprintf("---------------------------------------------------------\n");
-
-    wrk = scheduler.queueNormal.list.next;
-    while (wrk != &scheduler.queueNormal.list) {
-        Process_t *proc = FIND_PARENT(wrk, Process_t, stsQueue);
-        kprintf("  Process %s at %p\n", proc->command, proc);
-        wrk = wrk->next;
-    }
-
-    kprintf("\nDumping Low Priority Ready Queue\n");
-    kprintf("---------------------------------------------------------\n");
-
-    wrk = scheduler.queueLow.list.next;
-    while (wrk != &scheduler.queueLow.list) {
-        Process_t *proc = FIND_PARENT(wrk, Process_t, stsQueue);
-        kprintf("  Process %s at %p\n", proc->command, proc);
-        wrk = wrk->next;
-    }
-
-    kprintf("\nDumping idle Priority Ready Queue\n");
-    kprintf("---------------------------------------------------------\n");
-
-    wrk = scheduler.queueIdle.list.next;
-    while (wrk != &scheduler.queueIdle.list) {
-        Process_t *proc = FIND_PARENT(wrk, Process_t, stsQueue);
-        kprintf("  Process %s at %p\n", proc->command, proc);
-        wrk = wrk->next;
-    }
-
-    kprintf("\nSome other interesting information\n");
-    kprintf("---------------------------------------------------------\n");
-    kprintf("  Scheduler Process Change Pending: %s\n", scheduler.processChangePending?"yes":"no");
-    kprintf("  Scheduler Lock Count: %d\n", AtomicRead(&scheduler.schedulerLockCount));
-    kprintf("  Scheduler Postpone Count: %d\n", AtomicRead(&scheduler.postponeCount));
-
-    kprintf("=========================================================\n");
-#endif
-}
 
 
 
@@ -323,8 +199,6 @@ void ProcessUnlockAndSchedule(void)
 //    ----------------------------------------
 static Process_t *ProcessNext(ProcPriority_t pty)
 {
-    DumpReadyQueue();
-
     if (IsListEmpty(&scheduler.queueOS) == false) {
         return FIND_PARENT(scheduler.queueOS.list.next, Process_t, stsQueue);
     } else if (IsListEmpty(&scheduler.queueHigh) == false && PTY_HIGH >= pty) {
@@ -381,7 +255,6 @@ static void ProcessAddGlobal(Process_t *proc)
 //    -----------------------------------------------------------------------
 static void ProcessListRemove(Process_t *proc)
 {
-    DumpReadyQueue();
     if (!assert(proc != NULL)) return;
 
 
@@ -592,7 +465,7 @@ void ProcessEnd(void)
 //    ------------------------------------------
 Return_t sch_Tick(int, uint64_t now)
 {
-    kprintf("*");
+//    kprintf("*");
     ProcessLockAndPostpone();
 
 
@@ -642,7 +515,7 @@ Return_t sch_Tick(int, uint64_t now)
 //
 // -- Create a new process structure and leave it on the Ready Queue
 //    --------------------------------------------------------------
-Process_t *sch_ProcessCreate(int, const char *name, Addr_t startingAddr, Addr_t addrSpace)
+Process_t *sch_ProcessCreate(int, const char *name, Addr_t startingAddr, Addr_t addrSpace, ProcPriority_t pty)
 {
     kprintf("Creating a new process named at %p (%s), starting at %p\n", name, name, startingAddr);
     kprintf(".. the address space for this process in %p\n", addrSpace);
@@ -665,7 +538,7 @@ Process_t *sch_ProcessCreate(int, const char *name, Addr_t startingAddr, Addr_t 
 
 
     rv->policy = POLICY_0;
-    rv->priority = PTY_OS;
+    rv->priority = pty;
     rv->status = PROC_INIT;
     AtomicSet(&rv->quantumLeft, rv->priority);
     rv->timeUsed = 0;
@@ -687,7 +560,6 @@ Process_t *sch_ProcessCreate(int, const char *name, Addr_t startingAddr, Addr_t 
     // -- Put this process on the queue to execute
     //    ----------------------------------------
     kprintf(".. Readying the new process to be scheduled: %p\n", rv);
-    DumpProcess(rv);
     sch_ProcessReady(0, rv);
 
 
@@ -764,16 +636,13 @@ Return_t ProcessInit(BootInterface_t *loaderInterface)
     ProcessAddGlobal(proc);           // no lock required -- still single threaded
     CurrentThreadAssign(proc);
 
-    kprintf("Process Init:\n");
-    DumpProcess(proc);
-
 
     //
     // -- Create an idle process for each CPU
     //    -----------------------------------
     for (int i = 0; i < loaderInterface->cpuCount; i ++) {
         kprintf("starting idle process %d\n", i, ProcessIdle);
-        sch_ProcessCreate(0, "Idle Process", (Addr_t)ProcessIdle, GetAddressSpace());
+        sch_ProcessCreate(0, "Idle Process", (Addr_t)ProcessIdle, GetAddressSpace(), PTY_IDLE);
     }
 
 
@@ -893,6 +762,456 @@ Return_t sch_ProcessMicroSleepUntil(int, uint64_t when)
 
     return 0;
 }
+
+
+
+//
+// -- Perform the late initialization for the scheduler
+//    -------------------------------------------------
+void SchedulerLateInit(void)
+{
+#if IS_ENABLED(KERNEL_DEBUGGER)
+    SchedulerDebugInit();
+#endif
+}
+
+
+
+//
+// -- These functions are only included if the kernel debugger is built into the OS
+//    -----------------------------------------------------------------------------
+#if IS_ENABLED(KERNEL_DEBUGGER)
+
+#include "debugger.h"
+
+
+
+void DebugListGlobalProcesses(void);
+void DebugListReadyProcesses(void);
+void DebugShowProcess(void);
+
+
+//
+// -- here is the debugger menu & function ecosystem
+//    ----------------------------------------------
+DbgState_t schedStates[] = {
+    {   // -- state 0
+        .name = "scheduler",
+        .transitionFrom = 0,
+        .transitionTo = 2,
+    },
+    {   // -- state 1 (list)
+        .name = "sched:list",
+        .transitionFrom = 2,
+        .transitionTo = 3,
+    },
+    {   // -- state 2 (list all)
+        .name = "list-all",
+        .function = (Addr_t)DebugListGlobalProcesses,
+    },
+    {   // -- state 3 (list ready)
+        .name = "list-ready",
+        .function = (Addr_t)DebugListReadyProcesses,
+    },
+    {   // -- state 4 (show)
+        .name = "sched:show",
+        .function = (Addr_t)DebugShowProcess,
+    },
+};
+
+
+DbgTransition_t schedTrans[] = {
+    {   // -- transition 0
+        .command = "list",
+        .alias = "l",
+        .nextState = 1,
+    },
+    {   // -- transition 1
+        .command = "show",
+        .alias = "s",
+        .nextState = 4,
+    },
+    {   // -- transition 2
+        .command = "exit",
+        .alias = "x",
+        .nextState = -1,
+    },
+    {   // -- transition 3
+        .command = "all",
+        .alias = "a",
+        .nextState = 2,
+    },
+    {   // -- transition 4
+        .command = "ready",
+        .alias = "r",
+        .nextState = 3,
+    },
+    {   // -- transition 5
+        .command = "exit",
+        .alias = "x",
+        .nextState = 0,
+    },
+};
+
+
+DbgModule_t schedModule = {
+    .name = "scheduler",
+    .addrSpace = GetAddressSpace(),
+    .stack = 0,     // -- needs to be handled during late init
+    .stateCnt = sizeof(schedStates) / sizeof (DbgState_t),
+    .transitionCnt = sizeof(schedTrans) / sizeof (DbgTransition_t),
+    .list = {&schedModule.list, &schedModule.list},
+    .lock = {0},
+    // -- it does not matter what we put for .states and .transitions; will be replaced in debugger
+};
+
+
+
+//
+// -- Initialize the debugger module structure
+//    ----------------------------------------
+void SchedulerDebugInit(void)
+{
+    extern Addr_t __stackSize;
+
+    schedModule.stack = StackFind();
+    for (Addr_t s = schedModule.stack; s < schedModule.stack + __stackSize; s += PAGE_SIZE) {
+        MmuMapPage(s, PmmAlloc(), PG_WRT);
+    }
+    schedModule.stack += __stackSize;
+
+    DbgRegister(&schedModule, schedStates, schedTrans);
+}
+
+
+
+//
+// -- Convert a ProcStatus_t to a string
+//    -----------------------------------
+static const char *ProcStatusStr(ProcStatus_t s) {
+    if (s == PROC_INIT)         return "INIT";
+    else if (s == PROC_RUNNING) return "RUNNING";
+    else if (s == PROC_READY)   return "READY";
+    else if (s == PROC_TERM)    return "TERM";
+    else if (s == PROC_MTXW)    return "MTXW";
+    else if (s == PROC_SEMW)    return "SEMW";
+    else if (s == PROC_DLYW)    return "DLYW";
+    else if (s == PROC_MSGW)    return "MSGW";
+    else                        return "Unknown!";
+}
+
+
+//
+// -- Convert a ProcStatus_t to a string
+//    -----------------------------------
+static const char *ProcPriorityStr(ProcPriority_t p) {
+    if (p == PTY_IDLE)          return "IDLE";
+    else if (p == PTY_LOW)      return "LOW";
+    else if (p == PTY_NORM)     return "NORMAL";
+    else if (p == PTY_HIGH)     return "HIGH";
+    else if (p == PTY_OS)       return "OS";
+    else                        return "Unknown!";
+}
+
+
+//
+// -- Print the details of one process
+//    --------------------------------
+static void PrintProcessRow(Process_t *proc)
+{
+    char buf[60];
+
+    ksprintf(buf, "| " ANSI_ATTR_BOLD "%-25.25s ", proc->command);
+    DbgOutput(buf);
+
+    ksprintf(buf, "| %8d ", proc->pid);
+    DbgOutput(buf);
+
+    ksprintf(buf, "| %-8.8s ", ProcPriorityStr(proc->priority));
+    DbgOutput(buf);
+
+    ksprintf(buf, "| %-8.8s ", ProcStatusStr(proc->status));
+    DbgOutput(buf);
+
+    ksprintf(buf, "| %p ", proc);
+    DbgOutput(buf);
+
+    ksprintf(buf, "| %p ", proc->timeUsed);
+    DbgOutput(buf);
+
+    ksprintf(buf, "| %p ", proc->tosProcessSwap);
+    DbgOutput(buf);
+
+    DbgOutput("|\n");
+}
+
+
+
+
+//
+// -- List the global processes
+//    -------------------------
+void DebugListGlobalProcesses(void)
+{
+//    DebuggerEngage(DIPI_ENGAGE);
+
+    DbgOutput(ANSI_CLEAR ANSI_SET_CURSOR(0,0));
+    DbgOutput(ANSI_ATTR_BOLD ANSI_FG_RED "List All Known Processes:\n");
+    DbgOutput("+---------------------------+----------+----------+----------+------------------"
+            "+------------------+------------------+\n");
+    DbgOutput("| " ANSI_ATTR_BOLD ANSI_FG_BLUE "Command" ANSI_ATTR_NORMAL "                   | "
+            ANSI_ATTR_BOLD ANSI_FG_BLUE "PID" ANSI_ATTR_NORMAL "      | " ANSI_ATTR_BOLD
+            ANSI_FG_BLUE "Priority" ANSI_ATTR_NORMAL " | " ANSI_ATTR_BOLD ANSI_FG_BLUE "Status"
+            ANSI_ATTR_NORMAL "   | " ANSI_ATTR_BOLD ANSI_FG_BLUE "Proc Address" ANSI_ATTR_NORMAL
+            "     | " ANSI_ATTR_BOLD ANSI_FG_BLUE "Time Used" ANSI_ATTR_NORMAL "        | "
+            ANSI_ATTR_BOLD ANSI_FG_BLUE "Top of Stack" ANSI_ATTR_NORMAL "     |\n");
+    DbgOutput("+---------------------------+----------+----------+----------+------------------"
+            "+------------------+------------------+\n");
+
+    ListHead_t::List_t *wrk = scheduler.globalProcesses.list.next;
+
+    while (wrk != &scheduler.globalProcesses.list) {
+        Process_t *proc = FIND_PARENT(wrk, Process_t, globalList);
+
+        PrintProcessRow(proc);
+
+        wrk = wrk->next;
+    }
+
+    DbgOutput("+---------------------------+----------+----------+----------+------------------"
+            "+------------------+------------------+\n");
+
+//    DebuggerRelease();
+}
+
+
+
+/****************************************************************************************************************//**
+*   @fn             void DebugListReadyProcesses(void)
+*   @brief          List the processes in the ready queue with priority and current status.
+*
+*   This function will dump the processes in the ready queue, which will include the status of the process in the
+*   Process_t structure.  This function is driven from the ready queue only, not the Global Process List.
+*///*****************************************************************************************************************
+void DebugListReadyProcesses(void)
+{
+    char buf[128];
+    ListHead_t::List_t *wrk = NULL;
+    bool needsBreak = false;
+
+    DbgOutput(ANSI_CLEAR ANSI_SET_CURSOR(0,0));
+    DbgOutput(ANSI_FG_RED ANSI_ATTR_BOLD "List Scheduler Ready Queue\n");
+    DbgOutput("+----------------------+------------------+-----------+-------------+\n");
+    DbgOutput("| " ANSI_FG_BLUE ANSI_ATTR_BOLD "Process Name" ANSI_ATTR_NORMAL "         | "
+            ANSI_FG_BLUE ANSI_ATTR_BOLD "Address" ANSI_ATTR_NORMAL "          | " ANSI_FG_BLUE
+            ANSI_ATTR_BOLD "Sub-Queue" ANSI_ATTR_NORMAL " | " ANSI_FG_BLUE ANSI_ATTR_BOLD
+            "Proc Status" ANSI_ATTR_NORMAL " |\n");
+    DbgOutput("+----------------------+------------------+-----------+-------------+\n");
+
+    wrk = scheduler.queueOS.list.next;
+    while (wrk != &scheduler.queueOS.list) {
+        Process_t *proc = FIND_PARENT(wrk, Process_t, stsQueue);
+        ksprintf(buf, "| " ANSI_ATTR_BOLD "%-20.20s" ANSI_ATTR_NORMAL
+                " | %p | %-9.9s | %-11.11s |\n",
+                proc->command, proc, "OS", ProcStatusStr(proc->status));
+        DbgOutput(buf);
+        needsBreak = true;
+        wrk = wrk->next;
+    }
+
+    if (needsBreak) {
+        DbgOutput("+----------------------+------------------+-----------+-------------+\n");
+        needsBreak = false;
+    }
+
+    wrk = scheduler.queueHigh.list.next;
+    while (wrk != &scheduler.queueHigh.list) {
+        Process_t *proc = FIND_PARENT(wrk, Process_t, stsQueue);
+        ksprintf(buf, "| " ANSI_ATTR_BOLD "%-20.20s" ANSI_ATTR_NORMAL
+                " | %p | %-9.9s | %-11.11s |\n",
+                proc->command, proc, "High", ProcStatusStr(proc->status));
+        DbgOutput(buf);
+        needsBreak = true;
+        wrk = wrk->next;
+    }
+
+    if (needsBreak) {
+        DbgOutput("+----------------------+------------------+-----------+-------------+\n");
+        needsBreak = false;
+    }
+
+    wrk = scheduler.queueNormal.list.next;
+    while (wrk != &scheduler.queueNormal.list) {
+        Process_t *proc = FIND_PARENT(wrk, Process_t, stsQueue);
+        ksprintf(buf, "| " ANSI_ATTR_BOLD "%-20.20s" ANSI_ATTR_NORMAL
+                " | %p | %-9.9s | %-11.11s |\n",
+                proc->command, proc, "Normal", ProcStatusStr(proc->status));
+        DbgOutput(buf);
+        needsBreak = true;
+        wrk = wrk->next;
+    }
+
+    if (needsBreak) {
+        DbgOutput("+----------------------+------------------+-----------+-------------+\n");
+        needsBreak = false;
+    }
+
+    wrk = scheduler.queueLow.list.next;
+    while (wrk != &scheduler.queueLow.list) {
+        Process_t *proc = FIND_PARENT(wrk, Process_t, stsQueue);
+        ksprintf(buf, "| " ANSI_ATTR_BOLD "%-20.20s" ANSI_ATTR_NORMAL
+                " | %p | %-9.9s | %-11.11s |\n",
+                proc->command, proc, "Low", ProcStatusStr(proc->status));
+        DbgOutput(buf);
+        needsBreak = true;
+        wrk = wrk->next;
+    }
+
+    if (needsBreak) {
+        DbgOutput("+----------------------+------------------+-----------+-------------+\n");
+        needsBreak = false;
+    }
+
+    wrk = scheduler.queueIdle.list.next;
+    while (wrk != &scheduler.queueIdle.list) {
+        Process_t *proc = FIND_PARENT(wrk, Process_t, stsQueue);
+        ksprintf(buf, "| " ANSI_ATTR_BOLD "%-20.20s" ANSI_ATTR_NORMAL
+                " | %p | %-9.9s | %-11.11s |\n",
+                proc->command, proc, "Idle", ProcStatusStr(proc->status));
+        DbgOutput(buf);
+        needsBreak = true;
+        wrk = wrk->next;
+    }
+
+    if (needsBreak) {
+        DbgOutput("+----------------------+------------------+-----------+-------------+\n");
+        needsBreak = false;
+    }
+
+    DbgOutput("| " ANSI_FG_BLUE ANSI_ATTR_BOLD "Some other interesting information:" ANSI_ATTR_NORMAL
+            "                               |\n");
+    DbgOutput("+-------------------------------------------------------------------+\n");
+
+    ksprintf(buf, "|  " ANSI_ATTR_BOLD "Scheduler Process Change Pending:" ANSI_ATTR_NORMAL
+            " %-3.3s                            |\n",
+            scheduler.processChangePending?"yes":"no");
+    DbgOutput(buf);
+
+    ksprintf(buf, "|  " ANSI_ATTR_BOLD "Scheduler Lock Count:" ANSI_ATTR_NORMAL
+            " %-8d                                   |\n",
+            AtomicRead(&scheduler.schedulerLockCount));
+    DbgOutput(buf);
+
+    ksprintf(buf, "|  " ANSI_ATTR_BOLD "Scheduler Postpone Count:" ANSI_ATTR_NORMAL
+            " %-8d                               |\n",
+            AtomicRead(&scheduler.postponeCount));
+    DbgOutput(buf);
+
+    DbgOutput("+-------------------------------------------------------------------+\n");
+}
+
+
+
+/****************************************************************************************************************//**
+*   @fn             void DebugShowProcess(void)
+*   @brief          Show the contents of the process structure
+*
+*   Show the contents of the process stucture for a given <pid>.  This <pid> to show is prompted for through the
+*   debugger and then the Global Process List is searched.  If the <pid> is not found, then an error message is
+*   reported and the function exits.
+*///*****************************************************************************************************************
+void DebugShowProcess(void)
+{
+    char buf[128];
+    Process_t *proc = NULL;
+    char strPid[20] = {0};
+
+    DbgPromptGeneric("<pid>", strPid, sizeof(strPid));
+
+    Pid_t pid = 0;
+    char *s = strPid;
+
+    while (*s) {
+        if (*s >= '0' && *s <= '9') {
+            pid = pid * 10 + *s - '0';
+        } else {
+            DbgOutput(ANSI_ERASE_LINE ANSI_FG_RED "invalid pid number\n");
+            return;
+        }
+
+        s ++;
+    }
+
+    ListHead_t::List_t *wrk = scheduler.globalProcesses.list.next;
+
+    while (wrk != &scheduler.globalProcesses.list) {
+        Process_t *p = FIND_PARENT(wrk, Process_t, globalList);
+
+        if (p->pid == pid) {
+            proc = p;
+            break;
+        }
+
+        wrk = wrk->next;
+    }
+
+    if (!proc) {
+        DbgOutput(ANSI_ERASE_LINE ANSI_FG_RED "<pid> not found\n");
+        return;
+    }
+
+
+    ksprintf(buf, ANSI_FG_RED ANSI_ATTR_BOLD "Dumping the contents of the Process_t structure for pid %d at %p\n",
+            pid,
+            proc);
+    DbgOutput(buf);
+
+    DbgOutput("+-------------------------+----------------------------+\n");
+
+    ksprintf(buf, "| " ANSI_ATTR_BOLD "TOS (last preemption)" ANSI_ATTR_NORMAL "   | %p           |\n",
+            proc->tosProcessSwap);
+    DbgOutput(buf);
+
+    ksprintf(buf, "| " ANSI_ATTR_BOLD "Virtual Address Space" ANSI_ATTR_NORMAL "   | %p           |\n",
+            proc->virtAddrSpace);
+    DbgOutput(buf);
+
+    ksprintf(buf, "| " ANSI_ATTR_BOLD "Process Status" ANSI_ATTR_NORMAL "          | %3d: %-8.8s              |\n",
+            proc->status, ProcStatusStr(proc->status));
+    DbgOutput(buf);
+
+    ksprintf(buf, "| " ANSI_ATTR_BOLD "Process Priority" ANSI_ATTR_NORMAL "        | %3d: %-8.8s              |\n",
+            proc->priority, ProcPriorityStr(proc->priority));
+    DbgOutput(buf);
+
+    ksprintf(buf, "| " ANSI_ATTR_BOLD "Quantum left this slice" ANSI_ATTR_NORMAL " | %-3d                        |\n",
+            AtomicRead(&proc->quantumLeft));
+    DbgOutput(buf);
+
+    ksprintf(buf, "| " ANSI_ATTR_BOLD "Process ID" ANSI_ATTR_NORMAL "              | %-8d                   |\n",
+            proc->pid);
+    DbgOutput(buf);
+
+    ksprintf(buf, "| " ANSI_ATTR_BOLD "Command Line" ANSI_ATTR_NORMAL "            | %-25.25s  |\n",
+            proc->command);
+    DbgOutput(buf);
+
+    ksprintf(buf, "| " ANSI_ATTR_BOLD "Micros used" ANSI_ATTR_NORMAL "             | %-16lu           |\n",
+            proc->timeUsed);
+    DbgOutput(buf);
+
+    ksprintf(buf, "| " ANSI_ATTR_BOLD "Wake tick number" ANSI_ATTR_NORMAL "        | %-16d           |\n",
+            proc->wakeAtMicros);
+    DbgOutput(buf);
+
+    ksprintf(buf, "| " ANSI_ATTR_BOLD "Pending Error Number" ANSI_ATTR_NORMAL "    | %-5d                      |\n",
+            proc->pendingErrno);
+    DbgOutput(buf);
+
+    DbgOutput("+-------------------------+----------------------------+\n");
+}
+
+#endif
 
 
 

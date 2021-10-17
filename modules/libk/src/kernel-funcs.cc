@@ -18,31 +18,26 @@
 #include "types.h"
 #include "kernel-funcs.h"
 
-#if 0
+
+
 //
-// -- The actual interface function calls
-//    -----------------------------------
-
-
-Return_t _SchDoReadyCrit(Process_t *proc)
+// -- A hack for kStrCmp
+//    ------------------
+int kStrCmp(const char *str1, const char *str2)
 {
-    return SchDoReadyCrit(proc);
+    if (str1 == NULL && str2 == NULL) return 0;
+    if (str1 == NULL) return 1;
+    if (str2 == NULL) return -1;
+
+    do {
+        int rv = *str1 - *str2;
+
+        if (rv != 0) return rv;
+    } while (*str1 ++ && *str2 ++);
+
+    return 0;
 }
 
 
-bool _SchCheckPostpone(void)
-{
-    return SchCheckPostpone();
-}
 
 
-
-
-
-
-
-
-
-
-
-#endif

@@ -58,6 +58,7 @@
 #include "heap.h"
 
 
+#define DEBUG_HEAP
 
 //
 // -- Get the arch-specific components
@@ -809,6 +810,8 @@ static KHeapHeader_t *HeapSplitAt(OrderedList_t *entry, size_t adjustToSize)
 //    ------------------------------
 void HeapInit(void)
 {
+    if (kHeap && kHeap->initialized) return;
+
 #ifdef DEBUG_HEAP
     KernelPrintf("Start heap initialization\n");
 #endif
@@ -818,7 +821,7 @@ void HeapInit(void)
 
     for ( ; vAddr < vLimit; vAddr += 0x1000) {
 #ifdef DEBUG_HEAP
-//        KernelPrintf(".. mapping addr %p (limit %p)\n", vAddr, vLimit);
+        KernelPrintf(".. mapping addr %p (limit %p)\n", vAddr, vLimit);
 #endif
         MmuMapPage(vAddr, PmmAlloc(), PG_WRT);
     }

@@ -304,6 +304,14 @@ extern Addr_t InternalTarget;
 extern Addr_t TimerVector;
 
 
+//
+// -- for the kernel debugger
+//    -----------------------
+#if IS_ENABLED(KERNEL_DEBUGGER)
+    extern Addr_t DebuggerTarget;
+#endif
+
+
 
 //
 // -- some function prototypes
@@ -654,7 +662,16 @@ void IntInit(void)
     ISR_VECTOR(222)
     ISR_VECTOR(223)
     IdtSetHandler(0xe0, 8, &InternalTarget, 0, 0);      // 224
+
+//
+// -- handle the kernel debugger, or if none a generic handler
+//    --------------------------------------------------------
+#if IS_ENABLED(KERNEL_DEBUGGER)
+    IdtSetHandler(0xe1, 8, &DebuggerTarget, 0, 0);      // 225
+#else
     ISR_VECTOR(225)
+#endif
+
     ISR_VECTOR(226)
     ISR_VECTOR(227)
     ISR_VECTOR(228)

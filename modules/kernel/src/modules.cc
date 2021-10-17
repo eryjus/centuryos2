@@ -25,6 +25,7 @@
 #include "mmu.h"
 #include "elf.h"
 #include "idt.h"
+#include "scheduler.h"
 #include "modules.h"
 
 
@@ -247,6 +248,8 @@ void ModuleEarlyInit()
 //    ------------------------------------------------------------
 void ModuleLateInit(void)
 {
+    SchedulerLateInit();
+
     for (int i = 0; i < loaderInterface->modCount; i ++) {
         kprintf("Checking module %d\n", i);
         if (modInternal[i].loaded) {

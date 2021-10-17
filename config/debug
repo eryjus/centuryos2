@@ -1,0 +1,47 @@
+##===================================================================================================================
+##
+##  debug -- This file contains the flags on which functions product debug output Century-OS.
+##
+##        Copyright (c)  2017-2021 -- Adam Clark
+##        Licensed under "THE BEER-WARE LICENSE"
+##        See License.md for details.
+##
+##  This file will be processed with `sed` and `awk` to produce the necessary output in the proper format.  This
+##  file is very dependent on the columns and what is in each one.  First of all, any line that starts with a '#'
+##  is a comment and will be ignored.
+##
+##  The columns are as follows:
+##  * The debug name ($1)
+##  * The debug value ($2)
+##
+## ------------------------------------------------------------------------------------------------------------------
+##
+##     Date      Tracker  Version  Pgmr  Description
+##  -----------  -------  -------  ----  ----------------------------------------------------------------------------
+##  2021-Oct-16  Initial  v0.0.10  ADCL  Initial version -- from centuryos
+##
+##===================================================================================================================
+
+
+
+##
+## -- These are the macros that enable the whole thing!!
+##    --------------------------------------------------
+DEBUG_TOKEN_PASTE(x)                    DEBUG_##x
+DEBUG_ENABLED(f)                        DEBUG_TOKEN_PASTE(f)>DISABLED
+
+
+
+##
+## == DEBUGGER MODULE
+##    ===============
+
+
+##
+## -- These marcos turn on/off debug output for functions in `dbg-ui.cc`
+##    ------------------------------------------------------------------
+DEBUG_DebuggerMain                      DISABLED
+
+
+
+

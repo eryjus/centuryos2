@@ -1,0 +1,9 @@
+%define ENABLED 1
+%define DISABLED 0
+%define IS_ENABLED(func) func>DISABLED
+%define KERNEL_DEBUGGER ENABLED
+%define DBG_CMD_LEN 16
+%define DBG_ALIAS_LEN 6
+%define DBG_NAME_LEN MOD_NAME_LEN
+%define DBG_MAX_CMD_LEN 256
+%define MOD_NAME_LEN 16

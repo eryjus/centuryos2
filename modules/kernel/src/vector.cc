@@ -59,7 +59,7 @@ Return_t krn_SetVectorHandler(int, int i, Addr_t handler, Addr_t cr3, Addr_t sta
 {
     if (i < 0 || i >= 256) return -EINVAL;
 
-    kprintf("Setting vector handler %d to %p from %p\n", i, handler, cr3);
+//    kprintf("Setting vector handler %d to %p from %p\n", i, handler, cr3);
 
     vectorTable[i].handler = handler;
     vectorTable[i].cr3 = cr3;

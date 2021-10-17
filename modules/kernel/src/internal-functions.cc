@@ -91,6 +91,15 @@ Return_t krn_ReleaseCopy(int, void *mem)
 
 
 //
+// -- Assume the debugger is not installed until overridden
+//    -----------------------------------------------------
+bool krn_DebuggerInstalled(int)
+{
+    return false;
+}
+
+
+//
 // -- The remaining functions need to have access to kprintf() at all times
 //    ---------------------------------------------------------------------
 #ifdef kprintf
@@ -149,6 +158,8 @@ void InternalInit(void)
     internalTable[INT_SCH_BLOCK].handler =          (Addr_t)sch_ProcessBlock;
     internalTable[INT_SCH_UNBLOCK].handler =        (Addr_t)sch_ProcessUnblock;
     internalTable[INT_SCH_SLEEP_UNTIL].handler =    (Addr_t)sch_ProcessMicroSleepUntil;
+
+    internalTable[INT_DBG_INSTALLED].handler =      (Addr_t)krn_DebuggerInstalled;
 
 
     krn_MmuMapPage(0, 0xffffff0000008000, PmmAlloc(), PG_WRT);

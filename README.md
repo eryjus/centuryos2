@@ -9,7 +9,7 @@ I chose "Century" as a name because it described me and my project in 2 ways:
 1) I am a road bicyclist.  In the US, the bicycling version of a marathon is called a century -- 100 miles at a time.  No, I have no aspirations to ride in the TDF.
 2) I expect this OS to take at least 100 years to complete.
 
-Since this OS will be available for others to review and possibly glean nuggets of information.  I do not represent my code as the ideal solution for anything.  If you have feedback for me, please feel free to e-mail me at hobbyos@eryjus.com.  Take a look at [my journal](./journals/JOURNAL.md) if you haven't already.  I have also included the [original journal from century](./journals/JOURNAL-century.md) so that this project is complete.
+Since this OS will be available for others to review and possibly glean nuggets of information.  I do not represent my code as the ideal solution for anything.  If you have feedback for me, please feel free to e-mail me at hobbyos@eryjus.com.
 
 As a result putting my own development stages in display in a public repository, I plan to provide smaller commits to my public repository.  The hope behind the large number of smaller commits is that other readers can observe the evolution of development.  OS development is a large project and many do not know what order to take tasks in.  The public repository documents my own development path and changes in direction.
 
@@ -57,10 +57,5 @@ I have updated my Makefile to use all user-level commands to build the boot imag
 Many of the things I find and log myself are not placed into the public repo bug tracking system.  There are several things that I identify as things to do that I want to write down before I forget them and all the things I keep track of that can clutter up a more public system.  I'm sorry for the loss of visibility on that.  Some day, I might poke a hole in my firewall and make those available if I get enough interest in doing so -- you can e-mail me that interest at hobbyos@eryjus.com.
 
 Redmine is an open source issue tracking application can be found here: https://www.redmine.org/.
-
-
-***Virtual Memory Map***
-
-It is important to identify the virtual memory layout and have that documented so that it can be referred back to at any time.  My goal is to keep things relatively consistent across multiple architectures.  I have documented some portions of the memory map in JOURNAL.md.  There are discrepancies between what is in that document and this one; this document takes precedence for the virtual memory map.
 
 

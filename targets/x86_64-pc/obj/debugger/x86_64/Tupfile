@@ -12,7 +12,7 @@
 ##
 ##     Date      Tracker  Version  Pgmr  Description
 ##  -----------  -------  -------  ----  ---------------------------------------------------------------------------
-##  2021-Jan-22  Initial  v0.0.3   ADCL  Initial version
+##  2021-Oct-10  Initial  v0.0.10  ADCL  Initial version
 ##
 #####################################################################################################################
 
@@ -23,6 +23,22 @@
 ARCH=x86_64
 PLAT=pc
 TARGET=$(ARCH)-$(PLAT)
+MODULE=debugger
+
+
+NFLAGS+=-I ../../../../../modules/$(MODULE)/inc
+CFLAGS+=-I ../../../../../modules/$(MODULE)/inc
+CFLAGS+=-I ../../../usr/include/kernel
+CFLAGS+=-I ../../../../../arch/$(ARCH)/inc
+
+
+DEPS+=../../../usr/include/kernel/kernel-funcs.h
+DEPS+=../../../usr/include/kernel/types.h
+DEPS+=../../../usr/include/kernel/elf.h
+DEPS+=../../../usr/include/kernel/heap.h
+DEPS+= ../../../usr/include/kernel/serial.h
+DEPS+= ../../../usr/include/kernel/boot-interface.h
+DEPS+=../../../usr/include/errno.h
 
 
 ##
@@ -35,15 +51,7 @@ include_rules
 ##
 ## -- The rules to build the objects
 ##    ------------------------------
-: $(WS)/modules/libk/inc/kernel-funcs.h |> cp %f %o |> kernel-funcs.h
-: $(WS)/modules/libk/inc/boot-interface.h |> cp %f %o |> boot-interface.h
-: $(WS)/modules/libk/inc/elf.h |> cp %f %o |> elf.h
-: $(WS)/modules/libk/inc/heap.h |> cp %f %o |> heap.h
-: $(WS)/modules/libk/inc/serial.h |> cp %f %o |> serial.h
-: $(WS)/modules/libk/inc/stacks.h |> cp %f %o |> stacks.h
-: $(WS)/arch/$(ARCH)/inc/types.h |> cp %f %o |> types.h
+: foreach  $(WS)/modules/$(MODULE)/arch/$(ARCH)/*.s                             |> !as |>
 
-: $(WS)/modules/kernel/inc/scheduler.h |> cp %f %o |> scheduler.h
-
-: $(WS)/modules/debugger/inc/debugger.h |> cp %f %o |> debugger.h
+: foreach  $(WS)/modules/$(MODULE)/src/*.cc                 | $(DEPS)           |> !cc |>
 

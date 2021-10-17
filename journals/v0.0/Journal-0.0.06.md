@@ -1,4 +1,4 @@
-# The Century OS
+# The Century OS -- v0.0.6
 
 This project is a 64-bit focused version of Century-OS.  This version takes from the 32-bit version of Century-OS, but is better streamlined for the 64-bit CPUs (where any 32-bit archs will be added in later if desired).
 

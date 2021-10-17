@@ -15,6 +15,9 @@
 ;;===================================================================================================================
 
 
+%include "constants.inc"
+
+
         global  InternalTarget
 
         extern  internalTable
@@ -625,3 +628,33 @@ ExitPoint:
         iretq
 
 
+
+;;
+;; -- For the debugger being enabled, we need a software interrupt target location
+;;    ----------------------------------------------------------------------------
+%if IS_ENABLED(KERNEL_DEBUGGER)
+
+        global  DebuggerTarget
+
+DebuggerTarget:
+        PUSHA
+
+        mov     rax,rsp                 ;; get the current stack pointer
+        mov     rbx,cr3                 ;; get the old address space
+
+        mov     cr3,rdi                 ;; set the new address space
+        mov     rsp,rdx                 ;; set the desired stack pointer
+
+        push    rax                     ;; save the old stack on the new one
+        push    rbx                     ;; save the old address space
+
+        call    rsi                     ;; execute the function
+
+        pop     rbx                     ;; get the old address space
+        pop     rsp                     ;; restore the old stack
+        mov     cr3,rbx                 ;; restore the old address space
+
+        POPA
+        iretq
+
+%endif

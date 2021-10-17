@@ -87,6 +87,26 @@ typedef enum {
 //
 // -- This is list is the priority of the process, which doubles as the quantum that will be given a process
 //    ------------------------------------------------------------------------------------------------------
+#ifdef PTY_IDLE
+#undef PTY_IDLE
+#endif
+
+#ifdef PTY_LOW
+#undef PTY_LOW
+#endif
+
+#ifdef PTY_NORM
+#undef PTY_NORM
+#endif
+
+#ifdef PTY_HIGH
+#undef PTY_HIGH
+#endif
+
+#ifdef PTY_OS
+#undef PTY_OS
+#endif
+
 typedef enum {
         PTY_IDLE = 1,                   // This ia an idle priority process
         PTY_LOW = 5,                    // This is a low priority user process
@@ -187,10 +207,11 @@ extern "C" {
     void ProcessSwitch(Process_t *next);
     void ProcessSchedule(void);
 
+    void SchedulerLateInit(void);
 
     void ProcessStart(void);
     void ProcessNewStack(Process_t *proc, Addr_t startingAddr);
-    Process_t *sch_ProcessCreate(int, const char *name, Addr_t startingAddr, Addr_t addrSpace);
+    Process_t *sch_ProcessCreate(int, const char *name, Addr_t startingAddr, Addr_t addrSpace, ProcPriority_t pty);
     Return_t sch_Tick(int, uint64_t now);
     Return_t sch_ProcessBlock(int, ProcStatus_t reason);
     Return_t sch_ProcessReady(int, Process_t *proc);

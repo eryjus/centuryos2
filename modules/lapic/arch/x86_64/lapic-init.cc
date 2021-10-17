@@ -176,7 +176,6 @@ uint64_t tmr_GetCurrentTimer(void)
 extern "C" Return_t tmr_Tick(int);
 Return_t tmr_Tick(int)
 {
-    KernelPrintf("*");
     if (unlikely(ThisCpu()->cpuNum == 0) && likely(apic->tick != NULL)) apic->tick();
     return apic->currentTimer();
 }

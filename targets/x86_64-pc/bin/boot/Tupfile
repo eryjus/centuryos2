@@ -51,6 +51,7 @@ KERNEL_LS=$(WS)/modules/kernel/arch/$(ARCH)/$(TARGET).ld
 PMM_LS=$(WS)/modules/pmm/arch/$(ARCH)/$(TARGET).ld
 LAPIC_LS=$(WS)/modules/pmm/arch/$(ARCH)/$(TARGET).ld
 SCHEDULER_LS=$(WS)/modules/scheduler/arch/$(ARCH)/$(TARGET).ld
+DEBUGGER_LS=$(WS)/modules/debugger/arch/$(ARCH)/$(TARGET).ld
 
 
 ##
@@ -60,3 +61,4 @@ SCHEDULER_LS=$(WS)/modules/scheduler/arch/$(ARCH)/$(TARGET).ld
 : ../../obj/kernel/$(ARCH)/*.o          | $(KERNEL_LS) $(DEPS)          |> $(LD) -T $(KERNEL_LS) $(LDFLAGS) -o %o %f $(LIB);        |> kernel.elf
 : ../../obj/pmm/$(ARCH)/*.o             | $(PMM_LS) $(DEPS)             |> $(LD) -T $(PMM_LS) $(LDFLAGS) -o %o %f $(LIB);           |> pmm.elf
 : ../../obj/lapic/$(ARCH)/*.o           | $(LAPIC_LS) $(DEPS)           |> $(LD) -T $(LAPIC_LS) $(LDFLAGS) -o %o %f $(LIB);         |> lapic.elf
+: ../../obj/debugger/$(ARCH)/*.o        | $(DEBUGGER_LS) $(DEPS)        |> $(LD) -T $(DEBUGGER_LS) $(LDFLAGS) -o %o %f $(LIB);       |> debugger.elf

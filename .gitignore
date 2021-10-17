@@ -13,6 +13,8 @@ img
 org.kde.konsole.desktop
 p1
 sysroot
+html
+latex
 
 # now some generic files that will be ignored
 *.log

@@ -109,5 +109,9 @@ const Addr_t STACK_LOCATION             = 0xfffff80000000000;
 const Addr_t MMU_STACK_INIT_VADDR       = 0xffffaf8010000000;
 
 
+#include "constants.h"
+#include "debug.h"
+
+
 #endif
 

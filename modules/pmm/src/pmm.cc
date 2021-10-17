@@ -609,7 +609,7 @@ void PmmCleanProcess(void)
 void pmm_LateInit(void)
 {
     KernelPrintf("Starting PMM Cleaner process\n");
-    SchProcessCreate("PMM Cleaner", (Addr_t)PmmCleanProcess, GetAddressSpace());
+    SchProcessCreate("PMM Cleaner", (Addr_t)PmmCleanProcess, GetAddressSpace(), PTY_LOW);
     KernelPrintf("PMM Late Initialization Complete!\n");
 }
 

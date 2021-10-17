@@ -25,6 +25,16 @@ include $(WS)/platform/$(PLAT)/Tupfile.inc
 
 
 ##
+## -- Some common flags for the assembler
+##    -----------------------------------
+NFLAGS+=-I $(WS)/modules/$(MODULE)/inc
+NFLAGS+=-I $(WS)/usr/include
+NFLAGS+=-I $(WS)/targets/$(ARCH)-$(PLAT)/usr/include/kernel
+NFLAGS+=-I $(WS)/targets/$(ARCH)-$(PLAT)/usr/include
+
+
+
+##
 ## -- Build out the LDFLAGS variable -- for ld (through g++)
 ##    ------------------------------------------------------
 LDFLAGS += -z max-page-size=0x1000
@@ -47,5 +57,19 @@ CFLAGS += -g
 CFLAGS += -Werror
 CFLAGS += -Wall
 CFLAGS += -c
+
+CFLAGS+=-I $(WS)/modules/$(MODULE)/inc
+CFLAGS+=-I $(WS)/modules/$(MODULE)/arch/$(ARCH)
+CFLAGS+=-I $(WS)/targets/$(ARCH)-$(PLAT)/usr/include/kernel
+CFLAGS+=-I $(WS)/targets/$(ARCH)-$(PLAT)/usr/include
+CFLAGS+=-I $(WS)/arch/$(ARCH)/inc
+
+
+##
+## -- Call out the dependencies
+##    -------------------------
+DEPS+= $(WS)/targets/$(ARCH)-$(PLAT)/usr/include/*
+DEPS+= $(WS)/targets/$(ARCH)-$(PLAT)/usr/include/kernel/*
+DEPS+= $(WS)/targets/$(ARCH)-$(PLAT)/usr/include/kernel/arch/*
 
 

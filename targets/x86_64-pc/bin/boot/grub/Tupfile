@@ -37,6 +37,7 @@ include_rules
         echo "  module /boot/kernel.elf kernel"                     >> %o;      \
         echo "  module /boot/pmm.elf pmm"                           >> %o;      \
         echo "  module /boot/lapic.elf lapic"                       >> %o;      \
+        echo "  module /boot/debugger.elf debugger"                 >> %o;      \
         echo "  boot"                                               >> %o;      \
         echo "}"                                                    >> %o;      \
         echo "menuentry \"Century (Multiboot2)\" {"                 >> %o;      \
@@ -44,6 +45,7 @@ include_rules
         echo "  module2 /boot/kernel.elf kernel"                    >> %o;      \
         echo "  module2 /boot/pmm.elf pmm"                          >> %o;      \
         echo "  module2 /boot/lapic.elf lapic"                      >> %o;      \
+        echo "  module2 /boot/debugger.elf debugger"                >> %o;      \
         echo "  boot"                                               >> %o;      \
         echo "}"                                                    >> %o;      \
 |> grub.cfg

@@ -116,6 +116,7 @@ all: init
 .PHONY: init
 init: TupRules.inc
 	if [ ! -f .tup/db ]; then `tup init`; fi;
+	doxygen .doxygen
 
 
 ##

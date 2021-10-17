@@ -73,7 +73,10 @@ static void StackInit(void)
     KernelPrintf(".. initializing %d stack indices in address space %p\n", stacksCount, GetAddressSpace());
 
     stackManager = (StackManager_t *)HeapAlloc(sizeof(StackManager_t) + (stacksCount * sizeof(Bitmap_t)), false);
-    if (!assert(stackManager != NULL)) return;
+
+    if (!assert_msg(stackManager != NULL, "Out of memory allocating a stack")) {
+        while (true) {}
+    }
 
     stackManager->stackCount = __stackCount;
     stackManager->elementCount = stacksCount;

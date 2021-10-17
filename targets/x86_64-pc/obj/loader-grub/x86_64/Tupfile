@@ -26,20 +26,6 @@ TARGET=$(ARCH)-$(PLAT)
 MODULE=loader-grub
 
 
-NFLAGS+=-I ../../../../../modules/$(MODULE)/inc
-CFLAGS+=-I ../../../../../modules/$(MODULE)/inc
-CFLAGS+=-I ../../../usr/include/kernel
-CFLAGS+=-I ../../../../../arch/$(ARCH)/inc
-CFLAGS+=-D CENTURY_LOADER
-
-
-DEPS+=../../../usr/include/kernel/types.h
-DEPS+=../../../usr/include/kernel/elf.h
-DEPS+= ../../../usr/include/kernel/serial.h
-DEPS+= ../../../usr/include/kernel/boot-interface.h
-
-
-
 ##
 ## -- Go get some additional information for building the targets
 ##    -----------------------------------------------------------

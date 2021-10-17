@@ -17,7 +17,9 @@
 
 #pragma once
 
+
 #include "types.h"
+#include "debugger.h"
 
 
 
@@ -70,6 +72,12 @@ enum {
     INT_SCH_BLOCK           = 0x063,
     INT_SCH_UNBLOCK         = 0x064,
     INT_SCH_SLEEP_UNTIL     = 0x065,
+
+    // -- Debugger functions
+    INT_DBG_INSTALLED       = 0x070,
+    INT_DBG_REGISTER        = 0x071,
+    INT_DBG_OUTPUT          = 0x072,
+    INT_DBG_PROMPT_GENERIC  = 0x073,
 };
 
 
@@ -132,9 +140,12 @@ extern "C" {
     void kMemSetB(void *buf, uint8_t byt, size_t cnt);
     void kMemMoveB(void *dest, void *src, size_t cnt);
     void kStrCpy(char *dest, const char *src);
+    int kStrCmp(const char *str1, const char *str2);
     size_t kStrLen(const char *str);
+    char *ksprintf(char *, const char *, ...);
     Addr_t GetAddressSpace(void);
 }
+
 
 
 #define INTERNAL0(type,name,func)                                                                               \
@@ -416,8 +427,13 @@ INTERNAL1(Return_t, SchTimerTick, INT_SCH_TICK, uint64_t)
 // -- Function 0x061 -- Create a new Process and add it to the scheduler
 //
 //    Prototype: Process_t *SchProcessCreate(const char *name, Addr_t startingAddr, Addr_t addrSpace)
-//    ---------------------------------------------------------------------------------------------
-INTERNAL3(Process_t *, SchProcessCreate, INT_SCH_CREATE, const char *, Addr_t, Addr_t)
+//    -----------------------------------------------------------------------------------------------
+#define PTY_IDLE 1
+#define PTY_LOW  5
+#define PTY_NORM 10
+#define PTY_HIGH 20
+#define PTY_OS   30
+INTERNAL4(Process_t *, SchProcessCreate, INT_SCH_CREATE, const char *, Addr_t, Addr_t, int)
 
 
 //
@@ -463,5 +479,70 @@ inline Return_t SchProcessMilliSleep(uint64_t m) { return SchProcessMicroSleepUn
 inline Return_t SchProcessSleep(uint64_t s) { return SchProcessMicroSleepUntil(TmrCurrentCount() + (s * 1000000)); }
 
 
+
+// ========================
+// == Debugger functions ==
+// ========================
+
+
+//
+// -- Function 0x070 -- Check if the debugger is installed
+//
+//    Prototype: bool DbgInstalled(void);
+//    ----------------------------------------------------
+INTERNAL0(bool, DbgInstalled, INT_DBG_INSTALLED)
+
+
+//
+// -- Function 0x071 -- Register a debugger function
+//
+//    Prototype: Return_t DbgRegister(DbgModule_t *mod, DbgStates_t *states, DbgTransition_t *transitions);
+//    -----------------------------------------------------------------------------------------------------
+INTERNAL3(Return_t, _DbgRegister, INT_DBG_REGISTER, DbgModule_t *, DbgState_t *, DbgTransition_t *)
+inline Return_t DbgRegister(DbgModule_t *mod, DbgState_t *st, DbgTransition_t *tr)
+{
+    DbgModule_t *m = (DbgModule_t *)KrnCopyMem(mod, sizeof(DbgModule_t));
+    DbgState_t *s = (DbgState_t *)KrnCopyMem(st, sizeof(DbgState_t) * mod->stateCnt);
+    DbgTransition_t *t = (DbgTransition_t *)KrnCopyMem(tr, sizeof(DbgTransition_t) * mod->transitionCnt);
+    return _DbgRegister(m, s, t);
+}
+
+
+//
+// -- Function 0x072 -- Output a string to the debugger
+//
+//    Prototype: Return_t DbgOutput(const char *str);
+//    -------------------------------------------------
+INTERNAL1(Return_t, _DbgOutput, INT_DBG_OUTPUT, const char *)
+inline Return_t DbgOutput(const char *str)
+{
+    char *s = (char *)KrnCopyMem((void *)str, kStrLen(str) + 1);
+    Return_t rv = _DbgOutput(s);
+    KrnReleaseMem(s);
+    return rv;
+}
+
+
+
+//
+// -- Function 0x073 -- Prompt for and get generic input
+//
+//    Prototype: Return_t DbgPromptGeneric(const char *prompt, char *result, size_t size);
+//    ------------------------------------------------------------------------------------
+INTERNAL3(Return_t, _DbgPromptGeneric, INT_DBG_PROMPT_GENERIC, const char *, char *, size_t)
+inline Return_t DbgPromptGeneric(const char *pr, char *rt, size_t s)
+{
+    const char *p = (const char *)KrnCopyMem((void *)pr, kStrLen(pr) + 1);
+    char *r = (char *)KrnCopyMem(rt, s);
+    kMemSetB(r, 0, s);
+
+    Return_t rv = _DbgPromptGeneric(p, r, s);
+
+    KrnReleaseMem((void *)p);
+    kStrCpy(rt, r);
+    KrnReleaseMem(r);
+
+    return rv;
+}
 
 

@@ -39,29 +39,6 @@ extern "C" void kInit(void);
 extern BootInterface_t *loaderInterface;
 
 
-Process_t *A;
-Process_t *B;
-
-
-
-//
-// -- Process B
-void ProcB(void)
-{
-    while (true) {
-        kprintf("B");
-//        SchProcessMilliSleep(333);
-    }
-}
-
-
-void ProcC(void)
-{
-    kprintf("This is process C and it will terminate immediately.\n");
-//    ProcessEnd();
-}
-
-
 //
 // -- Perform the kernel initialization
 //    ---------------------------------
@@ -73,9 +50,6 @@ void kInit(void)
     SerialOpen();
 
     kprintf("Welcome!\n");
-    kprintf("\n");
-    kprintf("For the record:\n");
-    kprintf(".. offset of Process_t.addrspace = %p\n", offsetof(Process_t, virtAddrSpace));
 
     IntInit();                          // init the interrupt table (hardware structure)
     VectorInit();                       // init the vector table (OS structure)
@@ -84,32 +58,19 @@ void kInit(void)
     CpuInit();                          // init the cpus tables
     ProcessInit(loaderInterface);
 
-    InternalTableDump();
-    VectorTableDump();
+//    InternalTableDump();
+//    VectorTableDump();
 
-    kprintf(".. Module Early Init:\n");
     ModuleEarlyInit();
-    kprintf(".. loader Virtual Address Space (%p) vs. cr3 (%p)\n", loaderInterface->bootVirtAddrSpace, GetAddressSpace());
+//    InternalTableDump();
+//    VectorTableDump();
+//    ServiceTableDump();
 
-    InternalTableDump();
-    VectorTableDump();
-    ServiceTableDump();
-
-    kprintf("Enabling interrupts\n");
     EnableInt();
-
-    A = CurrentThread();
-    B = SchProcessCreate("B", (Addr_t)ProcB, GetAddressSpace());
-    SchProcessCreate("C", (Addr_t)ProcC, GetAddressSpace());
-
-    while (true) {
-        kprintf("A");
-//        SchProcessMilliSleep(250);
-    }
-
     ModuleLateInit();
 
-    kprintf("Boot Complete!\n");
+    CurrentThread()->priority = (ProcPriority_t)PTY_IDLE;
+
     while (true) {
         __asm volatile ("hlt");
     }

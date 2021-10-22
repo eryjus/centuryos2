@@ -67,3 +67,16 @@ MOD_NAME_LEN                            16
 
 
 
+##
+## == These are constants used in the LOADER-GRUB
+##    ===========================================
+
+
+##
+## -- MB1 & MB2 constants
+##    -------------------
+MAGIC1                                  0x1badb002
+MAGIC2                                  0xe85250d6
+MB1SIG                                  0x2badb002
+MB2SIG                                  0x36d76289
+MBFLAGS                                 ((1<<1)|(1<<2))

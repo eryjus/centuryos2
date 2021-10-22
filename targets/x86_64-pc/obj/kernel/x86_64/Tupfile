@@ -44,10 +44,11 @@ CFLAGS+=-DMMU_HEAP_END=0xffff980000000000
 ##
 ## -- The rules to build the objects
 ##    ------------------------------
+: foreach  $(WS)/modules/common/src/*.cc                    | $(DEPS)           |> !cc |>
+: foreach  $(WS)/modules/common/platform/$(PLAT)/*.cc       | $(DEPS)           |> !cc |>
+
 : foreach  $(WS)/modules/$(MODULE)/arch/$(ARCH)/*.s                             |> !as |>
 : foreach  $(WS)/modules/$(MODULE)/arch/$(ARCH)/*.cc        | $(DEPS)           |> !cc |>
-
-: foreach  $(WS)/modules/$(MODULE)/platform/$(PLAT)/*.cc    | $(DEPS)           |> !cc |>
 
 : foreach  $(WS)/modules/$(MODULE)/src/*.cc                 | $(DEPS)           |> !cc |>
 

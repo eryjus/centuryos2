@@ -10,25 +10,25 @@
 //
 //     Date      Tracker  Version  Pgmr  Description
 //  -----------  -------  -------  ----  ---------------------------------------------------------------------------
-//  2021-Feb-16  Initial  v0.0.6   ADCL  Initial version
+//  2021-Jan-03  Initial  v0.0.1   ADCL  Initial version
 //
 //===================================================================================================================
 
 
 #pragma once
 
-#include "types.h"
 
 
 //
 // -- function prototypes
 //    -------------------
 extern "C" {
-    Frame_t MmuGetTable(void);
-    bool MmuIsMapped(Addr_t a);
-    void MmuUnmapPage(Addr_t a);
-    void MmuMapPage(Addr_t a, Frame_t f, int flags);
-    void ldr_MmuUnmapPage(Addr_t a);
-    void ldr_MmuMapPage(Addr_t a, Frame_t f, int flags);
-    void MmuEmptyPdpt(int index);
+    int krn_MmuMapPage(int, Addr_t a, Frame_t f, int flags);
+    int krn_MmuUnmapPage(int, Addr_t a);
+    bool krn_MmuIsMapped(int, Addr_t);
+    int krn_MmuDump(int, Addr_t);
+    int krn_MmuMapPageEx(int, Addr_t space, Addr_t a, Frame_t f, int flags);
+    int krn_MmuUnmapEx(int, Addr_t space, Addr_t a);
 }
+
+

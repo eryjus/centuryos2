@@ -32,7 +32,7 @@ include_rules
 #    ------------------------
 : |>    echo "set timeout=3"                                        >  %o;      \
         echo "set default=0"                                        >> %o;      \
-        echo "menuentry \"Century (Multiboot)\" {"                  >> %o;      \
+        echo "menuentry \"CenturyOS (Multiboot)\" {"                >> %o;      \
         echo "  multiboot /boot/loader-grub.elf"                    >> %o;      \
         echo "  module /boot/kernel.elf kernel"                     >> %o;      \
         echo "  module /boot/pmm.elf pmm"                           >> %o;      \
@@ -40,7 +40,7 @@ include_rules
         echo "  module /boot/debugger.elf debugger"                 >> %o;      \
         echo "  boot"                                               >> %o;      \
         echo "}"                                                    >> %o;      \
-        echo "menuentry \"Century (Multiboot2)\" {"                 >> %o;      \
+        echo "menuentry \"CenturyOS (Multiboot2)\" {"               >> %o;      \
         echo "  multiboot2 /boot/loader-grub.elf"                   >> %o;      \
         echo "  module2 /boot/kernel.elf kernel"                    >> %o;      \
         echo "  module2 /boot/pmm.elf pmm"                          >> %o;      \

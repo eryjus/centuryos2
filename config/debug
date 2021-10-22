@@ -45,3 +45,35 @@ DEBUG_DebuggerMain                      DISABLED
 
 
 
+##
+## == LOADER MODULE
+##    =============
+
+
+##
+## -- These marcos turn on/off debug output for functions in `lInit.cc`
+##    -----------------------------------------------------------------
+DEBUG_lInit                             DISABLED
+
+
+
+##
+## -- These marcos turn on/off debug output for functions in `mboot.cc`
+##    -----------------------------------------------------------------
+DEBUG_MBootGetKernel                    DISABLED
+DEBUG_MBootGetMb1Kernel                 DISABLED
+DBEUG_MBootGetKernel                    DISABLED
+
+
+
+##
+## -- These marcos turn on/off debug output for functions in `mmu-loader.cc`
+##    ----------------------------------------------------------------------
+DEBUG_GetPML4Entry                      DISABLED
+DEBUG_GetPDPTEntry                      DISABLED
+DEBUG_GetPDEntry                        DISABLED
+DEBUG_GetPTEntry                        DISABLED
+DEBUG_MmuIsMapped                       DISABLED
+DEBUG_ldr_MmuMapPage                    DISABLED
+DEBUG_ldr_MmuUnmapPage                  DISABLED
+DEBUG_MmuEmptyPdpt                      DISABLED

@@ -178,6 +178,11 @@ debug-x86_64-pc: x86_64-pc
 ##    -----------------------------------------
 .PHONY: write-x86_64-pc
 write-x86_64-pc: x86_64-pc
+	sleep 5
+	echo "Writing thumb drive"
+	ls -al /dev/sd* | grep /dev/sd[c-z]$
 	sudo dd bs=4M if=img/x86_64-pc.iso of=/dev/sdc
+	echo "Done"
+	sleep 5
 	pbl-server /dev/ttyUSB0 .
 

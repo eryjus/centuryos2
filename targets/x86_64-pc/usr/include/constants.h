@@ -7,3 +7,12 @@
 #define DBG_NAME_LEN MOD_NAME_LEN
 #define DBG_MAX_CMD_LEN 256
 #define MOD_NAME_LEN 16
+#define MAGIC1 0x1badb002
+#define MAGIC2 0xe85250d6
+#define MB1SIG 0x2badb002
+#define MB2SIG 0x36d76289
+#define MBFLAGS ((1<<1)|(1<<2))
+#define MODE_TYPE 0
+#define WIDTH 1024
+#define HEIGHT 768
+#define DEPTH 16

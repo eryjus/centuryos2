@@ -33,3 +33,8 @@ targets/**/inc/debug.h
 targets/**/bin/usr/include/*.h
 targets/**/usr/include/kernel/*.h
 
+
+targets/x86_64-pc/usr/include/debug.h
+targets/x86_64-pc/usr/include/constants.inc
+targets/x86_64-pc/usr/include/constants.h
+

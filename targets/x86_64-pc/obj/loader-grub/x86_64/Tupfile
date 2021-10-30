@@ -48,6 +48,7 @@ CFLAGS += -D__LOADER__
 
 : foreach  $(WS)/modules/$(MODULE)/arch/$(ARCH)/*.s                             |> !as |>
 : foreach  $(WS)/modules/$(MODULE)/arch/$(ARCH)/*.cc        | $(DEPS)           |> !cc |>
+: foreach  $(WS)/modules/$(MODULE)/platform/$(PLAT)/*.cc    | $(DEPS)           |> !cc |>
 
 : foreach  $(WS)/modules/$(MODULE)/src/*.cc                 | $(DEPS)           |> !cc |>
 

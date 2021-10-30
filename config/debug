@@ -46,8 +46,38 @@ DEBUG_DebuggerMain                      DISABLED
 
 
 ##
+## == KERNEL MODULE
+##    =============
+
+
+##
+## -- These marcos turn on/off debug output for functions in `cpu.cc`
+##    ---------------------------------------------------------------
+DEBUG_CpuApStart                        DISABLED
+
+
+
+##
+## -- These marcos turn on/off debug output for functions in `mmu.cc`
+##    ---------------------------------------------------------------
+DEBUG_krn_MmuUnmapPage                  DISABLED
+DEBUG_krn_MmuMapPage                    DISABLED
+
+##
 ## == LOADER MODULE
 ##    =============
+
+
+##
+## -- These marcos turn on/off debug output for functions in `acpi.cc`
+##    ----------------------------------------------------------------
+DEBUG_AcpiFindRsdp                      DISABLED
+DEBUG_AcpiCheckTable                    DISABLED
+DEBUG_AcpiReadXsdt                      DISABLED
+DEBUG_AcpiReadRsdt                      DISABLED
+DEBUG_AcpiGetTableSig                   DISABLED
+DEBUG_AcpiReadMadt                      DISABLED
+
 
 
 ##
@@ -77,3 +107,27 @@ DEBUG_MmuIsMapped                       DISABLED
 DEBUG_ldr_MmuMapPage                    DISABLED
 DEBUG_ldr_MmuUnmapPage                  DISABLED
 DEBUG_MmuEmptyPdpt                      DISABLED
+
+
+
+
+
+##
+## == PMM MODULE
+##    ==========
+
+
+##
+## -- These marcos turn on/off debug output for functions in `pmm.cc`
+##    ---------------------------------------------------------------
+DEBUG_pmm_LateInit                      DISABLED
+DEBUG_PmmCleanProcess                   DISABLED
+DEBUG_pmm_PmmReleaseFrame               DISABLED
+DEBUG_pmm_PmmAllocateAligned            DISABLED
+DEBUG_pmm_DoAllocAlignedFrames          DISABLED
+DEBUG_PmmAllocate                       DISABLED
+DEBUG_PmmInitEarly                      DISABLED
+DEBUG_PmmDoRemoveFrame                  DISABLED
+DEBUG_PmmScrubFrame                     DISABLED
+
+

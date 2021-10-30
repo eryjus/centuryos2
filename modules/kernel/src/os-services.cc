@@ -15,7 +15,6 @@
 //===================================================================================================================
 
 
-//#define USE_SERIAL
 
 #include "types.h"
 #include "spinlock.h"
@@ -55,7 +54,7 @@ Return_t krn_SetServiceHandler(int, int i, Addr_t service, Addr_t cr3, Addr_t st
 {
     if (i < 0 || i >= MAX_HANDLERS) return -EINVAL;
 
-    kprintf("Setting service handler %d to %p from %p\n", i, handler, cr3);
+    kprintf("Setting service handler %d to %p from %p\n", i, service, cr3);
 
     serviceTable[i].handler = service;
     serviceTable[i].cr3 = cr3;

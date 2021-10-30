@@ -25,7 +25,7 @@
 extern "C" {
     int krn_MmuMapPage(int, Addr_t a, Frame_t f, int flags);
     int krn_MmuUnmapPage(int, Addr_t a);
-    bool krn_MmuIsMapped(int, Addr_t);
+    Return_t krn_MmuIsMapped(int, Addr_t);
     int krn_MmuDump(int, Addr_t);
     int krn_MmuMapPageEx(int, Addr_t space, Addr_t a, Frame_t f, int flags);
     int krn_MmuUnmapEx(int, Addr_t space, Addr_t a);

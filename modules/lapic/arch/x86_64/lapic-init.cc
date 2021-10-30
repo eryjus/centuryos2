@@ -192,3 +192,44 @@ Return_t tmr_Eoi(int)
 }
 
 
+//
+// -- Get the current CPU Id
+//    ----------------------
+extern "C" int ipi_LapicGetId(int)
+{
+    return apic->getId();
+}
+
+
+
+//
+// -- Send the Init IPI to a core
+//    ---------------------------
+extern "C" int ipi_SendInit(int, int core)
+{
+    return apic->sendInit(core);
+}
+
+
+
+//
+// -- Send the SIPI to a core
+//    -----------------------
+extern "C" int ipi_SendSipi(int, int core, Addr_t vector)
+{
+    return apic->sendSipi(core, vector);
+}
+
+
+
+//
+// -- Broadcast an IPI
+//    ----------------
+extern "C" int ipi_SendIpi(int, int vector)
+{
+    return apic->sendIpi(vector);
+}
+
+
+
+

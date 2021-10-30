@@ -220,6 +220,9 @@ extern "C" {
     Return_t ProcessInit(BootInterface_t *loaderInterface);
     void ProcessTerminate(Process_t *proc);
     void ProcessEnd(void);
+    void SchedulerCreateKInitAp(int cpu);
+    const char *ProcStatusStr(ProcStatus_t s);
+    const char *ProcPriorityStr(ProcPriority_t p);
 }
 
 

@@ -40,12 +40,13 @@
 extern "C" {
     Return_t dbg_Register(int, DbgModule_t *mod, DbgState_t *states, DbgTransition_t *transitions);
     char *dbg_GetResponse(int);
-    bool dbg_Installed(int);
+    Return_t dbg_Installed(int);
 
     Return_t dbg_Dispatch(Addr_t *reg);
 
     Return_t DebuggerEarlyInit(BootInterface_t *loader);
     void DebuggerLateInit(void);
+    void IpiHandleDebugger(Addr_t *regs);
 }
 
 
@@ -211,7 +212,7 @@ Return_t DebuggerEarlyInit(BootInterface_t *loader)
 //
 // -- return that we have a debugger installed
 //    ----------------------------------------
-bool dbg_Installed(int)
+Return_t dbg_Installed(int)
 {
     return true;
 }
@@ -278,5 +279,9 @@ void DebuggerDumpMods(void)
 
     dbg_Output(0, "+----------------------+----------+-------------+-----------+\n");
 }
+
+
+
+
 
 

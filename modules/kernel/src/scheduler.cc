@@ -54,7 +54,6 @@
 * ===================================================================================================================
 */
 
-//#define USE_SERIAL
 
 #include "types.h"
 #include "heap.h"
@@ -766,6 +765,48 @@ Return_t sch_ProcessMicroSleepUntil(int, uint64_t when)
 
 
 //
+// -- Create the processes for the kInitAp startups
+//    ---------------------------------------------
+void SchedulerCreateKInitAp(int cpu)
+{
+    Process_t *proc = NEW(Process_t);
+    char name[CMD_LEN] = {0};
+
+    kMemSetB(proc, 0, sizeof(Process_t));
+
+    // -- set the name of the process
+    ksprintf(name, "kInitAp(%d)", cpu);
+    kprintf(".. naming the process: %s\n", name);
+    int len = kStrLen(name + 1);
+    proc->command[len + 1] = 0;
+    kStrCpy(proc->command, name);
+
+    proc->pid = scheduler.nextPID ++;
+    proc->policy = POLICY_0;
+    proc->priority = PTY_LOW;
+    proc->status = PROC_RUNNING;
+    AtomicSet(&proc->quantumLeft, proc->priority);
+    proc->timeUsed = 0;
+    proc->wakeAtMicros = 0;
+    ListInit(&proc->stsQueue);
+    ListInit(&proc->references.list);
+    ListInit(&proc->globalList);
+
+    proc->virtAddrSpace = GetAddressSpace();
+
+    __asm volatile("mov %0,%%gs" :: "r"((cpu * 3 * 8) + 0x48) : "memory");
+    kprintf("Initializing GS to be at base %p\n", &(cpus[cpu].cpu));
+    WRMSR(IA32_KERNEL_GS_BASE, (Addr_t)&(cpus[cpu].cpu));
+    __asm volatile ("swapgs" ::: "memory");
+
+    CurrentThreadAssign(proc);
+
+    ProcessAddGlobal(proc);
+}
+
+
+
+//
 // -- Perform the late initialization for the scheduler
 //    -------------------------------------------------
 void SchedulerLateInit(void)
@@ -888,7 +929,7 @@ void SchedulerDebugInit(void)
 //
 // -- Convert a ProcStatus_t to a string
 //    -----------------------------------
-static const char *ProcStatusStr(ProcStatus_t s) {
+const char *ProcStatusStr(ProcStatus_t s) {
     if (s == PROC_INIT)         return "INIT";
     else if (s == PROC_RUNNING) return "RUNNING";
     else if (s == PROC_READY)   return "READY";
@@ -904,7 +945,7 @@ static const char *ProcStatusStr(ProcStatus_t s) {
 //
 // -- Convert a ProcStatus_t to a string
 //    -----------------------------------
-static const char *ProcPriorityStr(ProcPriority_t p) {
+const char *ProcPriorityStr(ProcPriority_t p) {
     if (p == PTY_IDLE)          return "IDLE";
     else if (p == PTY_LOW)      return "LOW";
     else if (p == PTY_NORM)     return "NORMAL";

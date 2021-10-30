@@ -17,9 +17,6 @@
 //===================================================================================================================
 
 
-#ifndef USE_SERIAL
-#define USE_SERIAL
-#endif
 
 #include "types.h"
 #include "printf.h"
@@ -84,6 +81,25 @@ void TimerVector(Addr_t *)
 }
 
 
+AtomicInt_t coresEngaged = { 0 };
+
+
+//
+// -- Stop a core and wait for permission to continue
+//    -----------------------------------------------
+extern "C" void IpiPauseCores(Addr_t *regs)
+{
+    AtomicInc(&coresEngaged);
+
+    while (AtomicRead(&coresEngaged) != 0) { __asm volatile ("hlt"); }
+
+    TmrEoi();       // poorly named!
+}
+
+
+
+
+
 
 //
 // -- The remaining functions need to have access to kprintf
@@ -133,6 +149,7 @@ void VectorInit(void)
     krn_SetVectorHandler(0, 31, (Addr_t)IdtGenericHandler, 0, 0);
 
     krn_SetVectorHandler(0, 32, (Addr_t)TimerVector, 0, 0);
+    krn_SetVectorHandler(0, IPI_PAUSE_CORES, (Addr_t)IpiPauseCores, 0, 0);
 }
 
 

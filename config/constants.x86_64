@@ -1,0 +1,52 @@
+##===================================================================================================================
+##
+##  constants.pc -- This file contains the PC constants and compile-time constants for Century-OS.
+##
+##        Copyright (c)  2017-2021 -- Adam Clark
+##        Licensed under "THE BEER-WARE LICENSE"
+##        See License.md for details.
+##
+##  This file will be processed with `sed` and `awk` to produce the necessary output in the proper format.  This
+##  file is very dependent on the columns and what is in each one.  First of all, any line that starts with a '#'
+##  is a comment and will be ignored.
+##
+##  The columns are as follows:
+##  * The constant name ($1)
+##  * The constant value ($2)
+##
+## ------------------------------------------------------------------------------------------------------------------
+##
+##     Date      Tracker  Version  Pgmr  Description
+##  -----------  -------  -------  ----  ----------------------------------------------------------------------------
+##  2021-Oct-11  Initial  v0.0.10  ADCL  Initial version -- from centuryos
+##
+##===================================================================================================================
+
+
+
+##
+## -- Trampoline offset
+##    -----------------
+TRAMP_OFF                   0x3000
+
+
+
+##
+## -- Page size used
+##    --------------
+PAGE_SIZE                   0x1000
+
+
+
+##
+## -- Some PMM Constants
+##    ------------------
+TEMP_MAP                                ((Addr_t)0xffffff0000000000)
+LOW_STACK                               ((Addr_t)0xffffff0000001000)
+NORM_STACK                              ((Addr_t)0xffffff0000002000)
+SCRUB_STACK                             ((Addr_t)0xffffff0000003000)
+TEMP_INSERT                             ((Addr_t)0xffffff0000004000)
+CLEAR_ADDR                              ((Addr_t)0xffffff0000005000)
+
+
+

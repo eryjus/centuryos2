@@ -41,6 +41,7 @@ typedef struct BootInterface_t {
         uint64_t start;
         uint64_t end;
     } memBlocks[MAX_MEM];
+    int localApic;
 } BootInterface_t;
 
 

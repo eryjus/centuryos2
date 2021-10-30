@@ -47,7 +47,3 @@ header:
                 dq          0                                                           ;; .. stack
 
 
-GetCr3:
-                mov         rax,cr3
-                ret
-

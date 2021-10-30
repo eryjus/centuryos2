@@ -40,12 +40,6 @@
 
 
 //
-// -- Page Size
-//    ---------
-#define PAGE_SIZE           4096
-
-
-//
 // -- The allocated stack size
 //    ------------------------
 #define STACK_SIZE                      (4096*4)

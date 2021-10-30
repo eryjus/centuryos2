@@ -55,6 +55,7 @@ DBG_NAME_LEN                            MOD_NAME_LEN
 DBG_MAX_CMD_LEN                         256
 
 
+
 ##
 ## == These are constants used in the KERNEL
 ##    ======================================
@@ -64,6 +65,13 @@ DBG_MAX_CMD_LEN                         256
 ## -- Used in the kernel's MODULE LOADER
 ##    ----------------------------------
 MOD_NAME_LEN                            16
+
+
+
+##
+## -- Pause the cores
+##    ---------------
+IPI_PAUSE_CORES                         0xf0
 
 
 

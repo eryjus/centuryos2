@@ -166,9 +166,11 @@ void DebuggerMain(void)
         }
 
         if (nextState.mod->states[nextState.state].function != 0) {
+            Addr_t flags = KrnPauseCores();
             DebuggerCall(nextState.mod->addrSpace,
                     nextState.mod->states[nextState.state].function,
                     nextState.mod->stack);
+            KrnReleaseCores(flags);
             dbgCmd[0] = 0;
             continue;
         }

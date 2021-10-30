@@ -16,8 +16,6 @@
 
 
 #pragma once
-#ifndef __SERIAL_H__
-#define __SERIAL_H__
 
 
 #include "types.h"
@@ -27,8 +25,6 @@ extern "C" {
     void SerialOpen(void);
 }
 
-
-#ifdef USE_SERIAL
 
 
 //
@@ -42,13 +38,3 @@ extern "C" {
 }
 
 
-#else
-
-#define SerialPutChar(ch) ((void)(ch))
-#define SerialPutString(s) ((void)(s))
-#define SerialPutHex64(h) ((void)(h))
-#define SerialPutHex32(h) ((void)(h))
-
-#endif
-
-#endif

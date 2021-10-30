@@ -15,7 +15,6 @@
 //===================================================================================================================
 
 
-//#define USE_SERIAL
 
 #include "types.h"
 #include "printf.h"
@@ -291,7 +290,7 @@ extern "C" void GsInit(void);
 void GsInit(void)
 {
     cpus[0].cpuNum = 0;
-    cpus[0].state = CPU_STARTED;
+    AtomicSet(&cpus[0].state, CPU_STARTED);
 
     kprintf("Initializing GS to be at base %p\n", &(cpus[0].cpu));
     WRMSR(IA32_KERNEL_GS_BASE, (Addr_t)&(cpus[0].cpu));

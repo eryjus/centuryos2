@@ -319,6 +319,88 @@ static uint64_t CurrentTimer(void)
 }
 
 
+
+//
+// -- Get the LPAIC ID
+//    ----------------
+static int GetId(void)
+{
+    return (int)ReadApicRegister(APIC_LOCAL_ID);
+}
+
+
+//
+// -- Send the INIT IPI
+//    -----------------
+static Return_t SendInit(int core)
+{
+    // -- Hi bits are xxxx xxxx 0000 0000 0000 0000 0000 0000
+    // -- Lo bits are 0000 0000 0000 xx00 xx0x xxxx 0000 0000
+    //                               ++   || | |+-+
+    //                               |    || | | |
+    //                               |    || | | +--------- delivery mode (101)
+    //    Destination Shorthand (00) +    || | +----------- destination mode (0)
+    //                                    || +------------- delivery status (1)
+    //                                    |+--------------- level (1)
+    //                                    +---------------- trigger (1)
+    //
+    //   or 0000 0000 0000 0000 1101 0101 0000 0000 (0x0000d500)
+
+    uint64_t icr = 0x000000000000d500 | (((uint64_t)core & 0xff) << 56);
+
+    WriteApicRegister(APIC_ICR1, icr);
+
+    return 0;
+}
+
+
+//
+// -- Send the INIT IPI
+//    -----------------
+static Return_t SendSipi(int core, Addr_t vector)
+{
+    // -- Hi bits are xxxx xxxx 0000 0000 0000 0000 0000 0000
+    // -- Lo bits are 0000 0000 0000 xx00 xx0x xxxx 0000 0000
+    //                               ++   || | |+-+ +-------+
+    //                               |    || | | |      +   startup vector (vector >> 12)
+    //                               |    || | | +--------- delivery mode (110)
+    //    Destination Shorthand (00) +    || | +----------- destination mode (0)
+    //                                    || +------------- delivery status (1)
+    //                                    |+--------------- level (1)
+    //                                    +---------------- trigger (1)
+    //
+    //   or 0000 0000 0000 0000 1101 0110 0000 0000 (0x0000d600)
+
+    uint64_t icr = 0x000000000000d600 | (((uint64_t)core & 0xff) << 56) | ((vector >> 12) & 0xff);
+
+    WriteApicRegister(APIC_ICR1, icr);
+
+    return 0;
+}
+
+
+//
+// -- Broadcast an IPI
+//    ----------------
+static Return_t SendIpi(int vector)
+{
+    // -- Hi bits are 0000 0000 0000 0000 0000 0000 0000 0000
+    // -- Lo bits are 0000 0000 0000 xx00 0000 0000 xxxx xxxx
+    //                               ++             +-------+
+    //                               |                  +-- vector (vector >> 12)
+    //                               |
+    //    Destination Shorthand (11) +
+    //
+    //   or 0000 0000 0000 1100 0000 0000 0000 0000 (0x000c0000)
+
+    uint64_t icr = 0x00000000000c0000 | (vector & 0xff);
+
+    WriteApicRegister(APIC_ICR1, icr);
+
+    return 0;
+}
+
+
 //
 // -- Create the driver structure for the X2APIC
 //    ------------------------------------------
@@ -332,8 +414,12 @@ Apic_t x2apic = {
     .writeApicRegister = WriteApicRegister,
     .checkIndexedStatus = CheckApicStatus,
     .eoi = Eoi,
+    .getId = GetId,
     .tick = Tick,
     .currentTimer = CurrentTimer,
+    .sendInit = SendInit,
+    .sendSipi = SendSipi,
+    .sendIpi = SendIpi,
 };
 
 

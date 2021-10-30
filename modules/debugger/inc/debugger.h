@@ -119,6 +119,8 @@ extern "C" {
     void DbgSerialPutString(const char *s);
 
     void DebuggerDumpMods(void);
+    void DebuggerEngage(void);
+    void DebuggerRelease(void);
 }
 
 

@@ -22,6 +22,7 @@
 
 #include "types.h"
 #include "tss.h"
+#include "boot-interface.h"
 #include "atomic.h"
 
 
@@ -45,7 +46,7 @@ typedef struct ArchCpu_t {
     int cpuNum;
     Addr_t stackTop;
     Addr_t location;
-    CpuState_t state;
+    AtomicInt_t state;
     int kernelLocksHeld;
     bool processChangePending;
     AtomicInt_t postponeCount;
@@ -65,6 +66,19 @@ typedef struct ArchCpu_t {
 // -- this is for the cpu abstraction
 //    -------------------------------
 extern ArchCpu_t cpus[MAX_CPU];
+
+
+
+//
+// -- The CPU number currently starting
+//    ---------------------------------
+extern int cpuStarting;
+
+
+//
+// -- The number of active CPUs
+//    -------------------------
+extern int cpusActive;
 
 
 //
@@ -302,6 +316,8 @@ inline volatile uint64_t PEEK64(Addr_t regLocation) { return (*((volatile uint64
 //    ------------------------------
 extern "C" {
     void CpuInit(void);
+    void CpuApStart(BootInterface_t *interface);
+    int krn_ActiveCores(int);
 }
 
 

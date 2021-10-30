@@ -29,6 +29,7 @@
 #include "serial.h"
 #include "mmu.h"
 #include "boot-interface.h"
+#include "discovery.h"
 
 
 
@@ -65,6 +66,7 @@ void lInit(void)
     extern BootInterface_t *kernelInterface;
     extern Frame_t earlyFrame;
     extern Addr_t pml4;
+    extern Addr_t gdtr64;
     const Addr_t interfaceLocation = 0xffff9ffffffff000;
 
     // -- create all the kernel PML4 entries
@@ -94,7 +96,8 @@ void lInit(void)
     kernelInterface = (BootInterface_t *)interfaceLocation;
     kernelInterface->modCount = 0;
     kernelInterface->bootVirtAddrSpace = pml4;
-    kernelInterface->cpuCount = 1;
+
+    PlatformDiscovery(kernelInterface);
 
     for (int i = 0; i < MAX_MEM; i ++) {
         kernelInterface->memBlocks[i].start = kernelInterface->memBlocks[i].end = 0;

@@ -15,14 +15,13 @@
 //===================================================================================================================
 
 
-#ifndef USE_SERIAL
-#define USE_SERIAL
-#endif
 
 #include "types.h"
 #include "printf.h"
 #include "serial.h"
 #include "internals.h"
+#include "scheduler.h"
+#include "kernel-funcs.h"
 #include "idt.h"
 
 
@@ -354,10 +353,11 @@ IdtDescriptor_t idtTable[256] __attribute__((aligned(4096))) = { {0} };
 //
 // -- This is the IDT Register data
 //    -----------------------------
-struct {
+typedef struct Idtr_t {
     uint16_t limit;
     Addr_t loc;
-} __attribute__((packed)) idtr;
+} __attribute__((packed)) Idtr_t;
+Idtr_t idtr;
 
 
 
@@ -401,8 +401,11 @@ void __attribute__((noreturn)) IdtGenericHandler(ServiceRoutine_t *handler)
     };
 
     Addr_t *stack = (Addr_t *)handler->runtimeRegs;
+    char buf[200];
 
-    kprintf("An exception has occurred\n");
+    ksprintf(buf, "An exception has occurred on CPU%d by process %-64.64s\n", LapicGetId(),
+            CurrentThread()?CurrentThread()->command:"Unknown");
+    kprintf(buf);
     kprintf("An error (interrupt %x) has occurred (Error Code %p)\n", stack[INT], stack[ERR]);
     kprintf("  RAX: %p\tR8 : %p\n", stack[RAX], stack[R8]);
     kprintf("  RBX: %p\tR9 : %p\n", stack[RBX], stack[R9]);
@@ -421,6 +424,13 @@ void __attribute__((noreturn)) IdtGenericHandler(ServiceRoutine_t *handler)
     kprintf("CR2: %p\n", stack[CR2]);
     kprintf("CR3: %p\n", stack[CR3]);
     kprintf("CR4: %p\n", stack[CR4]);
+
+    // -- If there is a current Process, block it for cleanup
+    if (CurrentThread() != NULL) {
+        ProcessTerminate(CurrentThread());
+    }
+
+
     while (true) {}
 }
 

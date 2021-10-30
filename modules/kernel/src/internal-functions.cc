@@ -15,7 +15,6 @@
 //===================================================================================================================
 
 
-//#define USE_SERIAL
 
 #include "types.h"
 #include "spinlock.h"
@@ -93,10 +92,46 @@ Return_t krn_ReleaseCopy(int, void *mem)
 //
 // -- Assume the debugger is not installed until overridden
 //    -----------------------------------------------------
-bool krn_DebuggerInstalled(int)
+Return_t krn_DebuggerInstalled(int)
 {
     return false;
 }
+
+
+
+//
+// -- Signal the other cores to stop and wait for confirmation that they have
+//    -----------------------------------------------------------------------
+extern "C" Addr_t krn_PauseCores(int)
+{
+    extern AtomicInt_t coresEngaged;
+
+    Addr_t flags = DisableInt();
+    AtomicSet(&coresEngaged, 1);
+
+    IpiSendIpi(IPI_PAUSE_CORES);
+
+    int active = KrnActiveCores();
+    while (AtomicRead(&coresEngaged) != active) {}
+
+    return flags;
+}
+
+
+
+//
+// -- Release the other cores from a stopped state
+//    --------------------------------------------
+extern "C" Return_t krn_ReleaseCores(int, Addr_t flags)
+{
+    extern AtomicInt_t coresEngaged;
+
+    AtomicSet(&coresEngaged, 0);
+    RestoreInt(flags);
+
+    return 0;
+}
+
 
 
 //
@@ -148,7 +183,9 @@ void InternalInit(void)
 
     internalTable[INT_KRN_COPY_MEM].handler =       (Addr_t)krn_AllocAndCopy;
     internalTable[INT_KRN_RLS_MEM].handler =        (Addr_t)krn_ReleaseCopy;
-    internalTable[INT_KRN_PROCESS_SWITCH].handler = (Addr_t)ProcessSwitch;
+    internalTable[INT_KRN_CORES_ACTIVE].handler =   (Addr_t)krn_ActiveCores;
+    internalTable[INT_KRN_PAUSE_CORES].handler =    (Addr_t)krn_PauseCores;
+    internalTable[INT_KRN_RELEASE_CORES].handler =  (Addr_t)krn_ReleaseCores;
 
     internalTable[INT_PMM_ALLOC].handler =          (Addr_t)PmmEarlyFrame;
 

@@ -1,18 +1,27 @@
-//===================================================================================================================
-//
-//  pmm.cc -- Functions to handle the PMM management
-//
-//        Copyright (c)  2017-2021 -- Adam Clark
-//        Licensed under "THE BEER-WARE LICENSE"
-//        See License.md for details.
-//
-//  -----------------------------------------------------------------------------------------------------------------
-//
-//     Date      Tracker  Version  Pgmr  Description
-//  -----------  -------  -------  ----  ---------------------------------------------------------------------------
-//  2021-Feb-12  Initial  v0.0.4   ADCL  Initial version
-//
-//===================================================================================================================
+/****************************************************************************************************************//**
+*   @file               pmm.cc
+*   @brief              Functions to handle the PMM management
+*   @author             Adam Clark (hobbyos@eryjus.com)
+*   @date               2021-Feb-12
+*   @since              v0.0.04
+*
+*   @copyright          Copyright (c)  2017-2021 -- Adam Clark\n
+*                       Licensed under "THE BEER-WARE LICENSE"\n
+*                       See \ref LICENSE.md for details.
+*
+*   This file contains the functions for the PMM to implement the Physical Memory Manager (PMM).  These functions
+*   will be used in user space to allocate memory to the kernel, which which will then map the memory for the
+*   individual requests.  That is an important distinction -- only the kernel should be interacting with the
+*   PMM, no other processes should need access.  As a result, the PMM should be protected from interference.
+*
+* ------------------------------------------------------------------------------------------------------------------
+*
+*   |     Date    | Tracker |  Version | Pgmr | Description
+*   |:-----------:|:-------:|:--------:|:----:|:--------------------------------------------------------------------
+*   | 2021-Feb-12 | Initial |  v0.0.04 | ADCL | Initial version
+*
+*///=================================================================================================================
+
 
 
 #include "types.h"
@@ -20,137 +29,201 @@
 #include "kernel-funcs.h"
 
 
-//#define PMM_DEBUG
+
+/********************************************************************************************************************
+* Some internal function prototypes
+*///-----------------------------------------------------------------------------------------------------------------
+extern "C" Return_t PmmInitEarly(BootInterface_t *loaderInterface);
+extern "C" Frame_t pmm_PmmAllocateAligned(int, bool low, int bitsAligned, size_t count);
+extern "C" Return_t pmm_PmmReleaseFrame(int, Frame_t frame, size_t count);
+extern "C" void pmm_LateInit(void);
+
+#if DEBUG_ENABLED(pmm_PmmReleaseFrame) || DEBUG_ENABLED(pmm_PmmReleaseFrame) || IS_ENABLED(KERNEL_DEBUGGER)
+
+#if IS_ENABLED(KERNEL_DEBUGGER)
+    extern "C" void PmmDebugInit(void);
+#else
+#   define DbgOutput KernelPrintf
+#endif
+
+extern "C" void DumpPmm(void);
+
+#endif
 
 
-//
-// -- Some function prototypes
-//    ------------------------
-extern "C" {
-    Return_t PmmInitEarly(BootInterface_t *loaderInterface);
-    Frame_t pmm_PmmAllocateAligned(int, bool low, int bitsAligned, size_t count);
-    Return_t pmm_PmmReleaseFrame(int, Frame_t frame, size_t count);
-    Addr_t GetCr3(void);
-    void pmm_LateInit(void);
-}
-
-
-
-//
-// -- Addresses for this PMM
-//    ----------------------
-const Addr_t tempMap    = 0xffffff0000000000;
-const Addr_t lowStack   = 0xffffff0000001000;
-const Addr_t normStack  = 0xffffff0000002000;
-const Addr_t scrubStack = 0xffffff0000003000;
-const Addr_t tempInsert = 0xffffff0000004000;
-const Addr_t clearAddr  = 0xffffff0000005000;
-
-
-//
-// -- This is the new PMM frame information structure -- contains info about this block of frames
-//    -------------------------------------------------------------------------------------------
+/****************************************************************************************************************//**
+*   @typedef            PmmFrameInfo_t
+*   @brief              Formalization of the PMM Frame Information Structure
+*///-----------------------------------------------------------------------------------------------------------------
+/****************************************************************************************************************//**
+*   @struct             PmmFrameInfo_t
+*   @brief              This is the new PMM frame information structure -- contains info about this block of frames
+*
+*   This structure is overwritten on top of the start of the frame.  The frame is mapped to some PMM-specific pages
+*   in order to maintain stacks.  To identify the frame number and it length (along with the previous and next
+*   frames), this structure maps the elements.
+*///-----------------------------------------------------------------------------------------------------------------
 typedef struct PmmFrameInfo_t {
-    Frame_t frame;
-    size_t count;
-    Frame_t prev;
-    Frame_t next;
+    Frame_t frame;          //!< The frame number for the start of the block
+    size_t count;           //!< The number of frames in this block
+    Frame_t prev;           //!< The previous frame number on the stack \note 0 if top of the stack
+    Frame_t next;           //!< The next frame number on the stack \note 0 if bottom of the stack
 } PmmFrameInfo_t;
 
 
 
-//
-// -- This is the new PMM itself
-//    --------------------------
+/****************************************************************************************************************//**
+*   @typedef            Pmm_t
+*   @brief              Formalization of the PMM Management Structure
+*///-----------------------------------------------------------------------------------------------------------------
+/****************************************************************************************************************//**
+*   @struct             Pmm_t
+*   @brief              This is the new PMM itself
+*///-----------------------------------------------------------------------------------------------------------------
 typedef struct Pmm_t {
-    AtomicInt_t framesAvail;                // -- this is the total number of frames available in the 3 stacks
+    AtomicInt_t framesAvail;        //!< this is the total number of frames available in the 3 stacks
 
-    Spinlock_t lowLock;                     // -- This lock protects lowStack
-    PmmFrameInfo_t *lowStack;
+    Spinlock_t lowLock;             //!< This lock protects lowStack
+    PmmFrameInfo_t *lowStack;       //!< The stack of available frames in the low memory area (<1M)
 
-    Spinlock_t normLock;                    // -- This lock protects normStack
-    PmmFrameInfo_t *normStack;
+    Spinlock_t normLock;            //!< This lock protects normStack
+    PmmFrameInfo_t *normStack;      //!< The stack of available frames in the normal memory area (>=1M)
 
-    Spinlock_t scrubLock;                   // -- This lock protects scrubStack
-    PmmFrameInfo_t *scrubStack;
+    Spinlock_t scrubLock;           //!< This lock protects scrubStack
+    PmmFrameInfo_t *scrubStack;     //!< The stack of available frames that need to be sanitized
 
-    Spinlock_t searchLock;                  // -- This lock protects search
-    PmmFrameInfo_t *search;
+    Spinlock_t searchLock;          //!< This lock protects search
+    PmmFrameInfo_t *search;         //!< used for searching the PMM for a frame
 
     // -- some additional locks for mapped address usage
-    Spinlock_t insertLock;
-    Spinlock_t clearLock;
+    Spinlock_t insertLock;          //!< Lock that protects a temporary address for inserting a block
+    Spinlock_t clearLock;           //!< Lock that protects the address used to clear a frame
 } Pmm_t;
 
 
 
-//
-// -- Finally, the actual structure in memory
-//    ---------------------------------------
+/****************************************************************************************************************//**
+*   @var                Pmm_t
+*   @brief              The actual PMM in memory
+*///-----------------------------------------------------------------------------------------------------------------
 Pmm_t pmm = { { 0 } };
 
 
+#if DEBUG_ENABLED(pmm_PmmReleaseFrame) || DEBUG_ENABLED(pmm_PmmReleaseFrame) || IS_ENABLED(KERNEL_DEBUGGER)
 
-//
-// -- For debugging, dump the PMM internal structure
-//    ----------------------------------------------
+/****************************************************************************************************************//**
+*   @fn                 void DumpPmm(void)
+*   @brief              Dump the contents of the PMM structures
+*
+*   Dump the PMM structures contents for debugging purposes.
+*///-----------------------------------------------------------------------------------------------------------------
 void DumpPmm(void)
 {
-    KernelPrintf("\n");
-    KernelPrintf("==========================================\n");
-    KernelPrintf("\n");
-    KernelPrintf("Dumping PMM Structure:\n");
-    KernelPrintf("  Number of frames available: %ld\n", pmm.framesAvail);
-    KernelPrintf("\n");
-    KernelPrintf("  Low Lock State: %s\n", pmm.lowLock.lock?"locked":"unlocked");
-    KernelPrintf("  Low Stack Address: %p\n", pmm.lowStack);
+    char buf[128];
 
-    if (pmm.lowStack) {
-        KernelPrintf("    Low Stack TOS frame: %p\n", pmm.lowStack->frame);
-        KernelPrintf("    Low Stack TOS count: %d\n", pmm.lowStack->count);
+    DbgOutput(ANSI_CLEAR ANSI_SET_CURSOR(0,0));
+    DbgOutput(ANSI_ATTR_BOLD ANSI_FG_RED " Dumping PMM Structure:\n");
+    DbgOutput("+----------------------------+--------------------------+\n");
+
+    ksprintf(buf, "| " ANSI_ATTR_BOLD ANSI_FG_BLUE "Number of frames available" ANSI_ATTR_NORMAL
+            " | %-12ld             |\n", pmm.framesAvail);
+    DbgOutput(buf);
+
+    ksprintf(buf, "| " ANSI_ATTR_BOLD ANSI_FG_BLUE "Low Lock State" ANSI_ATTR_NORMAL
+            "             | %-8.8s                 |\n", pmm.lowLock.lock?"locked":"unlocked");
+    DbgOutput(buf);
+
+    ksprintf(buf, "| " ANSI_ATTR_BOLD ANSI_FG_BLUE "Low Stack Address" ANSI_ATTR_NORMAL
+            "          | %p         |\n", pmm.lowStack);
+    DbgOutput(buf);
+
+    if (pmm.lowStack && MmuIsMapped((Addr_t)pmm.lowStack)) {
+        ksprintf(buf, "|   " ANSI_ATTR_BOLD ANSI_FG_BLUE "Low Stack TOS frame" ANSI_ATTR_NORMAL
+                "      | %p         |\n", pmm.lowStack->frame);
+        DbgOutput(buf);
+
+        ksprintf(buf, "|   " ANSI_ATTR_BOLD ANSI_FG_BLUE "Low Stack TOS count" ANSI_ATTR_NORMAL
+                "      | %-8d                 |\n", pmm.lowStack->count);
+        DbgOutput(buf);
     }
 
-    KernelPrintf("\n");
-    KernelPrintf("  Normal Lock State: %s\n", pmm.normLock.lock?"locked":"unlocked");
-    KernelPrintf("  Normal Stack Address: %p\n", pmm.normStack);
+    ksprintf(buf, "| " ANSI_ATTR_BOLD ANSI_FG_BLUE "Normal Lock State" ANSI_ATTR_NORMAL
+            "          | %-8.8s                 |\n", pmm.normLock.lock?"locked":"unlocked");
+    DbgOutput(buf);
 
-    if (pmm.normStack) {
-        KernelPrintf("    Normal Stack TOS frame: %p\n", pmm.normStack->frame);
-        KernelPrintf("    Normal Stack TOS count: %d\n", pmm.normStack->count);
+    ksprintf(buf, "| " ANSI_ATTR_BOLD ANSI_FG_BLUE "Normal Stack Address" ANSI_ATTR_NORMAL
+            "       | %p         |\n", pmm.normStack);
+    DbgOutput(buf);
+
+    if (pmm.normStack && MmuIsMapped((Addr_t)pmm.normStack)) {
+        ksprintf(buf, "|   " ANSI_ATTR_BOLD ANSI_FG_BLUE "Normal Stack TOS frame" ANSI_ATTR_NORMAL
+                "   | %p         |\n", pmm.normStack->frame);
+        DbgOutput(buf);
+
+        ksprintf(buf, "|   " ANSI_ATTR_BOLD ANSI_FG_BLUE "Normal Stack TOS count" ANSI_ATTR_NORMAL
+                "   | %-8d                 |\n", pmm.normStack->count);
+        DbgOutput(buf);
     }
 
-    KernelPrintf("\n");
-    KernelPrintf("  Scrub Lock State: %s\n", pmm.scrubLock.lock?"locked":"unlocked");
-    KernelPrintf("  Scrub Stack Address: %p\n", pmm.scrubStack);
+    ksprintf(buf, "| " ANSI_ATTR_BOLD ANSI_FG_BLUE "Scrub Lock State" ANSI_ATTR_NORMAL
+            "           | %-8.8s                 |\n", pmm.scrubLock.lock?"locked":"unlocked");
+    DbgOutput(buf);
 
-    if (pmm.scrubStack) {
-        KernelPrintf("    Scrub Stack TOS frame: %p\n", pmm.scrubStack->frame);
-        KernelPrintf("    Scrub Stack TOS count: %d\n", pmm.scrubStack->count);
+    ksprintf(buf, "| " ANSI_ATTR_BOLD ANSI_FG_BLUE "Scrub Stack Address" ANSI_ATTR_NORMAL
+            "        | %p         |\n", pmm.scrubStack);
+    DbgOutput(buf);
+
+    if (pmm.scrubStack && MmuIsMapped((Addr_t)pmm.scrubStack)) {
+        ksprintf(buf, "|   " ANSI_ATTR_BOLD ANSI_FG_BLUE "Scrub Stack TOS frame" ANSI_ATTR_NORMAL
+                "    | %p         |\n", pmm.scrubStack->frame);
+        DbgOutput(buf);
+
+        ksprintf(buf, "|   " ANSI_ATTR_BOLD ANSI_FG_BLUE "Scrub Stack TOS count" ANSI_ATTR_NORMAL
+                "    | %-8d                 |\n", pmm.scrubStack->count);
+        DbgOutput(buf);
     }
 
-    KernelPrintf("\n");
-    KernelPrintf("  Search Lock State: %s\n", pmm.searchLock.lock?"locked":"unlocked");
-    KernelPrintf("  Search Stack Address: %p\n", pmm.search);
+    ksprintf(buf, "| " ANSI_ATTR_BOLD ANSI_FG_BLUE "Search Lock State" ANSI_ATTR_NORMAL
+            "          | %-8.8s                 |\n", pmm.searchLock.lock?"locked":"unlocked");
+    DbgOutput(buf);
 
-    if (pmm.search) {
-        KernelPrintf("    Search Stack TOS frame: %p\n", pmm.search->frame);
-        KernelPrintf("    Search Stack TOS count: %d\n", pmm.search->count);
+    ksprintf(buf, "| " ANSI_ATTR_BOLD ANSI_FG_BLUE "Search Stack Address" ANSI_ATTR_NORMAL
+            "       | %p         |\n", pmm.search);
+    DbgOutput(buf);
+
+    if (pmm.search && MmuIsMapped((Addr_t)pmm.search)) {
+        ksprintf(buf, "|   " ANSI_ATTR_BOLD ANSI_FG_BLUE "Search Stack TOS frame" ANSI_ATTR_NORMAL
+                "   | %p         |\n", pmm.search->frame);
+        DbgOutput(buf);
+
+        ksprintf(buf, "|   " ANSI_ATTR_BOLD ANSI_FG_BLUE "Search Stack TOS count" ANSI_ATTR_NORMAL
+                "   | %-8d                 |\n", pmm.search->count);
+        DbgOutput(buf);
     }
 
-    KernelPrintf("\n");
-    KernelPrintf("==========================================\n");
-    KernelPrintf("\n");
+    DbgOutput("+----------------------------+--------------------------+\n");
+
 }
 
+#endif
 
-//
-// -- Push frames on a stack (must hold the stack lock to call)
-//    ---------------------------------------------------------
+
+
+/****************************************************************************************************************//**
+*   @fn                 static void PushStack(PmmFrameInfo_t **stack, Frame_t frame, size_t count)
+*   @brief              Push frames on a stack (must hold the stack lock to call)
+*
+*   Push a block of frames into the stack provided.
+*
+*   @param              stack           Pointer to the pointer to the top of the stack (which will be changed)
+*   @param              frame           The frame that starts the block to push
+*   @param              count           The number of frames in this block
+*///-----------------------------------------------------------------------------------------------------------------
 static void PushStack(PmmFrameInfo_t **stack, Frame_t frame, size_t count)
 {
     SpinLock(&pmm.insertLock);
-    MmuMapPage(tempInsert, frame, PG_WRT);
-    volatile PmmFrameInfo_t *wrk = (PmmFrameInfo_t *)tempInsert;
+    MmuMapPage(TEMP_INSERT, frame, PG_WRT);
+    volatile PmmFrameInfo_t *wrk = (PmmFrameInfo_t *)TEMP_INSERT;
 
     wrk->frame = frame;
     wrk->count = count;
@@ -164,13 +237,13 @@ static void PushStack(PmmFrameInfo_t **stack, Frame_t frame, size_t count)
     } else {
         wrk->next = 0;
 
-        if (stack == &pmm.lowStack) *stack = (PmmFrameInfo_t *)lowStack;
-        else if (stack == &pmm.normStack) *stack = (PmmFrameInfo_t *)normStack;
-        else if (stack == &pmm.scrubStack) *stack = (PmmFrameInfo_t *)scrubStack;
+        if (stack == &pmm.lowStack) *stack = (PmmFrameInfo_t *)LOW_STACK;
+        else if (stack == &pmm.normStack) *stack = (PmmFrameInfo_t *)NORM_STACK;
+        else if (stack == &pmm.scrubStack) *stack = (PmmFrameInfo_t *)SCRUB_STACK;
         else KernelPrintf("PushStack(): Unable to determine on which stack to push\n");
     }
 
-    MmuUnmapPage(tempInsert);
+    MmuUnmapPage(TEMP_INSERT);
     SpinUnlock(&pmm.insertLock);
 
     // -- finally, push the new node
@@ -179,9 +252,14 @@ static void PushStack(PmmFrameInfo_t **stack, Frame_t frame, size_t count)
 
 
 
-//
-// -- Pop the last frame off the stack (must hold the stack lock to call)
-//    -------------------------------------------------------------------
+/****************************************************************************************************************//**
+*   @fn                 static void PopStack(PmmFrameInfo_t **stack)
+*   @brief              Pop the last frame off the stack (must hold the stack lock to call)
+*
+*   Pop a block of frames from the stack provided.
+*
+*   @param              stack           Pointer to the pointer to the top of the stack (which will be changed)
+*///-----------------------------------------------------------------------------------------------------------------
 static void PopStack(PmmFrameInfo_t **stack)
 {
     if (!(*stack)) return;
@@ -203,36 +281,53 @@ static void PopStack(PmmFrameInfo_t **stack)
 
 
 
-//
-// -- Scrub a frame, clearing its contents
-//    ------------------------------------
+/****************************************************************************************************************//**
+*   @fn                 static void PmmScrubFrame(Frame_t frame)
+*   @brief              Scrub a frame, clearing its contents
+*
+*   Sanitize a frame by writing zeros to the entire frame
+*
+*   @param              frame           The frame to clear
+*///-----------------------------------------------------------------------------------------------------------------
 static void PmmScrubFrame(Frame_t frame)
 {
     SpinLock(&pmm.clearLock);
 
-#ifdef PMM_DEBUG
+#if DEBUG_ENABLED(PmmScrubFrame)
+
     KernelPrintf("!!!!! PmmScrubFrame() preparing to map a page\n");
-#endif
-    MmuMapPage(clearAddr, frame, PG_WRT);
-#ifdef PMM_DEBUG
-    KernelPrintf("!!!!! PmmScrubFrame() page mapped\n");
-    MmuDump(clearAddr);
+
 #endif
 
-    uint64_t *wrk = (uint64_t *)clearAddr;
+    MmuMapPage(CLEAR_ADDR, frame, PG_WRT);
+
+#if DEBUG_ENABLED(PmmScrubFrame)
+
+    KernelPrintf("!!!!! PmmScrubFrame() page mapped\n");
+    MmuDump(CLEAR_ADDR);
+
+#endif
+
+    uint64_t *wrk = (uint64_t *)CLEAR_ADDR;
 
     for (int i = 0; i < PAGE_SIZE / sizeof(uint64_t); i ++) wrk[i] = 0;
 
-    MmuUnmapPage(clearAddr);
+    MmuUnmapPage(CLEAR_ADDR);
 
     SpinUnlock(&pmm.clearLock);
 }
 
 
 
-//
-// -- Scrub a block of frames
-//    -----------------------
+/****************************************************************************************************************//**
+*   @fn                 static void PmmScrubBlock(Frame_t start, size_t count)
+*   @brief              Scrub a block of frames, clearing its contents
+*
+*   Sanitize a block of frame by writing zeros to the entire block
+*
+*   @param              start           The first frame to clear
+*   @param              count           The number of frames to clear
+*///-----------------------------------------------------------------------------------------------------------------
 static void PmmScrubBlock(Frame_t start, size_t count)
 {
     for (size_t i = start; i < start + count; i ++) PmmScrubFrame(i);
@@ -240,17 +335,26 @@ static void PmmScrubBlock(Frame_t start, size_t count)
 
 
 
-//
-// -- Remove a Frame from a block (the stack lock must be held to call)
-//    -----------------------------------------------------------------
+/****************************************************************************************************************//**
+*   @fn                 static Frame_t PmmDoRemoveFrame(PmmFrameInfo_t **stack, bool scrub)
+*   @brief              Remove a Frame from a block (the stack lock must be held to call)
+*
+*   Remove a single block from the top of the stack.  If the block has no frames left, pop that block from the
+*   stack.
+*
+*   @param              start           The first frame to clear
+*   @param              count           The number of frames to clear
+*///-----------------------------------------------------------------------------------------------------------------
 static Frame_t PmmDoRemoveFrame(PmmFrameInfo_t **stack, bool scrub)
 {
     Frame_t rv = 0;         // assume we will not find anything
 
-#ifdef PMM_DEBUG
+#if DEBUG_ENABLED(PmmDoRemoveFrame)
+
     KernelPrintf("Removing a single frame; some interesting facts:\n");
     KernelPrintf(".. stack = %p\n", stack);
     KernelPrintf(".. *stack = %p\n", stack?*stack:0);
+
 #endif
 
     if ((Addr_t)(*stack)) {
@@ -265,16 +369,20 @@ static Frame_t PmmDoRemoveFrame(PmmFrameInfo_t **stack, bool scrub)
         return 0;
     }
 
-#ifdef PMM_DEBUG
+#if DEBUG_ENABLED(PmmDoRemoveFrame)
+
     KernelPrintf(".. Found the frame to use: %p\n", rv);
+
 #endif
 
 
     // -- scrub the frame if requested
     if (scrub) PmmScrubFrame(rv);
 
-#ifdef PMM_DEBUG
+#if DEBUG_ENABLED(PmmDoRemoveFrame)
+
     KernelPrintf(".. all good!  Returning frame %p\n", rv);
+
 #endif
 
     return rv;
@@ -282,13 +390,32 @@ static Frame_t PmmDoRemoveFrame(PmmFrameInfo_t **stack, bool scrub)
 
 
 
-//
-// -- Complete the initialization required for the PMM
-//    ------------------------------------------------
+/****************************************************************************************************************//**
+*   @fn                 Return_t PmmInitEarly(BootInterface_t *loaderInterface)
+*   @brief              Complete the initialization required for the PMM
+*
+*   Perform the initialization required to put the PMM in service.  Blocks will be inserted from the MultiBoot
+*   memory map into the scrub stack, with a reasonable section set aside for low memory and the early PMM.  The
+*   Butler will then add additional memory blocks to the PMM once it can safely identify what is still available.
+*   Note that this function also resets the PMM Allocator at the end of this function, putting itself in charge
+*   of managing the PMM.  With all the available frames on the Scrub stack, the PMM will scrub any frame before
+*   allowing it to be allocated and returned to the caller.
+*
+*   @param              loaderInterface     The available hardware interface from the loader
+*
+*   @returns            Whether the module should be loaded or not
+*
+*   @retval             0               The PMM is always successfully loaded
+*///-----------------------------------------------------------------------------------------------------------------
 Return_t PmmInitEarly(BootInterface_t *loaderInterface)
 {
     ProcessInitTable();
+
+#if DEBUG_ENABLED(PmmInitEarly)
+
     KernelPrintf("PmmInitEarly(): Starting initialization\n");
+
+#endif
 
     for (int i = 0; i < MAX_MEM; i ++) {
         Frame_t start = loaderInterface->memBlocks[i].start >> 12;
@@ -299,9 +426,9 @@ Return_t PmmInitEarly(BootInterface_t *loaderInterface)
         if (start < loaderInterface->nextEarlyFrame) start = loaderInterface->nextEarlyFrame + 0x100;
 
         Addr_t size = end - start;
-        MmuMapPage(tempMap, start, PG_WRT);
+        MmuMapPage(TEMP_MAP, start, PG_WRT);
 
-        PmmFrameInfo_t *info = (PmmFrameInfo_t *)tempMap;
+        PmmFrameInfo_t *info = (PmmFrameInfo_t *)TEMP_MAP;
         info->count = size;
         info->frame = start;
         info->next = 0;
@@ -317,26 +444,43 @@ Return_t PmmInitEarly(BootInterface_t *loaderInterface)
             MmuUnmapPage((Addr_t)pmm.scrubStack);
             MmuMapPage((Addr_t)pmm.scrubStack, info->frame, PG_WRT);
         } else {
-            MmuMapPage((Addr_t)scrubStack, info->frame, PG_WRT);
-            pmm.scrubStack = (PmmFrameInfo_t *)scrubStack;
+            MmuMapPage((Addr_t)SCRUB_STACK, info->frame, PG_WRT);
+            pmm.scrubStack = (PmmFrameInfo_t *)SCRUB_STACK;
         }
 
-        MmuUnmapPage(tempMap);
+        MmuUnmapPage(TEMP_MAP);
     }
 
     SetInternalHandler(INT_PMM_ALLOC, (Addr_t)pmm_PmmAllocateAligned, GetAddressSpace(), 0);
 
+#if DEBUG_ENABLED(PmmInitEarly)
+
     KernelPrintf("PmmInitEarly(): Initialization complete\n");
-//    DumpPmm();
+    DumpPmm();
+
+#endif
 
     return 0;   // will be loaded
 }
 
 
 
-//
-// -- Allocate a single frame (normal or low)
-//    ---------------------------------------
+/****************************************************************************************************************//**
+*   @fn                 static Frame_t PmmAllocate(bool low)
+*   @brief              Allocate a single frame (normal or low)
+*
+*   Allocate a frame from one of:
+*   * The normal memory stack (when low == false)
+*   * The scrub stack (when low == false && no normal memory available)
+*   * The low memory stack (when low == true || no other memory available)
+*
+*   @param              low             Whether the frame should be from low memory or not
+*
+*   @returns            The frame allocated
+*
+*   @retval             -ENOMEM         When there is no physical memory left
+*   @retval             frame           The frame allocated
+*///-----------------------------------------------------------------------------------------------------------------
 static Frame_t PmmAllocate(bool low)
 {
     Frame_t rv = 0;         // assume we will not find anything
@@ -346,16 +490,23 @@ static Frame_t PmmAllocate(bool low)
     // -- check the normal stack for a frame to allocate
     //    ----------------------------------------------
     if (!low) {
-#ifdef PMM_DEBUG
+#if DEBUG_ENABLED(PmmAllocate)
+
         KernelPrintf("Allocating a single frame from the normal stack\n");
+
 #endif
+
         SpinLock(&pmm.normLock);
         rv = PmmDoRemoveFrame(&pmm.normStack, false);
         SpinUnlock(&pmm.normLock);
-#ifdef PMM_DEBUG
+
+#if DEBUG_ENABLED(PmmAllocate)
+
         KernelPrintf("Frame Allocated: %p\n", rv);
+
 #endif
     }
+
     if (rv != 0) return rv;
 
 
@@ -363,14 +514,21 @@ static Frame_t PmmAllocate(bool low)
     // -- check the scrub queue for a frame to allocate
     //    ---------------------------------------------
     if (!low) {
-#ifdef PMM_DEBUG
+
+#if DEBUG_ENABLED(PmmAllocate)
+
         KernelPrintf("Allocating a single frame from the scrub stack\n");
+
 #endif
+
         SpinLock(&pmm.scrubLock);
         rv = PmmDoRemoveFrame(&pmm.scrubStack, true);       // -- scrub the frame when it is removed
         SpinUnlock(&pmm.scrubLock);
-#ifdef PMM_DEBUG
+
+#if DEBUG_ENABLED(PmmAllocate)
+
         KernelPrintf("Frame Allocated: %p\n", rv);
+
 #endif
     }
     if (rv != 0) return rv;
@@ -379,15 +537,23 @@ static Frame_t PmmAllocate(bool low)
     //
     // -- check the low stack for a frame to allocate
     //    -------------------------------------------
-#ifdef PMM_DEBUG
+
+#if DEBUG_ENABLED(PmmAllocate)
+
     KernelPrintf("Allocating a single frame from the low stack\n");
+
 #endif
+
     SpinLock(&pmm.lowLock);
     rv = PmmDoRemoveFrame(&pmm.lowStack, false);
     SpinUnlock(&pmm.lowLock);
-#ifdef PMM_DEBUG
+
+#if DEBUG_ENABLED(PmmAllocate)
+
     KernelPrintf("Frame Allocated: %p\n", rv);
+
 #endif
+
     if (rv != 0) return rv;
 
     return -ENOMEM;
@@ -395,9 +561,24 @@ static Frame_t PmmAllocate(bool low)
 
 
 
-//
-// -- Split the block as needed to pull out the proper alignment and size of frames
-//    -----------------------------------------------------------------------------
+/****************************************************************************************************************//**
+*   @fn                 static Frame_t PmmSplitBlock(PmmFrameInfo_t **stack, Frame_t frame, size_t blockSize, \
+*                       Frame_t atFrame, size_t count)static Frame_t PmmAllocate(bool low)
+*   @brief              Split the block as needed to pull out the proper alignment and size of frames
+*
+*   Allocate a frame from one of:
+*   * The normal memory stack (when low == false)
+*   * The scrub stack (when low == false && no normal memory available)
+*   * The low memory stack (when low == true || no other memory available)
+*
+*   @param              stack           Pointer to a pointer to the stack from which the block will be pulled
+*   @param              frame           The frame number that starts the block required to be split
+*   @param              blockSize       The number of frames in the block required to be split
+*   @param              atFrame         The frame number at which the block will be split
+*   @param              count           The number of frames required in the resulting allocation
+*
+*   @returns            The frame starting the allocation (atFrame)
+*///-----------------------------------------------------------------------------------------------------------------
 static Frame_t PmmSplitBlock(PmmFrameInfo_t **stack, Frame_t frame, size_t blockSize, Frame_t atFrame, size_t count)
 {
     if (frame < atFrame) {
@@ -427,36 +608,67 @@ static Frame_t PmmSplitBlock(PmmFrameInfo_t **stack, Frame_t frame, size_t block
 
 
 
-//
-// -- This function is the working to find a frame that is properly aligned and allocate multiple contiguous frames
-//    -------------------------------------------------------------------------------------------------------------
+/****************************************************************************************************************//**
+*   @fn                 Frame_t PmmDoAllocAlignedFrames(PmmFrameInfo_t **pStack, const size_t count, \
+*                       const size_t bitAlignment)
+*   @brief              The working to find a frame that is properly aligned and allocate multiple contiguous frames
+*
+*   Searches the stack specified for a block of memory large enough to hold the block required and at the
+*   specified alignment.
+*
+*   @param              pStack          Pointer to a pointer to the stack to search
+*   @param              count           The number of frames required in the resulting allocation
+*   @param              bitAlignment    The number of bits on which the allocation needs to be aligned
+*
+*   @returns            The frame starting the allocation, -ENOMEM if no unable to allocate the frame
+*
+*   @retval             -ENOMEM         When there is no physical memory left
+*   @retval             frame           The frame allocated
+*///-----------------------------------------------------------------------------------------------------------------
 Frame_t PmmDoAllocAlignedFrames(PmmFrameInfo_t **pStack, const size_t count, const size_t bitAlignment)
 {
-//    KernelPrintf("Allocating aligned frame(s)\n");
+#if DEBUG_ENABLED(PmmDoAllocAlignedFrames)
+
+    KernelPrintf("Allocating aligned frame(s)\n");
+
+#endif
 
     //
     // -- start by determining the bits we cannot have enabled when we evaluate a frame
     //    -----------------------------------------------------------------------------
     Frame_t frameBits = ~(((Frame_t)-1) << (bitAlignment<12?0:bitAlignment-12));
-    Frame_t rv = 0;
+    Frame_t rv = -ENOMEM;
 
     if (!MmuIsMapped((Addr_t)*pStack)) return -ENOMEM;
 
 
     // -- Interrupts are already disabled before we get here
-//    KernelPrintf(".. Attempting the search lock\n");
+#if DEBUG_ENABLED(PmmDoAllocAlignedFrames)
+
+    KernelPrintf(".. Attempting the search lock\n");
+
+#endif
 
     SpinLock(&pmm.searchLock); {
-//        KernelPrintf(".. Lock obtained\n");
+#if DEBUG_ENABLED(PmmDoAllocAlignedFrames)
 
-//        KernelPrintf("Some interesting facts before MmuMapPage:\n");
-//        KernelPrintf(".. pmm.search is %p\n", pmm.search);
-//        KernelPrintf(".. pStack is %p (%s)\n", pStack, MmuIsMapped((Addr_t)pStack)?"mapped":"not mapped");
-//        KernelPrintf(".. (*pStack) is %p\n", *pStack);
-//        KernelPrintf(".. (*pStack)->frame is %p\n", pStack?(*pStack)->frame:0);
+        KernelPrintf(".. Lock obtained\n");
+
+        KernelPrintf("Some interesting facts before MmuMapPage:\n");
+        KernelPrintf(".. pmm.search is %p\n", pmm.search);
+        KernelPrintf(".. pStack is %p (%s)\n", pStack, MmuIsMapped((Addr_t)pStack)?"mapped":"not mapped");
+        KernelPrintf(".. (*pStack) is %p\n", *pStack);
+        KernelPrintf(".. (*pStack)->frame is %p\n", pStack?(*pStack)->frame:0);
+
+#endif
+
         MmuMapPage((Addr_t)pmm.search, (*pStack)->frame, PG_WRT);
 
-//        KernelPrintf(".. Page mapped\n");
+#if DEBUG_ENABLED(PmmDoAllocAlignedFrames)
+
+        KernelPrintf(".. Page mapped\n");
+
+#endif
 
         while(true) {
             Frame_t end = pmm.search->frame + pmm.search->count - 1;
@@ -501,37 +713,62 @@ exit:
         SpinUnlock(&pmm.searchLock);
     }
 
-//    KernelPrintf("Aligned PMM Allocation is finally returning frame %x\n", rv);
+#if DEBUG_ENABLED(PmmDoAllocAlignedFrames)
+
+    KernelPrintf("Aligned PMM Allocation is finally returning frame %x\n", rv);
+
+#endif
 
     return rv;
 }
 
 
 
-//
-// -- Allocate aligned frame(s)
-//    -------------------------
+/****************************************************************************************************************//**
+*   @fn                 Frame_t pmm_PmmAllocateAligned(int, bool low, int bitsAligned, size_t count)
+*   @brief              Allocate aligned frame(s)
+*
+*   The syscall target to allocate frames.  All allocations are at least 1 frame and aligned to 12 bits.
+*   If those conditions are met (1 frame aligned at 12 bits), then the trivial \ref PmmAllocate functino
+*   is used.
+*
+*   @param              low             Whether to allocate low memory
+*   @param              bitsAligned     The alignment of the allocation
+*   @param              count           The number of frames to allocate in a block
+*
+*   @returns            The frame starting the allocation, -ENOMEM if no unable to allocate the frame
+*
+*   @retval             -ENOMEM         When there is no physical memory left
+*   @retval             frame           The frame allocated
+*///-----------------------------------------------------------------------------------------------------------------
 Frame_t pmm_PmmAllocateAligned(int, bool low, int bitsAligned, size_t count)
 {
-#ifdef PMM_DEBUG
+#if DEBUG_ENABLED(pmm_PmmAllocateAligned)
+
     KernelPrintf("Internal Function to allocate aligned frames (pmm_PmmAllocateAligned)\n");
     KernelPrintf(".. low = %s; alignment bits = %d; count = %d\n", low?"true":"false", bitsAligned, count);
+
 #endif
 
     if (bitsAligned < 12) bitsAligned = 12;
     if (count == 1 && bitsAligned == 12) {
         Frame_t rv = PmmAllocate(low);
-#ifdef PMM_DEBUG
+
+#if DEBUG_ENABLED(pmm_PmmAllocateAligned)
+
         KernelPrintf(".. Returning back to the user frame %p\n", rv);
+
 #endif
 
         return rv;
     }
 
-    // -- TODO: add some detail here to allocate aligned/multiple frames
-#ifdef PMM_DEBUG
+#if DEBUG_ENABLED(pmm_PmmAllocateAligned)
+
     KernelPrintf(".. More than a trivial allocation\n");
+
 #endif
+
     Addr_t flags = DisableInt();
     Frame_t rv = 0;
 
@@ -551,9 +788,18 @@ Frame_t pmm_PmmAllocateAligned(int, bool low, int bitsAligned, size_t count)
 }
 
 
-//
-// -- Release a frame
-//    ---------------
+
+/****************************************************************************************************************//**
+*   @fn                 Return_t pmm_PmmReleaseFrame(int, Frame_t frame, size_t count)
+*   @brief              Release a frame
+*
+*   Quickly release a frame or block of frames by pushing the frames onto the scrub stack and exiting.
+*
+*   @param              frame           The start of the block of frames to release
+*   @param              count           The number of frames to release in a block
+*
+*   @returns            0
+*///-----------------------------------------------------------------------------------------------------------------
 Return_t pmm_PmmReleaseFrame(int, Frame_t frame, size_t count)
 {
     SpinLock(&pmm.scrubLock);
@@ -561,7 +807,11 @@ Return_t pmm_PmmReleaseFrame(int, Frame_t frame, size_t count)
     AtomicAdd(&pmm.framesAvail, count);
     SpinUnlock(&pmm.scrubLock);
 
+#if DEBUG_ENABLED(pmm_PmmReleaseFrame)
+
     DumpPmm();
+
+#endif
 
 //    MessageQueueSend(butlerMsgq, BUTLER_CLEAN_PMM, 0, 0);
     return 0;
@@ -569,48 +819,196 @@ Return_t pmm_PmmReleaseFrame(int, Frame_t frame, size_t count)
 
 
 
-//
-// -- This is the process that will keep the scrub stack clean
-//    --------------------------------------------------------
+/****************************************************************************************************************//**
+*   @fn                 void PmmCleanProcess(void)
+*   @brief              Clean the blocks on the scrub stack
+*
+*   This process runs to clean blocks of frames from the scrub stack and insert them onto the proper low or normal
+*   stack.
+*///-----------------------------------------------------------------------------------------------------------------
 void PmmCleanProcess(void)
 {
+#if DEBUG_ENABLED(PmmCleanProcess)
+
     KernelPrintf("Starting the PMM Cleaner\n");
+
+#endif
+
     while (true) {
         SpinLock(&pmm.scrubLock);
 
-        if (pmm.scrubStack != 0) {
+#if DEBUG_ENABLED(PmmCleanProcess)
+
+        KernelPrintf("Checking for a mapped scrub Stack\n");
+        MmuDump((Addr_t)pmm.scrubStack);
+
+#endif
+
+        if (MmuIsMapped((Addr_t)pmm.scrubStack) == true) {
+#if DEBUG_ENABLED(PmmCleanProcess)
+
+            KernelPrintf(".. found a block to clean\n");
+
+#endif
+
             Frame_t frame = pmm.scrubStack->frame;
             size_t count = pmm.scrubStack->count;
             PopStack(&pmm.scrubStack);
             SpinUnlock(&pmm.scrubLock);
 
+#if DEBUG_ENABLED(PmmCleanProcess)
+
+            KernelPrintf(".. scrubbing the block: %p for %d blocks\n", frame, count);
+
+#endif
+
             PmmScrubBlock(frame, count);
 
             if (frame < 0x100) {
+#if DEBUG_ENABLED(PmmCleanProcess)
+
+                KernelPrintf(".. inserting into the low Stack\n");
+
+#endif
+
                 SpinLock(&pmm.lowLock);
                 PushStack(&pmm.lowStack, frame, count);
                 SpinUnlock(&pmm.lowLock);
+
+#if DEBUG_ENABLED(PmmCleanProcess)
+
+                KernelPrintf(".... Done!\n");
+
+#endif
             } else {
+#if DEBUG_ENABLED(PmmCleanProcess)
+
+                KernelPrintf(".. inserting into the normal stack\n");
+
+#endif
+
                 SpinLock(&pmm.normLock);
                 PushStack(&pmm.normStack, frame, count);
                 SpinUnlock(&pmm.normLock);
+
+#if DEBUG_ENABLED(PmmCleanProcess)
+
+                KernelPrintf(".... Done!\n");
+
+#endif
             }
         } else {
+#if DEBUG_ENABLED(PmmCleanProcess)
+
+            KernelPrintf(".. nothing left to do\n");
+
+#endif
+
             SpinUnlock(&pmm.scrubLock);
-            // -- TODO: nothing to do; wait for a message to do something else
+            SchProcessBlock(PRC_MSGW);
         }
     }
 }
 
 
-//
-// -- Complete the late initialization of the PMM
-//    -------------------------------------------
+
+/****************************************************************************************************************//**
+*   @fn                 void pmm_LateInit(void)
+*   @brief              Complete the late initialization of the PMM
+*
+*   Complete the late initialization by starting a new process to clean the scrub stack.
+*///-----------------------------------------------------------------------------------------------------------------
 void pmm_LateInit(void)
 {
+#if DEBUG_ENABLED(pmm_LateInit)
+
     KernelPrintf("Starting PMM Cleaner process\n");
+
+#endif
+
     SchProcessCreate("PMM Cleaner", (Addr_t)PmmCleanProcess, GetAddressSpace(), PTY_LOW);
+
+#if DEBUG_ENABLED(pmm_LateInit)
+
     KernelPrintf("PMM Late Initialization Complete!\n");
+#endif
+
+#if IS_ENABLED(KERNEL_DEBUGGER)
+    PmmDebugInit();
+#endif
 }
+
+
+
+#if IS_ENABLED(KERNEL_DEBUGGER)
+#include "debugger.h"
+#include "stacks.h"
+
+
+//
+// -- here is the debugger menu & function ecosystem
+//    ----------------------------------------------
+DbgState_t pmmStates[] = {
+    {   // -- state 0
+        .name = "pmm",
+        .transitionFrom = 0,
+        .transitionTo = 1,
+    },
+    {   // -- state 1 (status)
+        .name = "status",
+        .function = (Addr_t)DumpPmm,
+    },
+};
+
+
+DbgTransition_t pmmTrans[] = {
+    {   // -- transition 0
+        .command = "status",
+        .alias = "s",
+        .nextState = 1,
+    },
+    {   // -- transition 1
+        .command = "exit",
+        .alias = "x",
+        .nextState = -1,
+    },
+};
+
+
+DbgModule_t pmmModule = {
+    .name = "pmm",
+    .addrSpace = GetAddressSpace(),
+    .stack = 0,     // -- needs to be handled during late init
+    .stateCnt = sizeof(pmmStates) / sizeof (DbgState_t),
+    .transitionCnt = sizeof(pmmTrans) / sizeof (DbgTransition_t),
+    .list = {&pmmModule.list, &pmmModule.list},
+    .lock = {0},
+    // -- it does not matter what we put for .states and .transitions; will be replaced in debugger
+};
+
+
+
+/****************************************************************************************************************//**
+*   @fn                 void PmmDebugInit(void)
+*   @brief              Initialize the debugger module structure
+*
+*   Initialize the debugger module for the PMM
+*///-----------------------------------------------------------------------------------------------------------------
+void PmmDebugInit(void)
+{
+    extern Addr_t __stackSize;
+
+    pmmModule.stack = StackFind();
+    for (Addr_t s = pmmModule.stack; s < pmmModule.stack + __stackSize; s += PAGE_SIZE) {
+        MmuMapPage(s, PmmAlloc(), PG_WRT);
+    }
+    pmmModule.stack += __stackSize;
+
+    DbgRegister(&pmmModule, pmmStates, pmmTrans);
+}
+
+
+
+#endif
 
 

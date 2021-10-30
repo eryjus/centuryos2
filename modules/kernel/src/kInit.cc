@@ -15,10 +15,6 @@
 //===================================================================================================================
 
 
-#ifndef USE_SERIAL
-#define USE_SERIAL
-#endif
-
 
 #include "types.h"
 #include "idt.h"
@@ -39,6 +35,9 @@ extern "C" void kInit(void);
 extern BootInterface_t *loaderInterface;
 
 
+extern "C" void CpuDebugInit(void);
+
+
 //
 // -- Perform the kernel initialization
 //    ---------------------------------
@@ -57,22 +56,42 @@ void kInit(void)
     ServiceInit();                      // init the OS services table
     CpuInit();                          // init the cpus tables
     ProcessInit(loaderInterface);
-
-//    InternalTableDump();
-//    VectorTableDump();
-
     ModuleEarlyInit();
-//    InternalTableDump();
-//    VectorTableDump();
-//    ServiceTableDump();
-
+    CpuApStart(loaderInterface);
     EnableInt();
     ModuleLateInit();
 
-    CurrentThread()->priority = (ProcPriority_t)PTY_IDLE;
+#if IS_ENABLED(KERNEL_DEBUGGER)
+    CpuDebugInit();
+#endif
+
+    // -- take on the Butler role
+    CurrentThread()->priority = (ProcPriority_t)PTY_LOW;
+    ksprintf(CurrentThread()->command, "Butler");
 
     while (true) {
-        __asm volatile ("hlt");
+        sch_ProcessBlock(0, PROC_MSGW);
     }
 }
 
+
+//
+// -- For APs, start the OS on these processors
+//    -----------------------------------------
+extern "C" void kInitAp(void)
+{
+    int me = LapicGetId();
+
+    assert(AtomicRead(&cpus[me].state) == CPU_STARTING);
+    AtomicSet(&cpus[me].state, CPU_STARTED);
+
+    kprintf("Confirming that CPU %d has started\n", me);
+    SchedulerCreateKInitAp(me);
+
+    TmrApInit(NULL);
+    EnableInt();
+
+
+    ProcessEnd();
+    assert(false);
+}

@@ -54,12 +54,15 @@ enum {
     // -- Kernel Utility Functions
     INT_KRN_COPY_MEM        = 0x020,
     INT_KRN_RLS_MEM         = 0x021,
-    INT_KRN_PROCESS_SWITCH  = 0x022,
+    INT_KRN_CORES_ACTIVE    = 0x022,
+    INT_KRN_PAUSE_CORES     = 0x023,
+    INT_KRN_RELEASE_CORES   = 0x024,
 
     // -- Timer Module Functions
     INT_TMR_CURRENT_COUNT   = 0x040,
     INT_TMR_TICK            = 0x041,
     INT_TMR_EOI             = 0x042,
+    INT_TMR_REINIT          = 0x043,
 
     // -- PMM Module Functions
     INT_PMM_ALLOC           = 0x050,
@@ -78,6 +81,12 @@ enum {
     INT_DBG_REGISTER        = 0x071,
     INT_DBG_OUTPUT          = 0x072,
     INT_DBG_PROMPT_GENERIC  = 0x073,
+
+    // -- LAPIC/IPI functions
+    INT_IPI_CURRENT_CPU     = 0x080,
+    INT_IPI_SEND_INIT       = 0x081,
+    INT_IPI_SEND_SIPI       = 0x082,
+    INT_IPI_SEND_IPI        = 0x083,
 };
 
 
@@ -305,9 +314,9 @@ INTERNAL1(Return_t, MmuUnmapPage, INT_KRN_MMU_UNMAP, Addr_t)
 //
 // -- Function 0x01a -- Check if a page is mapped in the current address space
 //
-//    Prototype: bool MmuIsMapped(Addr_t addr);
+//    Prototype: Return_t MmuIsMapped(Addr_t addr);
 //    ------------------------------------------------------------------------
-INTERNAL1(bool, MmuIsMapped, INT_KRN_MMU_IS_MAPPED, Addr_t)
+INTERNAL1(Return_t, MmuIsMapped, INT_KRN_MMU_IS_MAPPED, Addr_t)
 
 
 //
@@ -357,6 +366,26 @@ INTERNAL1(Return_t, KrnReleaseMem, INT_KRN_RLS_MEM, void *)
 
 
 
+//
+// -- Function 0x022 -- Return the number of active cores
+//    ---------------------------------------------------
+INTERNAL0(int, KrnActiveCores, INT_KRN_CORES_ACTIVE)
+
+
+
+//
+// -- Function 0x023 -- Pause all cores
+//    ---------------------------------
+INTERNAL0(Addr_t, KrnPauseCores, INT_KRN_PAUSE_CORES)
+
+
+//
+// -- Function 0x024 -- Release all cores
+//    -----------------------------------
+INTERNAL1(Return_t, KrnReleaseCores, INT_KRN_RELEASE_CORES, Addr_t)
+
+
+
 // =====================
 // == Timer functions ==
 // =====================
@@ -383,7 +412,17 @@ INTERNAL0(uint64_t, TmrTick, INT_TMR_TICK)
 //
 //    Prototype: Return_t TmrEoi(void);
 //    -----------------------------------------------------------------------
-INTERNAL0(uint64_t, TmrEoi, INT_TMR_EOI)
+INTERNAL0(Return_t, TmrEoi, INT_TMR_EOI)
+
+
+
+//
+// -- Function 0x042 -- Init the AP timers
+//
+//    Prototype: Return_t TmrApInit(BootInterface_t *)
+//    -----------------------------------------------------------------------
+INTERNAL1(Return_t, TmrApInit, INT_TMR_REINIT, BootInterface_t *);
+
 
 
 // =======================================
@@ -488,9 +527,9 @@ inline Return_t SchProcessSleep(uint64_t s) { return SchProcessMicroSleepUntil(T
 //
 // -- Function 0x070 -- Check if the debugger is installed
 //
-//    Prototype: bool DbgInstalled(void);
+//    Prototype: Return_t DbgInstalled(void);
 //    ----------------------------------------------------
-INTERNAL0(bool, DbgInstalled, INT_DBG_INSTALLED)
+INTERNAL0(Return_t, DbgInstalled, INT_DBG_INSTALLED)
 
 
 //
@@ -544,5 +583,50 @@ inline Return_t DbgPromptGeneric(const char *pr, char *rt, size_t s)
 
     return rv;
 }
+
+
+
+
+// =========================
+// == LAPIC/IPI functions ==
+// =========================
+
+
+//
+// -- Function 0x080 -- Get the current CPU LAPIC ID
+//
+//    Prototype: int LapicGetId(void);
+//    ----------------------------------------------
+INTERNAL0(int, LapicGetId, INT_IPI_CURRENT_CPU)
+
+
+
+//
+// -- Function 0x081 -- Send the Init IPI to the specified core
+//
+//    Prototype: int IpiSendInit(int core);
+//    ---------------------------------------------------------
+INTERNAL1(Return_t, IpiSendInit, INT_IPI_SEND_INIT, int)
+
+
+
+//
+// -- Function 0x082 -- Send the SIPI IPI to the specified core
+//
+//    Prototype: int IpiSendSipi(int core, Addr_t vector);
+//    ---------------------------------------------------------
+INTERNAL2(Return_t, IpiSendSipi, INT_IPI_SEND_SIPI, int, Addr_t)
+
+
+
+//
+// -- Function 0x083 -- Broadcast an IPI to all CPUs
+//
+//    Prototype: int IpiSendIpi(int ipi);
+//    ---------------------------------------------------------
+INTERNAL1(Return_t, IpiSendIpi, INT_IPI_SEND_IPI, int)
+
+
+
 
 

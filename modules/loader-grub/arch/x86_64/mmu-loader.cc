@@ -15,7 +15,6 @@
 //===================================================================================================================
 
 
-#define USE_SERIAL
 
 #include "types.h"
 #include "serial.h"
@@ -148,7 +147,7 @@ Frame_t MmuGetTable(void)
 //
 // -- Check if an address is mapped
 //    -----------------------------
-bool MmuIsMapped(Addr_t a)
+Return_t MmuIsMapped(Addr_t a)
 {
 #if DEBUG_ENABLED(MmuIsMapped)
 

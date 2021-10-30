@@ -27,7 +27,10 @@
 
         extern  dbg_Dispatch
         extern  dbg_PromptGeneric
+        extern  IpiHandleDebugger
 
+
+%include        'constants.inc'
 
         section .text
 

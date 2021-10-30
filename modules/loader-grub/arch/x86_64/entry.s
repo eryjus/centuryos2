@@ -32,6 +32,7 @@
                 global      kernelInterface
                 global      pml4
                 global      GetCr3
+                global      gdtr64
 
 
 ;;
@@ -280,6 +281,12 @@ entry:
 
                 add         eax,0x1000                      ;; next frame
                 mov         [ebx + (257*8)],eax             ;; set the page
+
+                add         eax,0x1000                      ;; next frame
+                mov         [ebx + (258*8)],eax             ;; set the page
+
+                add         eax,0x1000                      ;; next frame
+                mov         [ebx + (259*8)],eax             ;; set the page
 
 
 ;; -- take care of some additional mappings now

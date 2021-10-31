@@ -52,7 +52,7 @@ typedef struct PageEntry_t {
 //    ------------------------------------------------------------
 PageEntry_t *GetPML4Entry(Addr_t a)
 {
-    PageEntry_t *t = (PageEntry_t *)0xfffffffffffff000;
+    PageEntry_t *t = (PageEntry_t *)PML4_ENTRY_ADDRESS;
     uint64_t idx = (a >> (12 + (9 * 3))) & 0x1ff;
 
     return &t[idx];
@@ -61,7 +61,7 @@ PageEntry_t *GetPML4Entry(Addr_t a)
 
 PageEntry_t *GetPDPTEntry(Addr_t a)
 {
-    PageEntry_t *t = (PageEntry_t *)0xffffffffffe00000;
+    PageEntry_t *t = (PageEntry_t *)PDPT_ENTRY_ADDRESS;
     uint64_t idx = (a >> (12 + (9 * 2))) & 0x3ffff;
 
     return &t[idx];
@@ -70,7 +70,7 @@ PageEntry_t *GetPDPTEntry(Addr_t a)
 
 PageEntry_t *GetPDEntry(Addr_t a)
 {
-    PageEntry_t *t = (PageEntry_t *)0xffffffffc0000000;
+    PageEntry_t *t = (PageEntry_t *)PD_ENTRY_ADDRESS;
     uint64_t idx = (a >> (12 + (9 * 1))) & 0x7ffffff;
 
     return &t[idx];
@@ -79,7 +79,7 @@ PageEntry_t *GetPDEntry(Addr_t a)
 
 PageEntry_t *GetPTEntry(Addr_t a)
 {
-    PageEntry_t *t = (PageEntry_t *)0xffffff8000000000;
+    PageEntry_t *t = (PageEntry_t *)PT_ENTRY_ADDRESS;
     uint64_t idx = (a >> (12 + (9 * 0))) & 0xfffffffff;
 
     return &t[idx];

@@ -33,13 +33,6 @@
 
 
 
-//*******************************************************************************************************************
-//  Local Function prototypes
-//-------------------------------------------------------------------------------------------------------------------
-extern "C" void lInit(void);
-
-
-
 /****************************************************************************************************************//**
 *   @fn                 void JumpKernel(Addr_t entry, Addr_t stack)
 *   @brief              Perform a long jump into the kernel module.
@@ -61,13 +54,12 @@ extern "C" void JumpKernel(Addr_t entry, Addr_t stack);
 *   purpose of this function is to ensure that hardware discovery is complete and that the system is in a state
 *   where the kernel can take over.
 *///-----------------------------------------------------------------------------------------------------------------
-void lInit(void)
+extern "C" void lInit(void)
 {
     extern BootInterface_t *kernelInterface;
     extern Frame_t earlyFrame;
     extern Addr_t pml4;
     extern Addr_t gdtr64;
-    const Addr_t interfaceLocation = 0xffff9ffffffff000;
 
     // -- create all the kernel PML4 entries
     SerialOpen();
@@ -92,8 +84,8 @@ void lInit(void)
 #endif
 
     Frame_t fr = earlyFrame ++;
-    MmuMapPage(interfaceLocation, fr, PG_WRT);
-    kernelInterface = (BootInterface_t *)interfaceLocation;
+    MmuMapPage(INTERFACE_LOCATION, fr, PG_WRT);
+    kernelInterface = (BootInterface_t *)INTERFACE_LOCATION;
     kernelInterface->modCount = 0;
     kernelInterface->bootVirtAddrSpace = pml4;
 
@@ -114,7 +106,7 @@ void lInit(void)
 
     Addr_t kernel = MBootGetKernel();
     Addr_t stack = (earlyFrame);
-    earlyFrame += 4;
+    earlyFrame += (STACK_SIZE / PAGE_SIZE);
 
 #if DEBUG_ENABLED(lInit)
 
@@ -122,10 +114,10 @@ void lInit(void)
 
 #endif
 
-    MmuMapPage(0xfffff80000000000, stack + 0, PG_WRT);
-    MmuMapPage(0xfffff80000001000, stack + 1, PG_WRT);
-    MmuMapPage(0xfffff80000002000, stack + 2, PG_WRT);
-    MmuMapPage(0xfffff80000003000, stack + 3, PG_WRT);
+    MmuMapPage(KERNEL_STACK + (0 * PAGE_SIZE), stack + 0, PG_WRT);
+    MmuMapPage(KERNEL_STACK + (1 * PAGE_SIZE), stack + 1, PG_WRT);
+    MmuMapPage(KERNEL_STACK + (2 * PAGE_SIZE), stack + 2, PG_WRT);
+    MmuMapPage(KERNEL_STACK + (3 * PAGE_SIZE), stack + 3, PG_WRT);
 
 #if DEBUG_ENABLED(lInit)
 

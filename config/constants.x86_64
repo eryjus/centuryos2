@@ -32,9 +32,15 @@ TRAMP_OFF                   0x3000
 
 
 ##
-## -- Page size used
-##    --------------
+## -- MMU Constants
+##    -------------
 PAGE_SIZE                   0x1000
+
+PML4_ENTRY_ADDRESS          ((Addr_t)0xfffffffffffff000)
+PDPT_ENTRY_ADDRESS          ((Addr_t)0xffffffffffe00000)
+PD_ENTRY_ADDRESS            ((Addr_t)0xffffffffc0000000)
+PT_ENTRY_ADDRESS            ((Addr_t)0xffffff8000000000)
+
 
 
 
@@ -48,5 +54,12 @@ SCRUB_STACK                             ((Addr_t)0xffffff0000003000)
 TEMP_INSERT                             ((Addr_t)0xffffff0000004000)
 CLEAR_ADDR                              ((Addr_t)0xffffff0000005000)
 
+
+
+##
+## -- Some Loader Constants
+##    ---------------------
+INTERFACE_LOCATION                      ((Addr_t)0xffff9ffffffff000)
+KERNEL_STACK                            ((Addr_t)0xfffff80000000000)
 
 

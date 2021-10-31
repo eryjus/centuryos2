@@ -52,6 +52,25 @@ So, for `PmmAllocate()`....  It is also properly considering the *normal* and *s
 
 In fact this was addressed in code committed on 3-May (v0.0.7).
 
+This is why (at least in part) I want to take care of these stabilization versions once in a while.
+
+
+---
+
+## Version 0.0.13b -- [Redmine #480](http://eryjus.ddns.net:3000/issues/480)
+
+This one should have been addressed prior to the other one if I was following my rules.  I just missed the order they were presented in was not numerical by issue number.
+
+There are a number of things that are hard coded in the loader.  I really want to identify them and pull them into the `constants` files where appropriate.
+
+As I am going through this Redmine, I realize that the `wbnoinvd` instructions need to be moved to the `cpu.h` file as an inline (or #define as appropriate).  http://eryjus.ddns.net:3000/issues/542 was created for this and added to this version.
+
+While I was at it, I also cleaned up `mmu-loader.cc`.
+
+I should also take care of the kernel `mmu.cc` updates.
+
+That done, I think this takes care of #480.
+
 
 
 

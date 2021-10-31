@@ -72,7 +72,12 @@ I should also take care of the kernel `mmu.cc` updates.
 That done, I think this takes care of #480.
 
 
+---
 
+## Version 0.0.13c -- [Redmine #488](http://eryjus.ddns.net:3000/issues/488)
 
+This Redmine asks to address the PMM aligned allocation.  `PmmDoAllocAlignedFrames()` is already coded and searches for a block big enough to hold the alignment and the number of frames requested.  There is also a function `PmmSplitBlock()` to split a block of frames into 3: the block before the aligned frames, the properly aligned frames, and the block after the aligned frames.
+
+This is all already integrated into `pmm_PmmAllocateAligned()`.  So this is actually complete.
 
 

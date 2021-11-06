@@ -30,6 +30,12 @@ extern "C" {
     int ReadApicReg(ApicRegister_t reg);
     int WriteApicReg(ApicRegister_t reg, uint32_t val);
     int CheckApicRegStatus(ApicRegister_t reg, uint8_t index);
+
+#if IS_ENABLED(KERNEL_DEBUGGER)
+
+    void LapicDebugInit(void);
+
+#endif
 }
 
 
@@ -114,6 +120,12 @@ int Init(void)
 {
     ProcessInitTable();
     KernelPrintf("Performing the LAPIC late initialization\n");
+
+#if IS_ENABLED(KERNEL_DEBUGGER)
+
+    LapicDebugInit();
+
+#endif
 
     if (!apic) return -EINVAL;
     if (apic->init) apic->init();
@@ -233,3 +245,92 @@ extern "C" int ipi_SendIpi(int, int vector)
 
 
 
+#if IS_ENABLED(KERNEL_DEBUGGER)
+
+
+#include "stacks.h"
+
+
+//
+// -- Debug the timer over all CPUs
+//    -----------------------------
+void DebugTimerCounts(void)
+{
+    char buf[100];
+
+    // -- now we have the values -- dump them
+    DbgOutput(ANSI_CLEAR ANSI_SET_CURSOR(0,0) ANSI_FG_BLUE ANSI_ATTR_BOLD "Current Timer Count\n");
+
+    ksprintf(buf, "%ld\n", tmr_GetCurrentTimer());
+    DbgOutput(buf);
+}
+
+
+
+//
+// -- here is the debugger menu & function ecosystem
+//    ----------------------------------------------
+DbgState_t tmrStates[] = {
+    {   // -- state 0
+        .name = "timer",
+        .transitionFrom = 0,
+        .transitionTo = 1,
+    },
+    {   // -- state 1 (counts)
+        .name = "count",
+        .function = (Addr_t)DebugTimerCounts,
+    },
+};
+
+
+DbgTransition_t tmrTrans[] = {
+    {   // -- transition 0
+        .command = "count",
+        .alias = "c",
+        .nextState = 1,
+    },
+    {   // -- transition 1
+        .command = "exit",
+        .alias = "x",
+        .nextState = -1,
+    },
+};
+
+
+DbgModule_t tmrModule = {
+    .name = "timer",
+    .addrSpace = GetAddressSpace(),
+    .stack = 0,     // -- needs to be handled during late init
+    .stateCnt = sizeof(tmrStates) / sizeof (DbgState_t),
+    .transitionCnt = sizeof(tmrTrans) / sizeof (DbgTransition_t),
+    .list = {&tmrModule.list, &tmrModule.list},
+    .lock = {0},
+    // -- it does not matter what we put for .states and .transitions; will be replaced in debugger
+};
+
+
+/****************************************************************************************************************//**
+*   @fn                 void PmmDebugInit(void)
+*   @brief              Initialize the debugger module structure
+*
+*   Initialize the debugger module for the PMM
+*///-----------------------------------------------------------------------------------------------------------------
+extern "C" void LapicDebugInit(void)
+{
+    extern Addr_t __stackSize;
+
+    tmrModule.stack = StackFind();
+    for (Addr_t s = tmrModule.stack; s < tmrModule.stack + __stackSize; s += PAGE_SIZE) {
+        MmuMapPage(s, PmmAlloc(), PG_WRT);
+    }
+    tmrModule.stack += __stackSize;
+
+    DbgRegister(&tmrModule, tmrStates, tmrTrans);
+}
+
+
+
+
+
+
+#endif

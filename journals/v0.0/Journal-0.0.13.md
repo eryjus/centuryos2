@@ -81,3 +81,165 @@ This Redmine asks to address the PMM aligned allocation.  `PmmDoAllocAlignedFram
 This is all already integrated into `pmm_PmmAllocateAligned()`.  So this is actually complete.
 
 
+---
+
+## Version 0.0.13d -- [Redmine #492](http://eryjus.ddns.net:3000/issues/492)
+
+This one is still a problem and easy to demonstrate:
+
+```
+List All Known Processes:
++---------------------------+----------+----------+----------+------------------+------------------+------------------+
+| Command                   | PID      | Priority | Status   | Proc Address     | Time Used        | Top of Stack     |
++---------------------------+----------+----------+----------+------------------+------------------+------------------+
+| Butler                    |        0 | LOW      | MSGW     | ffff900000000018 | 00008000004b3872 | fffff80000003f30 |
+| Idle Process              |        1 | IDLE     | READY    | ffff900000000110 | 000000004b295540 | ffffaf0000003df0 |
+| Idle Process              |        2 | IDLE     | READY    | ffff900000000358 | 0000000047c39500 | ffffaf0000007df0 |
+| Idle Process              |        3 | IDLE     | RUNNING  | ffff900000000450 | 000000004d3f6400 | ffffaf000000bdf0 |
+| Idle Process              |        4 | IDLE     | RUNNING  | ffff900000000548 | 000000004a817c80 | ffffaf000000fdf0 |
+| kInitAp(1)                |        5 | LOW      | TERM     | ffff900000000640 | 0000000000000000 | ffffaf0000013ed8 |
+| kInitAp(2)                |        6 | LOW      | TERM     | ffff900000000738 | 0000000000000000 | ffffaf0000017ed8 |
+| kInitAp(3)                |        7 | LOW      | TERM     | ffff900000000830 | 0000000000000000 | ffffaf000001bed8 |
+| PMM Cleaner               |        8 | LOW      | RUNNING  | ffff900000000b68 | 0000000000000000 | ffffaf0000023f70 |
+| Debugger                  |        9 | OS       | RUNNING  | ffff900000000e58 | 0000000000000000 | ffffaf0000027f70 |
++---------------------------+----------+----------+----------+------------------+------------------+------------------+
+sched:list :>
+ (allowed: exit, all)
+```
+
+Notice that the 3 `kInitAp(x)` processes are terminated with no time used.  Obviously this is still wrong.  I have some real debugging to do.
+
+Every time a schedule change is considered (not just performed), the time used should be updated.  On top of that, the number of microseconds does not appear to be correct.
+
+Turns out the time used was only being updated for 1 of the 3 possible conditions.  I have moved the update outside the condition checks.
+
+Now, with the CPU running for only about a minute, the PMM Cleaner shows having been running for 2227000000 micro-seconds, or 2227 seconds, or 37+ minutes.  Not correct.
+
+I made changes to make sure the last timer count was updated before turning on interrupts.  That still did not materially change the counts.
+
+I believe it is time to create a timer module to show the timer counter.
+
+I tried to run this on Bochs, and it deadlocks getting into the IPI.  I need to try this on real hardware.  Same result as Bochs.  This will need to be added to Redmine and corrected within this micro-version.  See http://eryjus.ddns.net:3000/issues/543.
+
+This seems relevant:
+
+```
+00205823238i[CPU0  ] WARNING: HLT instruction with IF=0!
+00205823438i[CPU1  ] WARNING: HLT instruction with IF=0!
+00205825173i[CPU3  ] WARNING: HLT instruction with IF=0!
+```
+
+It was.  That corrected, I have 13 minutes showing up in Bochs after a few seconds of execution.
+
+
+---
+
+### 2021-Oct-31
+
+It turns out with every timer tick (every 1 ms), I was incrementing the timer by 1 second.  Off by a factor of 1000.
+
+QEMU is not keeping time well.  Bochs is closer but still not accurate.  I am still deadlocking on real hardware (not sure what happened here -- forgot to test maybe?).
+
+Hmmm....  the cpu module is not available to the debugger on hardware.  This is one of those shitty cases where it works properly on the emulators but not on real hardware.  My real hardware only has 2 CPUs.  Maybe I can cut an emulator down to 2 for a test.
+
+I can duplicate this on Bochs with only 2 CPUs.
+
+---
+
+Hmmm... CPU1 is deadlocked on a spinlock...  but why?  Not sure the IPI is even being delivered.
+
+---
+
+OK, Bochs is working now.  No changes made except for turning on instrumentation.  Race condition?
+
+Well, this is not right:
+
+```
+List All Known Processes:
++---------------------------+----------+----------+----------+------------------+------------------+------------------+
+| Command                   | PID      | Priority | Status   | Proc Address     | Time Used        | Top of Stack     |
++---------------------------+----------+----------+----------+------------------+------------------+------------------+
+| Butler                    |        0 | LOW      | MSGW     | ffff900000000018 | ffff800000030bd6 | fffff80000003f30 |
+| Idle Process              |        1 | IDLE     | READY    | ffff900000000110 | 0000000000003a98 | ffffaf0000003df0 |
+| Idle Process              |        2 | IDLE     | READY    | ffff900000000358 | 00000000000036b0 | ffffaf0000007df0 |
+| kInitAp(1)                |        3 | LOW      | TERM     | ffff900000000450 | 0000000000001388 | ffffaf000000bed8 |
+| PMM Cleaner               |        4 | LOW      | RUNNING  | ffff900000000788 | 0000000006a35f10 | ffffaf0000013db0 |
+| Debugger                  |        5 | OS       | RUNNING  | ffff900000000c70 | 0000000006a22690 | ffffaf0000017f70 |
++---------------------------+----------+----------+----------+------------------+------------------+------------------+
+sched:list :> x
+- :> scheduler
+scheduler :> s
+<pid> :> 0
+Dumping the contents of the Process_t structure for pid 0 at ffff900000000018
++-------------------------+----------------------------+
+| TOS (last preemption)   | fffff80000003f30           |
+| Virtual Address Space   | 0000000001004000           |
+| Process Status          |   7: MSGW                  |
+| Process Priority        |   5: LOW                   |
+| Quantum left this slice | 21                         |
+| Process ID              | 0                          |
+| Command Line            | Butler                     |
+| Micros used             | 18446603336221395926           |
+| Wake tick number        | 0                          |
+| Pending Error Number    | 0                          |
++-------------------------+----------------------------+
+scheduler :> [adam@adamlt2 ~]$
+ (allowed: list, show, exit)
+```
+
+The Butler has an address in it for time used and the process dump is not clearing the screen.  Also, should blocking zero out the quantum?
+
+
+---
+
+### 2021-Nov-01
+
+Let's start with the blocking question.  The real answer here is, "yes."  It should be a quick change.
+
+Ahhh...  and the kInit timer is a timing issue (no pun intended).  I am calling that in `ProcessInit()` before the LAPIC timer has been initialized.
+
+OK, let me try on real hardware again....  Nope, still deadlocking.  The problem is going to be how to determine why it is deadlocking.
+
+Well, I tried Redmine #546 which did not work.
+
+So, what do I need to determine what the problem is?  These will need to be written into the debugger to get information.
+* Add a 10s pause into the start of the debugger -- to allow the rest of the boot to complete and make the greeting cleaner
+* I believe the IPI is being delivered -- read and show the contents of the ESR; may need to sleep to allow it to be read
+* There may also be a possibility that interrupts are disabled for some reason; figure out how to retrieve and show the flags register for each core (maybe all registers if I am feeling ambitious)
+
+```
+Welcome to the Century-OS kernel debugger
+- :> scheduler
+scheduler :> list
+sched:list :> a
+ESR Result: 0x0000000000000000
+```
+
+This real hardware result matches QEMU.  This also matches the expectation from the Intel manual.
+
+I do have a register dump coded.  But, it will need to be checked/debugged.
+
+
+---
+
+### 2021-Nov-04
+
+Well, I have some travel coming up.  I am not going to be able to take all my hardware with me for testing on this trip.  So, I will need to move on from this problem and come back to it.
+
+Right now, I am not certain how to even debug this -- it feels like a spinlock on a stack but that should not happen (I guess I should double check from Bochs).  However, it will probably have to wait until I am on a plane and without my hardware.
+
+In the meantime, I will also export a list of issues and try to work on those in turn on the plane.  I may punt a couple of issues from this version into the next and work on getting a `libc` started, trading some things from one version with some things from the next version.
+
+
+---
+
+### 2021-Nov-05
+
+I am going to continue with the existing micro-version (v0.0.13d).  When I get the next thing resolved, I will commit this partially completed work.  If I am able to incidentally identify the problem, I will be able to confirm it when my travel is done.
+
+---
+
+Without reloading the thumb drive, I was able to get a boot.  Booting again results in a successful boot.  Third time is the same.  I'm going to commit this code and call it done.  It may  not be perfect, but it seems to be somewhat sorted and I want a fall-back position.
+
+
+

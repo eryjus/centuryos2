@@ -45,7 +45,7 @@ int cpuStarting = 0;
 //
 // -- The number of active CPUs
 //    -------------------------
-int cpusActive = 0;
+volatile int cpusActive = 0;
 
 
 
@@ -132,6 +132,8 @@ void CpuApStart(BootInterface_t *interface)
         IpiSendSipi(i, TRAMP_OFF);
 
         uint64_t timeout = TmrCurrentCount() + 500000;
+        cpus[i].lastTimer = timeout;
+
         // -- wait here until the CPU reports it has started.
         while (AtomicRead(&cpus[i].state) == CPU_STARTING) {
             if (TmrCurrentCount() > timeout) {
@@ -144,6 +146,7 @@ void CpuApStart(BootInterface_t *interface)
 
 #if DEBUG_ENABLED(CpuApStart)
         kprintf("CPU %d has reported its startup is complete\n", i);
+        kprintf(".. There are now %d CPUs active\n", cpusActive);
 #endif
     }
 }

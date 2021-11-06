@@ -90,8 +90,9 @@ AtomicInt_t coresEngaged = { 0 };
 extern "C" void IpiPauseCores(Addr_t *regs)
 {
     AtomicInc(&coresEngaged);
+    cpus[LapicGetId()].stackTop = (Addr_t)regs;
 
-    while (AtomicRead(&coresEngaged) != 0) { __asm volatile ("hlt"); }
+    while (AtomicRead(&coresEngaged) != 0) {}   // This cannot hlt the cpu; must remain busy
 
     TmrEoi();       // poorly named!
 }
@@ -148,8 +149,8 @@ void VectorInit(void)
     krn_SetVectorHandler(0, 30, (Addr_t)IdtGenericHandler, 0, 0);
     krn_SetVectorHandler(0, 31, (Addr_t)IdtGenericHandler, 0, 0);
 
-    krn_SetVectorHandler(0, 32, (Addr_t)TimerVector, 0, 0);
     krn_SetVectorHandler(0, IPI_PAUSE_CORES, (Addr_t)IpiPauseCores, 0, 0);
+    krn_SetVectorHandler(0, INT_TIMER, (Addr_t)TimerVector, 0, 0);
 }
 
 

@@ -43,6 +43,7 @@ IS_ENABLED(func)                        func>DISABLED
 ## -- First, the kernel debugger enable/disable
 ##    -----------------------------------------
 KERNEL_DEBUGGER                         ENABLED
+DEBUGGER_SLEEP_START                    500
 
 
 
@@ -69,9 +70,11 @@ MOD_NAME_LEN                            16
 
 
 ##
-## -- Pause the cores
-##    ---------------
-IPI_PAUSE_CORES                         0xf0
+## -- INTERRUPTS
+##    ----------
+IPI_PAUSE_CORES                         0x20
+INT_TIMER                               0x30
+INT_SPURIOUS                            0xff
 
 
 

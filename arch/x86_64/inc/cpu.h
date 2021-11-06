@@ -78,7 +78,7 @@ extern int cpuStarting;
 //
 // -- The number of active CPUs
 //    -------------------------
-extern int cpusActive;
+extern volatile int cpusActive;
 
 
 //

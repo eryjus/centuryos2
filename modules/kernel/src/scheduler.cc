@@ -222,11 +222,11 @@ static Process_t *ProcessNext(ProcPriority_t pty)
 void ProcessUpdateTimeUsed(void)
 {
     uint64_t now = TmrCurrentCount();
-    uint64_t elapsed = now - ThisCpu()->lastTimer;
-    ThisCpu()->lastTimer = now;
+    uint64_t elapsed = now - cpus[LapicGetId()].lastTimer;
+    cpus[LapicGetId()].lastTimer = now;
 
     if (CurrentThread() == NULL) {
-        ThisCpu()->cpuIdleTime += elapsed;
+        cpus[LapicGetId()].cpuIdleTime += elapsed;
     } else {
         CurrentThread()->timeUsed += elapsed;
     }
@@ -353,6 +353,7 @@ void ProcessSchedule(void)
     }
 
     next = ProcessNext(CurrentThread()?CurrentThread()->priority:PTY_IDLE);
+    ProcessUpdateTimeUsed();
 
     if (next != NULL) {
         ProcessListRemove(next);
@@ -379,12 +380,10 @@ void ProcessSchedule(void)
         ProcessListRemove(next);
 
         // -- restore the current Process and change if needed
-        ProcessUpdateTimeUsed();
         CurrentThreadAssign(save);
         AtomicSet(&next->quantumLeft, next->priority);
 
         if (next != CurrentThread()) ProcessSwitch(next);
-
     }
 }
 
@@ -635,6 +634,8 @@ Return_t ProcessInit(BootInterface_t *loaderInterface)
     ProcessAddGlobal(proc);           // no lock required -- still single threaded
     CurrentThreadAssign(proc);
 
+    kprintf(".. The current timer for the kInit process is %p\n", proc->timeUsed);
+
 
     //
     // -- Create an idle process for each CPU
@@ -666,6 +667,7 @@ Return_t sch_ProcessBlock(int, ProcStatus_t reason)
     ProcessLockAndPostpone();
     CurrentThread()->status = reason;
     CurrentThread()->pendingErrno = 0;
+    AtomicSet(&CurrentThread()->quantumLeft, 0);
     ProcessSchedule();
 
     ProcessUnlockAndSchedule();
@@ -786,7 +788,7 @@ void SchedulerCreateKInitAp(int cpu)
     proc->priority = PTY_LOW;
     proc->status = PROC_RUNNING;
     AtomicSet(&proc->quantumLeft, proc->priority);
-    proc->timeUsed = 0;
+    proc->timeUsed = cpus[LapicGetId()].lastTimer - TmrCurrentCount();
     proc->wakeAtMicros = 0;
     ListInit(&proc->stsQueue);
     ListInit(&proc->references.list);
@@ -994,8 +996,6 @@ static void PrintProcessRow(Process_t *proc)
 //    -------------------------
 void DebugListGlobalProcesses(void)
 {
-//    DebuggerEngage(DIPI_ENGAGE);
-
     DbgOutput(ANSI_CLEAR ANSI_SET_CURSOR(0,0));
     DbgOutput(ANSI_ATTR_BOLD ANSI_FG_RED "List All Known Processes:\n");
     DbgOutput("+---------------------------+----------+----------+----------+------------------"
@@ -1021,8 +1021,6 @@ void DebugListGlobalProcesses(void)
 
     DbgOutput("+---------------------------+----------+----------+----------+------------------"
             "+------------------+------------------+\n");
-
-//    DebuggerRelease();
 }
 
 
@@ -1168,6 +1166,8 @@ void DebugShowProcess(void)
     char strPid[20] = {0};
 
     DbgPromptGeneric("<pid>", strPid, sizeof(strPid));
+
+    DbgOutput(ANSI_CLEAR ANSI_SET_CURSOR(0,0));
 
     Pid_t pid = 0;
     char *s = strPid;

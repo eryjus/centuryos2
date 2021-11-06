@@ -110,7 +110,6 @@ extern "C" Addr_t krn_PauseCores(int)
     AtomicSet(&coresEngaged, 1);
 
     IpiSendIpi(IPI_PAUSE_CORES);
-
     int active = KrnActiveCores();
     while (AtomicRead(&coresEngaged) != active) {}
 

@@ -142,17 +142,103 @@ void DebugSchedulerRunning(void)
 
 
 //
+// -- Dump the contents of the register
+//    ---------------------------------
+void DebugRegisterDump(void)
+{
+    char strCpu[20] = {0};
+
+    DbgPromptGeneric("<cpu>", strCpu, sizeof(strCpu));
+
+    int cpu = 0;
+    char *s = strCpu;
+
+    while (*s) {
+        if (*s >= '0' && *s <= '9') {
+            cpu = cpu * 10 + *s - '0';
+        } else {
+            DbgOutput(ANSI_ERASE_LINE ANSI_FG_RED "invalid cpu number\n");
+            return;
+        }
+
+        s ++;
+    }
+
+    if (cpu < 0 || cpu >= cpusActive) {
+        DbgOutput(ANSI_ERASE_LINE ANSI_FG_RED "invalid cpu number\n");
+        return;
+    }
+
+    if (cpu == LapicGetId()) {
+        DbgOutput(ANSI_ERASE_LINE ANSI_FG_RED "cannot dump registers for current cpu\n");
+        return;
+    }
+
+    Addr_t *regs = (Addr_t *)cpus[cpu].stackTop;
+    char buf[60];
+    const char *name[] = {
+        "GS",
+        "FS",
+        "ES",
+        "DS",
+        "CR4",
+        "CR3",
+        "CR2",
+        "CR0",
+        "R15",
+        "R14",
+        "R13",
+        "R12",
+        "R11",
+        "R10",
+        "R9",
+        "R8",
+        "RDI",
+        "RSI",
+        "RBP",
+        "RDX",
+        "RCX",
+        "Return",
+        "RBX",
+        "RAX",
+        "INT",
+        "ERR",
+        "RIP",
+        "CS",
+        "RFLAGS",
+        "RSP",
+        "SS",
+    };
+
+    DbgOutput(ANSI_CLEAR ANSI_SET_CURSOR(0,0));
+
+    ksprintf(buf, "Dumping Registers for CPU%d\n", cpu);
+    DbgOutput(buf);
+
+    for (int i = 0; i < 31; i ++) {
+        ksprintf(buf, "| %-10.10s | %p |\n", name[i], regs[i]);
+        DbgOutput(buf);
+    }
+}
+
+
+
+//
 // -- here is the debugger menu & function ecosystem
 //    ----------------------------------------------
 DbgState_t cpuStates[] = {
     {   // -- state 0
         .name = "cpu",
         .transitionFrom = 0,
-        .transitionTo = 1,
+        .transitionTo = 2,
     },
     {   // -- state 1 (status)
         .name = "status",
         .function = (Addr_t)DebugSchedulerRunning,
+    },
+    {   // -- state 2 (registers)
+        .name = "regs",
+        .function = (Addr_t)DebugRegisterDump,
     },
 };
 
@@ -164,6 +250,11 @@ DbgTransition_t cpuTrans[] = {
         .nextState = 1,
     },
     {   // -- transition 1
+        .command = "regs",
+        .alias = "r",
+        .nextState = 2,
+    },
+    {   // -- transition 2
         .command = "exit",
         .alias = "x",
         .nextState = -1,

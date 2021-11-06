@@ -57,7 +57,11 @@ void kInit(void)
     CpuInit();                          // init the cpus tables
     ProcessInit(loaderInterface);
     ModuleEarlyInit();
+
+    VectorTableDump();
+
     CpuApStart(loaderInterface);
+    cpus[0].lastTimer = TmrCurrentCount();
     EnableInt();
     ModuleLateInit();
 
@@ -91,7 +95,7 @@ extern "C" void kInitAp(void)
     TmrApInit(NULL);
     EnableInt();
 
-
     ProcessEnd();
     assert(false);
+    while (true) {}
 }

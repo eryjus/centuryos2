@@ -136,6 +136,8 @@ static void DebuggerNextCommand(void)
 *///-----------------------------------------------------------------------------------------------------------------
 void DebuggerMain(void)
 {
+    SchProcessMilliSleep(DEBUGGER_SLEEP_START);
+
     dbg_Output(0, ANSI_CLEAR ANSI_SET_CURSOR(0,0) ANSI_FG_RED ANSI_ATTR_BOLD
             "Welcome to the Century-OS kernel debugger\n");
 

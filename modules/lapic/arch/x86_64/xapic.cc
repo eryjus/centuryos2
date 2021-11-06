@@ -211,7 +211,7 @@ static int EarlyInit(BootInterface_t *loaderInterface)
     __asm volatile("nop\n");
 
     if (isBoot) {
-        SetVectorHandler(39, (Addr_t)LApicSpurious, GetAddressSpace(), 0);
+        SetVectorHandler(INT_SPURIOUS, (Addr_t)LApicSpurious, GetAddressSpace(), 0);
     }
 
 
@@ -290,7 +290,7 @@ static int EarlyInit(BootInterface_t *loaderInterface)
     // -- Now, program the Timer
     //    ----------------------
     WriteApicRegister(APIC_TIMER_ICR, xapic.factor);
-    WriteApicRegister(APIC_LVT_TIMER, APIC_LVT_TIMER_PERIODIC | 32);
+    WriteApicRegister(APIC_LVT_TIMER, APIC_LVT_TIMER_PERIODIC | INT_TIMER);
 
     return 0;
 }
@@ -301,7 +301,7 @@ static int EarlyInit(BootInterface_t *loaderInterface)
 //    -----------------------------------
 static void Tick(void)
 {
-    ticker += 1000000;
+    ticker += 1000;
 }
 
 
@@ -396,6 +396,10 @@ static Return_t SendIpi(int vector)
 
     WriteApicRegister(APIC_ICR2, 0);
     WriteApicRegister(APIC_ICR1, lo);
+
+//    KernelPrintf("ESR Result: %p\n", ReadApicRegister(APIC_ESR));
+
+//    SchProcessMilliSleep(500);
 
     return 0;
 }

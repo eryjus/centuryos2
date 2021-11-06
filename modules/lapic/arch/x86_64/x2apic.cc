@@ -221,7 +221,7 @@ static int EarlyInit(BootInterface_t *loaderInterface)
     NOP();
 
     if (isBoot) {
-        SetVectorHandler(39, (Addr_t)LApicSpurious, GetAddressSpace(), 0);
+        SetVectorHandler(INT_SPURIOUS, (Addr_t)LApicSpurious, GetAddressSpace(), 0);
     }
 
     // -- here we initialize the LAPIC to a defined state
@@ -294,7 +294,7 @@ static int EarlyInit(BootInterface_t *loaderInterface)
     // -- Now, program the Timer
     //    ----------------------
     WriteApicRegister(APIC_TIMER_ICR, x2apic.factor);
-    WriteApicRegister(APIC_LVT_TIMER, APIC_LVT_TIMER_PERIODIC | 32);
+    WriteApicRegister(APIC_LVT_TIMER, APIC_LVT_TIMER_PERIODIC | INT_TIMER);
 
     return 0;
 }
@@ -305,7 +305,7 @@ static int EarlyInit(BootInterface_t *loaderInterface)
 //    -----------------------------------
 static void Tick(void)
 {
-    ticker += 1000000;
+    ticker += 1000;
 }
 
 
@@ -396,6 +396,8 @@ static Return_t SendIpi(int vector)
     uint64_t icr = 0x00000000000c0000 | (vector & 0xff);
 
     WriteApicRegister(APIC_ICR1, icr);
+
+//    KernelPrintf("ESR Result: %p\n", ReadApicRegister(APIC_ESR));
 
     return 0;
 }

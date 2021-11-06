@@ -253,6 +253,27 @@ This change will add an additional column to the process listing.
 Hmmm....  QEMU just deadlocked (micro-version `d`).  I think I have a race condition here.
 
 
+---
+
+## Version 0.0.13f -- [Redmine #503](http://eryjus.ddns.net:3000/issues/503)
+
+This Redmine is to replace all the `return 0` with `return SUCCESS`.  However, that is really not part of the POSIX specification and of the code I have reviewed the common return result is 0.  I am going to reject that change, but instead clean up all the `return SUCCESS` lines.
+
+There was only 1 instance.
+
+At the same time, I am going to look at [Redmine #505](http://eryjus.ddns.net:3000/issues/505).  This Redmine is to remove all instances of `GetCr3()` and should be replaced with `GetAddressSpace()` as a more arch-agnostic function name.
+
+I did see an assert failure....   Race?
+
+
+---
+
+### 2021-Nov-06
+
+Time to commit this version.
+
+
+
 
 
 

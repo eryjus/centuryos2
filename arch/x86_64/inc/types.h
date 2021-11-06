@@ -107,5 +107,8 @@ const Addr_t MMU_STACK_INIT_VADDR       = 0xffffaf8010000000;
 #include "debug.h"
 
 
+extern "C" Addr_t GetAddressSpace(void);
+
+
 #endif
 

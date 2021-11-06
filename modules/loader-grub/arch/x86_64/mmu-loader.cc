@@ -18,6 +18,7 @@
 
 #include "types.h"
 #include "serial.h"
+//#include "kernel-funcs.h"
 #include "mmu.h"
 
 
@@ -220,7 +221,7 @@ void ldr_MmuUnmapPage(Addr_t a)
 #if DEBUG_ENABLED(ldr_MmuUnmapPage)
 
     SerialPutString("In address space ");
-    SerialPutHex64(GetCr3());
+    SerialPutHex64(GetAddressSpace());
     SerialPutString(", Unmapping page at address ");
     SerialPutHex64(a);
     SerialPutChar('\n');
@@ -242,7 +243,7 @@ void ldr_MmuMapPage(Addr_t a, Frame_t f, int flags)
 #if DEBUG_ENABLED(ldr_MmuMapPage)
 
     SerialPutString("In address space ");
-    SerialPutHex64(GetCr3());
+    SerialPutHex64(GetAddressSpace());
     SerialPutString(", request was made to map address ");
     SerialPutHex64(a);
     SerialPutString(" to frame ");

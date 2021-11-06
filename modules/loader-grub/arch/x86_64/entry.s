@@ -31,7 +31,6 @@
                 global      JumpKernel
                 global      kernelInterface
                 global      pml4
-                global      GetCr3
                 global      gdtr64
 
 
@@ -392,14 +391,5 @@ JumpKernel:
                 mov         rsp,rsi
 
                 jmp         rax
-
-
-
-;;
-;; -- return the current CR3 value
-;;    ----------------------------
-GetCr3:
-                mov         rax,cr3
-                ret
 
 

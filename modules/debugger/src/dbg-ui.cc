@@ -458,5 +458,5 @@ Return_t dbg_PromptGeneric(int, const char *prompt, char *result, size_t size)
 
     DebuggerNextCommand();
 
-    return SUCCESS;
+    return 0;
 }

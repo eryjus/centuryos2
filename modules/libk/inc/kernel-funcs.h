@@ -152,7 +152,6 @@ extern "C" {
     int kStrCmp(const char *str1, const char *str2);
     size_t kStrLen(const char *str);
     char *ksprintf(char *, const char *, ...);
-    Addr_t GetAddressSpace(void);
 }
 
 

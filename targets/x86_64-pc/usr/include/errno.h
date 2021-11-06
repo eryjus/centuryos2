@@ -42,9 +42,6 @@
 #define __ERRNO_H__
 
 
-#define     SUCCESS               0                // No error
-
-
 #define     EPERM                 1                // Operation not permitted
 #define     ENOENT                2                // No such file or directory
 #define     ESRCH                 3                // No such process

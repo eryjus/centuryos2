@@ -22,9 +22,6 @@
 #include "mmu.h"
 
 
-extern "C" Addr_t GetCr3(void);
-
-
 //
 // -- This is a 64-bit page entry for all levels of the page tables
 //    -------------------------------------------------------------
@@ -121,7 +118,7 @@ int krn_MmuUnmapPage(int, Addr_t a)
 {
 #if DEBUG_ENABLED(krn_MmuUnmapPage)
 
-    kprintf("In address space %p, Unmapping page at address %p\n", GetCr3(), a);
+    kprintf("In address space %p, Unmapping page at address %p\n", GetAddressSpace(), a);
 
 #endif
 
@@ -157,7 +154,7 @@ int krn_MmuMapPage(int, Addr_t a, Frame_t f, int flags)
 
 #if DEBUG_ENABLED(krn_MmuMapPage)
 
-    kprintf("In address space %p, request was made to map address %p to frame %p\n", GetCr3(), a, f);
+    kprintf("In address space %p, request was made to map address %p to frame %p\n", GetAddressSpace(), a, f);
     kprintf(".. PML4 address is %p\n", GetPML4Entry(a));
     kprintf(".. PDPT address is %p\n", GetPDPTEntry(a));
     kprintf("..   PD address is %p\n", GetPDEntry(a));

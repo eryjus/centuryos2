@@ -99,7 +99,7 @@ extern "C" void lInit(void)
 
     SerialPutString("Getting the kernel\n");
     SerialPutString("  cr3 = ");
-    SerialPutHex64(GetCr3());
+    SerialPutHex64(GetAddressSpace());
     SerialPutChar('\n');
 
 #endif

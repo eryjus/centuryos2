@@ -54,9 +54,6 @@ static const char *digits = "0123456789abcdefghijklmnopqrstuvwxyz";
 static const char *upper_digits = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ";
 
 
-extern "C" Addr_t GetCr3(void);
-
-
 //
 // -- This is a printf()-like function to print to the serial port
 //    ------------------------------------------------------------

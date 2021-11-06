@@ -16,7 +16,6 @@
 
 
                 global      header
-                global      GetCr3
 
                 extern      PmmInitEarly
                 extern      pmm_PmmAllocateAligned

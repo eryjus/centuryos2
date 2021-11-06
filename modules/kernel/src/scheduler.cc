@@ -985,6 +985,9 @@ static void PrintProcessRow(Process_t *proc)
     ksprintf(buf, "| %p ", proc->tosProcessSwap);
     DbgOutput(buf);
 
+    ksprintf(buf, "| %p ", proc->virtAddrSpace);
+    DbgOutput(buf);
+
     DbgOutput("|\n");
 }
 
@@ -999,15 +1002,16 @@ void DebugListGlobalProcesses(void)
     DbgOutput(ANSI_CLEAR ANSI_SET_CURSOR(0,0));
     DbgOutput(ANSI_ATTR_BOLD ANSI_FG_RED "List All Known Processes:\n");
     DbgOutput("+---------------------------+----------+----------+----------+------------------"
-            "+------------------+------------------+\n");
+            "+------------------+------------------+------------------+\n");
     DbgOutput("| " ANSI_ATTR_BOLD ANSI_FG_BLUE "Command" ANSI_ATTR_NORMAL "                   | "
             ANSI_ATTR_BOLD ANSI_FG_BLUE "PID" ANSI_ATTR_NORMAL "      | " ANSI_ATTR_BOLD
             ANSI_FG_BLUE "Priority" ANSI_ATTR_NORMAL " | " ANSI_ATTR_BOLD ANSI_FG_BLUE "Status"
             ANSI_ATTR_NORMAL "   | " ANSI_ATTR_BOLD ANSI_FG_BLUE "Proc Address" ANSI_ATTR_NORMAL
             "     | " ANSI_ATTR_BOLD ANSI_FG_BLUE "Time Used" ANSI_ATTR_NORMAL "        | "
-            ANSI_ATTR_BOLD ANSI_FG_BLUE "Top of Stack" ANSI_ATTR_NORMAL "     |\n");
+            ANSI_ATTR_BOLD ANSI_FG_BLUE "Top of Stack" ANSI_ATTR_NORMAL "     | "
+            ANSI_ATTR_BOLD ANSI_FG_BLUE "Address Space" ANSI_ATTR_NORMAL "    |\n");
     DbgOutput("+---------------------------+----------+----------+----------+------------------"
-            "+------------------+------------------+\n");
+            "+------------------+------------------+------------------+\n");
 
     ListHead_t::List_t *wrk = scheduler.globalProcesses.list.next;
 
@@ -1020,7 +1024,7 @@ void DebugListGlobalProcesses(void)
     }
 
     DbgOutput("+---------------------------+----------+----------+----------+------------------"
-            "+------------------+------------------+\n");
+            "+------------------+------------------+------------------+\n");
 }
 
 

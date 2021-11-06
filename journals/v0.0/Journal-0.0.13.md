@@ -242,4 +242,17 @@ I am going to continue with the existing micro-version (v0.0.13d).  When I get t
 Without reloading the thumb drive, I was able to get a boot.  Booting again results in a successful boot.  Third time is the same.  I'm going to commit this code and call it done.  It may  not be perfect, but it seems to be somewhat sorted and I want a fall-back position.
 
 
+---
+
+## Version 0.0.13e -- [Redmine #493](http://eryjus.ddns.net:3000/issues/493)
+
+This Redmine issue is to address adding the memory space into the Process Dump.  This will be included in the command sequence `scheduler list all`.
+
+This change will add an additional column to the process listing.
+
+Hmmm....  QEMU just deadlocked (micro-version `d`).  I think I have a race condition here.
+
+
+
+
 

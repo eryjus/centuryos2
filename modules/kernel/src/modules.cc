@@ -22,7 +22,7 @@
 #include "kernel-funcs.h"
 #include "internals.h"
 #include "mmu.h"
-#include "elf-func.h"
+#include "elf.h"
 #include "idt.h"
 #include "scheduler.h"
 #include "modules.h"

@@ -24,7 +24,7 @@
 
 
 #include "types.h"
-#include "elf-func.h"
+#include "elf.h"
 #include "mboot.h"
 #include "serial.h"
 #include "mmu.h"

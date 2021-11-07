@@ -24,7 +24,7 @@
 #include "types.h"
 #include "mmu.h"
 #include "serial.h"
-#include "elf-func.h"
+#include "elf.h"
 
 
 // -- if we are not compiling the loader, include the kernel functions
@@ -102,7 +102,7 @@ enum FileType_t {
 
 
 
-/******************************************************************************************************************
+/****************************************************************************************************************//**
 *   @enum               SegFlag_t
 *   @brief              Program Segment Flags
 *///-----------------------------------------------------------------------------------------------------------------
@@ -195,20 +195,20 @@ typedef uint16_t elfHalf_t;
 *   @brief              The 64-bit ELF header page
 *///-----------------------------------------------------------------------------------------------------------------
 typedef struct Elf64EHdr_t {
-    unsigned char eIdent[ELF_NIDENT];
-    elfHalf_t eType;
-    elfHalf_t eMachine;
-    elfWord_t eversion;
-    elf64Addr_t eEntry;
-    elf64Off_t ePhOff;          // Program Header offset
-    elf64Off_t eShOff;          // Section Header offset
-    elfWord_t eFlags;
-    elfHalf_t eHSize;           // Program Header Size
-    elfHalf_t ePhEntSize;       // Program Header Entry Size
-    elfHalf_t ePhNum;           // Program Header Entry Count
-    elfHalf_t eShEntSize;       // Section Header Entry Size
-    elfHalf_t eShNum;           // Section Header Entry Count
-    elfHalf_t eShStrNdx;        // Section Number for the string table
+    unsigned char eIdent[ELF_NIDENT];//!< A proper ELF identifier
+    elfHalf_t eType;                //!< Object File Type
+    elfHalf_t eMachine;             //!< Required Architecture
+    elfWord_t eversion;             //!< Object file version \note Only version 1 is valid
+    elf64Addr_t eEntry;             //!< Defined entry point
+    elf64Off_t ePhOff;              //!< Program Header offset
+    elf64Off_t eShOff;              //!< Section Header offset
+    elfWord_t eFlags;               //!< Processor-specific flags
+    elfHalf_t eHSize;               //!< Program Header Size
+    elfHalf_t ePhEntSize;           //!< Program Header Entry Size
+    elfHalf_t ePhNum;               //!< Program Header Entry Count
+    elfHalf_t eShEntSize;           //!< Section Header Entry Size
+    elfHalf_t eShNum;               //!< Section Header Entry Count
+    elfHalf_t eShStrNdx;            //!< Section Number for the string table
 } __attribute__((packed)) Elf64EHdr_t;
 
 
@@ -222,14 +222,14 @@ typedef struct Elf64EHdr_t {
 *   @brief              The 64-bit ELF Program Header, which is needed to determine how to load the executable
 *///-----------------------------------------------------------------------------------------------------------------
 typedef struct Elf64PHdr_t {
-    elfWord_t pType;            // Type of segment
-    elfWord_t pFlags;           // Segment Attributes
-    elf64Off_t pOffset;         // Offset in file
-    elf64Addr_t pVAddr;         // Virtual Address in Memory
-    elf64Addr_t pPAddr;         // Reserved or meaningless
-    elfXWord_t pFileSz;         // Size of segment in file
-    elfXWord_t pMemSz;          // Size of segment in memory
-    elfXWord_t pAlign;          // Alignment of segment
+    elfWord_t pType;                //!< Type of segment
+    elfWord_t pFlags;               //!< Segment Attributes
+    elf64Off_t pOffset;             //!< Offset in file
+    elf64Addr_t pVAddr;             //!< Virtual Address in Memory
+    elf64Addr_t pPAddr;             //!< Reserved or meaningless
+    elfXWord_t pFileSz;             //!< Size of segment in file
+    elfXWord_t pMemSz;              //!< Size of segment in memory
+    elfXWord_t pAlign;              //!< Alignment of segment
 } __attribute__((packed)) Elf64PHdr_t;
 
 
@@ -266,21 +266,9 @@ static bool ElfValidateHeader(Addr_t location)
 }
 
 
-//
-// -- Load the kernel address
-//    -----------------------
-/****************************************************************************************************************//**
-*   @fn                 Addr_t ElfLoadImage(Addr_t location)
-*   @brief              Load an ELF Image
-*
-*   Load an ELF image at a location and prepare it for execution
-*
-*   @param              location        The address of the ELF header to evaluate
-*
-*   @returns            The stated entry point for the ELF executable
-*
-*   @retval             NULL            When the ELF could not be loaded
-*   @retval             non-zero        The ELF was loaded and this is the entry address
+
+/********************************************************************************************************************
+*   Documented in `elf.h`
 *///-----------------------------------------------------------------------------------------------------------------
 Addr_t ElfLoadImage(Addr_t location)
 {

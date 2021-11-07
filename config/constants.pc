@@ -43,5 +43,12 @@ BIOS_END                                0xfffff
 
 
 
+##
+## -- Serial Port constants
+##    ---------------------
+COM1_BASE                               0x3f8
+
+
+
 
 

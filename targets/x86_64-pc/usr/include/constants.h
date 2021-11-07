@@ -37,3 +37,4 @@
 #define EBDA 0x80000
 #define BIOS 0xe0000
 #define BIOS_END 0xfffff
+#define COM1_BASE 0x3f8

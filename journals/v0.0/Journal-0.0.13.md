@@ -341,7 +341,21 @@ I'm also hoping I found the race and have that addressed -- I was starting the d
 I think I can commit this micro-version.  Once my current test is complete.
 
 
+---
 
+## Version 0.0.13h -- [Redmine #513](http://eryjus.ddns.net:3000/issues/513)
+
+This Redmine is concerned with the quality of the code that has been moved to the `common` pseudo-module.  It all needs to be reviewed and cleaned up.
+
+`elf.cc` looks rather clean.
+
+`serial.cc`, on the other hand, has some opportunity.  There is some arch-specific functions and some common functions.  I need to clean that up a bit.
+
+While I am at it, I need to properly document these files.  `elf.cc` has some documentation issues.
+
+Now, do I want to move `serial.h` to the common folder?  Same for `elf-func.h`.  I should as it's appropriate.  I also will need to rename `elf-func.h` to `elf.h` since it is appropriate as well.
+
+This is all done.  Ready to commit again.
 
 
 

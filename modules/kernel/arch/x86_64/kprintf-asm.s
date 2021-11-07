@@ -27,10 +27,10 @@
 ;; -- massage the parameter config back to the proper state
 ;;    -----------------------------------------------------
 krn_KernelPrintf:
-        mov     rdi,rsi
-        mov     rsi,rdx
-        mov     rdx,rcx
-        mov     rcx,r8
-        mov     r8,r9
-        mov     r9,r11
+;        mov     rdi,rsi
+;        mov     rsi,rdx
+;        mov     rdx,rcx
+;        mov     rcx,r8
+;        mov     r8,r9
+;        mov     r9,r11
         jmp     kprintf

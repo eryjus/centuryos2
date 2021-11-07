@@ -44,24 +44,24 @@ extern "C" int krn_KernelPrintf(const char *, ...);
 extern "C" {
     // -- Internal Functions operations
     void InternalInit(void);
-    Addr_t krn_GetInternalHandler(int, int i);
-    Return_t krn_SetInternalHandler(int, int i, Addr_t handler, Addr_t cr3, Addr_t stack);
+    Addr_t krn_GetInternalHandler(int i);
+    Return_t krn_SetInternalHandler(int i, Addr_t handler, Addr_t cr3, Addr_t stack);
     void InternalTableDump(void);
 
     // -- Vector Handlers
-    Addr_t krn_GetVectorHandler(int, int i);
-    Return_t krn_SetVectorHandler(int, int i, Addr_t handler, Addr_t cr3, Addr_t stack);
+    Addr_t krn_GetVectorHandler(int i);
+    Return_t krn_SetVectorHandler(int i, Addr_t handler, Addr_t cr3, Addr_t stack);
     void VectorTableDump(void);
 
     // -- OS Services
     void ServiceInit(void);
-    Addr_t krn_GetServiceHandler(int, int i);
-    Return_t krn_SetServiceHandler(int, int i, Addr_t service, Addr_t cr3, Addr_t stack);
+    Addr_t krn_GetServiceHandler(int i);
+    Return_t krn_SetServiceHandler(int i, Addr_t service, Addr_t cr3, Addr_t stack);
     void ServiceTableDump(void);
 
     // -- additional functions
-    void *krn_AllocAndCopy(int, void *mem, size_t size);
-    Return_t krn_ReleaseCopy(int, void *mem);
+    void *krn_AllocAndCopy(void *mem, size_t size);
+    Return_t krn_ReleaseCopy(void *mem);
 }
 
 

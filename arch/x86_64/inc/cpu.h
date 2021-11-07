@@ -317,7 +317,7 @@ inline volatile uint64_t PEEK64(Addr_t regLocation) { return (*((volatile uint64
 extern "C" {
     void CpuInit(void);
     void CpuApStart(BootInterface_t *interface);
-    int krn_ActiveCores(int);
+    int krn_ActiveCores(void);
 }
 
 

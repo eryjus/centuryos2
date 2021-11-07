@@ -211,12 +211,12 @@ extern "C" {
 
     void ProcessStart(void);
     void ProcessNewStack(Process_t *proc, Addr_t startingAddr);
-    Process_t *sch_ProcessCreate(int, const char *name, Addr_t startingAddr, Addr_t addrSpace, ProcPriority_t pty);
-    Return_t sch_Tick(int, uint64_t now);
-    Return_t sch_ProcessBlock(int, ProcStatus_t reason);
-    Return_t sch_ProcessReady(int, Process_t *proc);
-    Return_t sch_ProcessUnblock(int, Process_t *proc);
-    Return_t sch_ProcessMicroSleepUntil(int, uint64_t when);
+    Process_t *sch_ProcessCreate(const char *name, Addr_t startingAddr, Addr_t addrSpace, ProcPriority_t pty);
+    Return_t sch_Tick(uint64_t now);
+    Return_t sch_ProcessBlock(ProcStatus_t reason);
+    Return_t sch_ProcessReady(Process_t *proc);
+    Return_t sch_ProcessUnblock(Process_t *proc);
+    Return_t sch_ProcessMicroSleepUntil(uint64_t when);
     Return_t ProcessInit(BootInterface_t *loaderInterface);
     void ProcessTerminate(Process_t *proc);
     void ProcessEnd(void);

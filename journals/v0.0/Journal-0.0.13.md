@@ -271,6 +271,74 @@ I did see an assert failure....   Race?
 ### 2021-Nov-06
 
 Time to commit this version.
+---
+
+## Version 0.0.13g -- [Redmine #509](http://eryjus.ddns.net:3000/issues/509)
+
+This version is a significant cleanup effort.  It will redo the internal function calls such that the extra parameter (function number) is not passed all the way to the actual function.
+
+---
+
+Well, I broke `KernelPrintf()`....  For some reason it is not printing anything because the service address is 0.
+
+I broke `MmuMapPage()` as well.  So, I think I broke it all.
+
+```
+MmuDump: Walking the page tables for address 0xffff80000001c010
+Level  Entry Address       Index               Next Frame          us  rw  p
+-----  ------------------  ------------------  ------------------  --  --  -
+PML4   0xfffffffffffff800  0x0000000000000100  0x0000000000001009  0   1   1
+PDPT   0xfffffffffff00000  0x0000000000000000  0x0000000000001063  0   1   1
+  PD   0xffffffffe0000000  0x0000000000000000  0x0000000000001064  0   1   1
+  PT   0xffffffc0000000e0  0x000000000000001c  0x0000000000000001  0   0   1
+```
+
+This is not right.  Nothing should be actively mapped to frame 1.  Hmmmm...  but if I am overwriting the internal jump table with a mapping to frame 1, then the unmap will not properly find the correct function (likely 0).  This would leave the wrong address mapped to frame 1.
+
+I found a place I was overwriting `rdi` with the contents of the function to call.  I know I had a reason for that at one point but it bit me in the rear-side.  Now I have a triple fault.  I'm sure I missed something that needs to be cleaned up.  I may have to do an exhaustive audit of every function.
+
+I'm also going to have to look at the Interrupt handler as this appears to need this function number.  I may have to split it from CommonHandler.
+
+First an audit.  All good.  Next is the timer firing and causing problems?  Need to stop before that point.
+
+Nope, not getting there.  Still not getting through `ProcessInit()`.
+
+Looks like I am having a problem getting through the `ProcessCreate()` for the Idle processes for each CPU.  A quick comment confirms.
+
+This leads me into `ProcessNewStack()`.
+
+This leads me to `MmuMapPageEx()`.
+
+---
+
+Looks like the problem is might be related to changing tasks.  It's going to be rough to debug this.  I may need to turn off the other CPUs to get to the bottom of it.
+
+Yes, there is something going on with the scheduler:
+
+```
+List All Known Processes:
++---------------------------+----------+----------+----------+------------------+------------------+------------------+------------------+
+| Command                   | PID      | Priority | Status   | Proc Address     | Time Used        | Top of Stack     | Address Space    |
++---------------------------+----------+----------+----------+------------------+------------------+------------------+------------------+
+| Butler                    |        0 | LOW      | MSGW     | ffff900000000018 | 0000000000001388 | fffff80000003f30 | 0000000001004000 |
+| Idle Process              |        1 | IDLE     | READY    | ffff900000000110 | 0000000000000000 | ffffaf0000003f70 | 0000000001004000 |
+| Idle Process              |        2 | IDLE     | READY    | ffff900000000358 | 0000000000000000 | ffffaf0000007f70 | 0000000001004000 |
+| Idle Process              |        3 | IDLE     | READY    | ffff900000000450 | 0000000000000000 | ffffaf000000bf70 | 0000000001004000 |
+| Idle Process              |        4 | IDLE     | READY    | ffff900000000548 | 0000000000000000 | ffffaf000000ff70 | 0000000001004000 |
+| PMM Cleaner               |        5 | LOW      | RUNNING  | ffff900000000a78 | 0000000000077a10 | ffffaf000001bdb0 | 0000000001092000 |
+| Debugger                  |        6 | OS       | RUNNING  | ffff900000000f60 | 00000000002287d8 | ffffaf000001fd70 | 000000023ffe3000 |
++---------------------------+----------+----------+----------+------------------+------------------+------------------+------------------+
+sched:list :>
+ (allowed: exit, all)
+```
+
+There should not be 2 processes in the `RUNNING` status with this test -- only 1 CPU is started.
+
+There was still a call to `sch_ProcesReady()` which being called from asm that had the wrong register being populated.  Now it appears to be working properly.
+
+I'm also hoping I found the race and have that addressed -- I was starting the debug process before all the debug modules were registered.
+
+I think I can commit this micro-version.  Once my current test is complete.
 
 
 

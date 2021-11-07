@@ -38,7 +38,7 @@ ServiceRoutine_t internalTable[MAX_HANDLERS] = { { 0 } };
 //
 // -- Read an internal function handler address from the table
 //    --------------------------------------------------------
-Addr_t krn_GetInternalHandler(int, int i)
+Addr_t krn_GetInternalHandler(int i)
 {
     if (i < 0 || i >= MAX_HANDLERS) return -EINVAL;
 
@@ -52,7 +52,7 @@ Addr_t krn_GetInternalHandler(int, int i)
 //
 // -- Set an internal function handler address in the table
 //    -----------------------------------------------------
-Return_t krn_SetInternalHandler(int, int i, Addr_t handler, Addr_t cr3, Addr_t stack)
+Return_t krn_SetInternalHandler(int i, Addr_t handler, Addr_t cr3, Addr_t stack)
 {
     if (i < 0 || i >= MAX_HANDLERS) return -EINVAL;
 
@@ -70,9 +70,9 @@ Return_t krn_SetInternalHandler(int, int i, Addr_t handler, Addr_t cr3, Addr_t s
 //
 // -- Allocate some space from the kernel heap and fill it
 //    ----------------------------------------------------
-void *krn_AllocAndCopy(int, void *mem, size_t size)
+void *krn_AllocAndCopy(void *mem, size_t size)
 {
-    if (!krn_MmuIsMapped(0, (Addr_t)mem)) return 0;
+    if (!krn_MmuIsMapped((Addr_t)mem)) return 0;
     void *dest = HeapAlloc(size, false);
     kMemMoveB(dest, mem, size);
     return dest;
@@ -82,7 +82,7 @@ void *krn_AllocAndCopy(int, void *mem, size_t size)
 //
 // -- Release allocated memory back to the kernel heap
 //    ------------------------------------------------
-Return_t krn_ReleaseCopy(int, void *mem)
+Return_t krn_ReleaseCopy(void *mem)
 {
     HeapFree(mem);
     return 0;
@@ -92,7 +92,7 @@ Return_t krn_ReleaseCopy(int, void *mem)
 //
 // -- Assume the debugger is not installed until overridden
 //    -----------------------------------------------------
-Return_t krn_DebuggerInstalled(int)
+Return_t krn_DebuggerInstalled(void)
 {
     return false;
 }
@@ -102,7 +102,7 @@ Return_t krn_DebuggerInstalled(int)
 //
 // -- Signal the other cores to stop and wait for confirmation that they have
 //    -----------------------------------------------------------------------
-extern "C" Addr_t krn_PauseCores(int)
+extern "C" Addr_t krn_PauseCores(void)
 {
     extern AtomicInt_t coresEngaged;
 
@@ -121,7 +121,7 @@ extern "C" Addr_t krn_PauseCores(int)
 //
 // -- Release the other cores from a stopped state
 //    --------------------------------------------
-extern "C" Return_t krn_ReleaseCores(int, Addr_t flags)
+extern "C" Return_t krn_ReleaseCores(Addr_t flags)
 {
     extern AtomicInt_t coresEngaged;
 
@@ -198,8 +198,8 @@ void InternalInit(void)
     internalTable[INT_DBG_INSTALLED].handler =      (Addr_t)krn_DebuggerInstalled;
 
 
-    krn_MmuMapPage(0, 0xffffff0000008000, PmmAlloc(), PG_WRT);
-    krn_MmuMapPage(0, 0xffffff0000009000, PmmAlloc(), PG_WRT);
+    krn_MmuMapPage(0xffffff0000008000, PmmAlloc(), PG_WRT);
+    krn_MmuMapPage(0xffffff0000009000, PmmAlloc(), PG_WRT);
 }
 
 
@@ -210,6 +210,7 @@ void InternalInit(void)
 void InternalTableDump(void)
 {
     kprintf("Internal Table Contents:\n");
+    krn_MmuDump((Addr_t)internalTable);
 
     for (int i = 0; i < MAX_HANDLERS; i ++) {
         if (internalTable[i].handler != 0 || internalTable[i].cr3 != 0) {

@@ -110,7 +110,7 @@ extern DbgModule_t debuggerModule;
 // -- Function prototypes
 //    -------------------
 extern "C" {
-    Return_t dbg_Output(int, const char *str);
+    Return_t dbg_Output(const char *str);
     void DebuggerMain(void);
     void DebuggerCall(Addr_t addrSpace, Addr_t function, Addr_t stack);
     bool DbgSerialHasChar(void);

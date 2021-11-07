@@ -37,7 +37,7 @@ ServiceRoutine_t vectorTable[256] = { { 0 }};
 //
 // -- Get an interrupt vector handler
 //    -------------------------------
-Addr_t krn_GetVectorHandler(int, int i)
+Addr_t krn_GetVectorHandler(int i)
 {
     if (i < 0 || i >= 256) return -EINVAL;
 
@@ -52,7 +52,7 @@ Addr_t krn_GetVectorHandler(int, int i)
 //
 // -- Set an interrupt vector handler
 //    -------------------------------
-Return_t krn_SetVectorHandler(int, int i, Addr_t handler, Addr_t cr3, Addr_t stack)
+Return_t krn_SetVectorHandler(int i, Addr_t handler, Addr_t cr3, Addr_t stack)
 {
     if (i < 0 || i >= 256) return -EINVAL;
 
@@ -77,7 +77,7 @@ void TimerVector(Addr_t *)
 {
     uint64_t now = TmrTick();
     TmrEoi();
-    sch_Tick(0, now);
+    sch_Tick(now);
 }
 
 
@@ -116,41 +116,41 @@ extern "C" void IpiPauseCores(Addr_t *regs)
 // -- Initialize the vector table
 void VectorInit(void)
 {
-    krn_SetVectorHandler(0,  0, (Addr_t)IdtGenericHandler, 0, 0);
-    krn_SetVectorHandler(0,  1, (Addr_t)IdtGenericHandler, 0, 0);
-    krn_SetVectorHandler(0,  2, (Addr_t)IdtGenericHandler, 0, 0);
-    krn_SetVectorHandler(0,  3, (Addr_t)IdtGenericHandler, 0, 0);
-    krn_SetVectorHandler(0,  4, (Addr_t)IdtGenericHandler, 0, 0);
-    krn_SetVectorHandler(0,  5, (Addr_t)IdtGenericHandler, 0, 0);
-    krn_SetVectorHandler(0,  6, (Addr_t)IdtGenericHandler, 0, 0);
-    krn_SetVectorHandler(0,  7, (Addr_t)IdtGenericHandler, 0, 0);
-    krn_SetVectorHandler(0,  8, (Addr_t)IdtGenericHandler, 0, 0);
-    krn_SetVectorHandler(0,  9, (Addr_t)IdtGenericHandler, 0, 0);
-    krn_SetVectorHandler(0, 10, (Addr_t)IdtGenericHandler, 0, 0);
-    krn_SetVectorHandler(0, 11, (Addr_t)IdtGenericHandler, 0, 0);
-    krn_SetVectorHandler(0, 12, (Addr_t)IdtGenericHandler, 0, 0);
-    krn_SetVectorHandler(0, 13, (Addr_t)IdtGenericHandler, 0, 0);
-    krn_SetVectorHandler(0, 14, (Addr_t)IdtGenericHandler, 0, 0);
-    krn_SetVectorHandler(0, 15, (Addr_t)IdtGenericHandler, 0, 0);
-    krn_SetVectorHandler(0, 16, (Addr_t)IdtGenericHandler, 0, 0);
-    krn_SetVectorHandler(0, 17, (Addr_t)IdtGenericHandler, 0, 0);
-    krn_SetVectorHandler(0, 18, (Addr_t)IdtGenericHandler, 0, 0);
-    krn_SetVectorHandler(0, 19, (Addr_t)IdtGenericHandler, 0, 0);
-    krn_SetVectorHandler(0, 20, (Addr_t)IdtGenericHandler, 0, 0);
-    krn_SetVectorHandler(0, 21, (Addr_t)IdtGenericHandler, 0, 0);
-    krn_SetVectorHandler(0, 22, (Addr_t)IdtGenericHandler, 0, 0);
-    krn_SetVectorHandler(0, 23, (Addr_t)IdtGenericHandler, 0, 0);
-    krn_SetVectorHandler(0, 24, (Addr_t)IdtGenericHandler, 0, 0);
-    krn_SetVectorHandler(0, 25, (Addr_t)IdtGenericHandler, 0, 0);
-    krn_SetVectorHandler(0, 26, (Addr_t)IdtGenericHandler, 0, 0);
-    krn_SetVectorHandler(0, 27, (Addr_t)IdtGenericHandler, 0, 0);
-    krn_SetVectorHandler(0, 28, (Addr_t)IdtGenericHandler, 0, 0);
-    krn_SetVectorHandler(0, 29, (Addr_t)IdtGenericHandler, 0, 0);
-    krn_SetVectorHandler(0, 30, (Addr_t)IdtGenericHandler, 0, 0);
-    krn_SetVectorHandler(0, 31, (Addr_t)IdtGenericHandler, 0, 0);
+    krn_SetVectorHandler( 0, (Addr_t)IdtGenericHandler, 0, 0);
+    krn_SetVectorHandler( 1, (Addr_t)IdtGenericHandler, 0, 0);
+    krn_SetVectorHandler( 2, (Addr_t)IdtGenericHandler, 0, 0);
+    krn_SetVectorHandler( 3, (Addr_t)IdtGenericHandler, 0, 0);
+    krn_SetVectorHandler( 4, (Addr_t)IdtGenericHandler, 0, 0);
+    krn_SetVectorHandler( 5, (Addr_t)IdtGenericHandler, 0, 0);
+    krn_SetVectorHandler( 6, (Addr_t)IdtGenericHandler, 0, 0);
+    krn_SetVectorHandler( 7, (Addr_t)IdtGenericHandler, 0, 0);
+    krn_SetVectorHandler( 8, (Addr_t)IdtGenericHandler, 0, 0);
+    krn_SetVectorHandler( 9, (Addr_t)IdtGenericHandler, 0, 0);
+    krn_SetVectorHandler(10, (Addr_t)IdtGenericHandler, 0, 0);
+    krn_SetVectorHandler(11, (Addr_t)IdtGenericHandler, 0, 0);
+    krn_SetVectorHandler(12, (Addr_t)IdtGenericHandler, 0, 0);
+    krn_SetVectorHandler(13, (Addr_t)IdtGenericHandler, 0, 0);
+    krn_SetVectorHandler(14, (Addr_t)IdtGenericHandler, 0, 0);
+    krn_SetVectorHandler(15, (Addr_t)IdtGenericHandler, 0, 0);
+    krn_SetVectorHandler(16, (Addr_t)IdtGenericHandler, 0, 0);
+    krn_SetVectorHandler(17, (Addr_t)IdtGenericHandler, 0, 0);
+    krn_SetVectorHandler(18, (Addr_t)IdtGenericHandler, 0, 0);
+    krn_SetVectorHandler(19, (Addr_t)IdtGenericHandler, 0, 0);
+    krn_SetVectorHandler(20, (Addr_t)IdtGenericHandler, 0, 0);
+    krn_SetVectorHandler(21, (Addr_t)IdtGenericHandler, 0, 0);
+    krn_SetVectorHandler(22, (Addr_t)IdtGenericHandler, 0, 0);
+    krn_SetVectorHandler(23, (Addr_t)IdtGenericHandler, 0, 0);
+    krn_SetVectorHandler(24, (Addr_t)IdtGenericHandler, 0, 0);
+    krn_SetVectorHandler(25, (Addr_t)IdtGenericHandler, 0, 0);
+    krn_SetVectorHandler(26, (Addr_t)IdtGenericHandler, 0, 0);
+    krn_SetVectorHandler(27, (Addr_t)IdtGenericHandler, 0, 0);
+    krn_SetVectorHandler(28, (Addr_t)IdtGenericHandler, 0, 0);
+    krn_SetVectorHandler(29, (Addr_t)IdtGenericHandler, 0, 0);
+    krn_SetVectorHandler(30, (Addr_t)IdtGenericHandler, 0, 0);
+    krn_SetVectorHandler(31, (Addr_t)IdtGenericHandler, 0, 0);
 
-    krn_SetVectorHandler(0, IPI_PAUSE_CORES, (Addr_t)IpiPauseCores, 0, 0);
-    krn_SetVectorHandler(0, INT_TIMER, (Addr_t)TimerVector, 0, 0);
+    krn_SetVectorHandler(IPI_PAUSE_CORES, (Addr_t)IpiPauseCores, 0, 0);
+    krn_SetVectorHandler(INT_TIMER, (Addr_t)TimerVector, 0, 0);
 }
 
 

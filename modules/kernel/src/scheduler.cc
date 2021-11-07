@@ -62,6 +62,7 @@
 #include "lists.h"
 #include "kernel-funcs.h"
 #include "boot-interface.h"
+#include "internals.h"
 #include "scheduler.h"
 
 
@@ -401,7 +402,7 @@ void ProcessTerminate(Process_t *proc)
     if (proc == CurrentThread()) {
         assert(proc->stsQueue.next == &proc->stsQueue);
         Enqueue(&scheduler.listTerminated, &proc->stsQueue);
-        sch_ProcessBlock(0, PROC_TERM);
+        sch_ProcessBlock(PROC_TERM);
     } else {
         kprintf(".. termianting another process\n");
         ProcessListRemove(proc);
@@ -447,7 +448,7 @@ void ProcessEnd(void)
     Process_t *proc = CurrentThread();
     assert(proc->stsQueue.next == &proc->stsQueue);
     Enqueue(&scheduler.listTerminated, &proc->stsQueue);
-    sch_ProcessBlock(0, PROC_TERM);
+    sch_ProcessBlock(PROC_TERM);
 
     // -- send a message with the scheduler already locked
 //    _MessageQueueSend(butlerMsgq, BUTLER_CLEAN_PROCESS, 0, 0, false);
@@ -461,7 +462,7 @@ void ProcessEnd(void)
 //
 // -- The scheduler timer resccheduling function
 //    ------------------------------------------
-Return_t sch_Tick(int, uint64_t now)
+Return_t sch_Tick(uint64_t now)
 {
 //    kprintf("*");
     ProcessLockAndPostpone();
@@ -484,7 +485,7 @@ Return_t sch_Tick(int, uint64_t now)
             if (now >= wrk->wakeAtMicros) {
                 wrk->wakeAtMicros = 0;
                 ListRemoveInit(&wrk->stsQueue);
-                sch_ProcessUnblock(0, wrk);
+                sch_ProcessUnblock(wrk);
             } else if (wrk->wakeAtMicros < newWake) newWake = wrk->wakeAtMicros;
 
             list = next;
@@ -513,7 +514,7 @@ Return_t sch_Tick(int, uint64_t now)
 //
 // -- Create a new process structure and leave it on the Ready Queue
 //    --------------------------------------------------------------
-Process_t *sch_ProcessCreate(int, const char *name, Addr_t startingAddr, Addr_t addrSpace, ProcPriority_t pty)
+Process_t *sch_ProcessCreate(const char *name, Addr_t startingAddr, Addr_t addrSpace, ProcPriority_t pty)
 {
     kprintf("Creating a new process named at %p (%s), starting at %p\n", name, name, startingAddr);
     kprintf(".. the address space for this process in %p\n", addrSpace);
@@ -558,7 +559,7 @@ Process_t *sch_ProcessCreate(int, const char *name, Addr_t startingAddr, Addr_t 
     // -- Put this process on the queue to execute
     //    ----------------------------------------
     kprintf(".. Readying the new process to be scheduled: %p\n", rv);
-    sch_ProcessReady(0, rv);
+    sch_ProcessReady(rv);
 
 
     return rv;
@@ -570,8 +571,6 @@ Process_t *sch_ProcessCreate(int, const char *name, Addr_t startingAddr, Addr_t 
 //    ---------------------------------
 Return_t ProcessInit(BootInterface_t *loaderInterface)
 {
-    ProcessInitTable();
-
     // -- map/unmap this address to build out the intermediate tables
     MmuMapPage(MMU_STACK_INIT_VADDR, 1, 0);
     MmuUnmapPage(MMU_STACK_INIT_VADDR);
@@ -636,15 +635,13 @@ Return_t ProcessInit(BootInterface_t *loaderInterface)
 
     kprintf(".. The current timer for the kInit process is %p\n", proc->timeUsed);
 
-
     //
     // -- Create an idle process for each CPU
     //    -----------------------------------
     for (int i = 0; i < loaderInterface->cpuCount; i ++) {
         kprintf("starting idle process %d\n", i, ProcessIdle);
-        sch_ProcessCreate(0, "Idle Process", (Addr_t)ProcessIdle, GetAddressSpace(), PTY_IDLE);
+        sch_ProcessCreate("Idle Process", (Addr_t)ProcessIdle, GetAddressSpace(), PTY_IDLE);
     }
-
 
     ThisCpu()->lastTimer = TmrCurrentCount();
     kprintf("ProcessInit() complete\n");
@@ -657,7 +654,7 @@ Return_t ProcessInit(BootInterface_t *loaderInterface)
 //
 // -- Functions to block the current process
 //    --------------------------------------
-Return_t sch_ProcessBlock(int, ProcStatus_t reason)
+Return_t sch_ProcessBlock(ProcStatus_t reason)
 {
     if (!assert(reason >= PROC_INIT && reason <= PROC_MSGW)) return -EINVAL;
     if (!assert(CurrentThread() != NULL)) return -EINVAL;
@@ -680,7 +677,7 @@ Return_t sch_ProcessBlock(int, ProcStatus_t reason)
 //
 // -- Place a process on the correct ready queue
 //    ------------------------------------------
-Return_t sch_ProcessReady(int, Process_t *proc)
+Return_t sch_ProcessReady(Process_t *proc)
 {
     if (!assert(proc != NULL)) return -EINVAL;
 
@@ -733,13 +730,13 @@ Return_t sch_ProcessReady(int, Process_t *proc)
 //
 // -- Unblock a process
 //    -----------------
-Return_t sch_ProcessUnblock(int, Process_t *proc)
+Return_t sch_ProcessUnblock(Process_t *proc)
 {
     if (!assert(proc != NULL)) return -EINVAL;
 
     ProcessLockAndPostpone();
     proc->status = PROC_READY;
-    sch_ProcessReady(0, proc);
+    sch_ProcessReady(proc);
     ProcessUnlockAndSchedule();
 
     return 0;
@@ -750,7 +747,7 @@ Return_t sch_ProcessUnblock(int, Process_t *proc)
 //
 // -- Sleep until the we reach the number of micro-seconds since boot
 //    ---------------------------------------------------------------
-Return_t sch_ProcessMicroSleepUntil(int, uint64_t when)
+Return_t sch_ProcessMicroSleepUntil(uint64_t when)
 {
     if (when <= TmrCurrentCount()) return 0;
 
@@ -758,7 +755,7 @@ Return_t sch_ProcessMicroSleepUntil(int, uint64_t when)
     CurrentThread()->wakeAtMicros = when;
     if (when < scheduler.nextWake) scheduler.nextWake = when;
     Enqueue(&scheduler.listSleeping, &(CurrentThread()->stsQueue));
-    sch_ProcessBlock(0, PROC_DLYW);
+    sch_ProcessBlock(PROC_DLYW);
     ProcessUnlockAndSchedule();
 
     return 0;

@@ -23,12 +23,12 @@
 // -- function prototypes
 //    -------------------
 extern "C" {
-    int krn_MmuMapPage(int, Addr_t a, Frame_t f, int flags);
-    int krn_MmuUnmapPage(int, Addr_t a);
-    Return_t krn_MmuIsMapped(int, Addr_t);
-    int krn_MmuDump(int, Addr_t);
-    int krn_MmuMapPageEx(int, Addr_t space, Addr_t a, Frame_t f, int flags);
-    int krn_MmuUnmapEx(int, Addr_t space, Addr_t a);
+    int krn_MmuMapPage(Addr_t a, Frame_t f, int flags);
+    int krn_MmuUnmapPage(Addr_t a);
+    Return_t krn_MmuIsMapped(Addr_t);
+    int krn_MmuDump(Addr_t);
+    int krn_MmuMapPageEx(Addr_t space, Addr_t a, Frame_t f, int flags);
+    int krn_MmuUnmapEx(Addr_t space, Addr_t a);
 }
 
 

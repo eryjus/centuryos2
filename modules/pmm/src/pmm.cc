@@ -34,8 +34,8 @@
 * Some internal function prototypes
 *///-----------------------------------------------------------------------------------------------------------------
 extern "C" Return_t PmmInitEarly(BootInterface_t *loaderInterface);
-extern "C" Frame_t pmm_PmmAllocateAligned(int, bool low, int bitsAligned, size_t count);
-extern "C" Return_t pmm_PmmReleaseFrame(int, Frame_t frame, size_t count);
+extern "C" Frame_t pmm_PmmAllocateAligned(bool low, int bitsAligned, size_t count);
+extern "C" Return_t pmm_PmmReleaseFrame(Frame_t frame, size_t count);
 extern "C" void pmm_LateInit(void);
 
 #if DEBUG_ENABLED(pmm_PmmReleaseFrame) || DEBUG_ENABLED(pmm_PmmReleaseFrame) || IS_ENABLED(KERNEL_DEBUGGER)
@@ -725,7 +725,7 @@ exit:
 
 
 /****************************************************************************************************************//**
-*   @fn                 Frame_t pmm_PmmAllocateAligned(int, bool low, int bitsAligned, size_t count)
+*   @fn                 Frame_t pmm_PmmAllocateAligned(bool low, int bitsAligned, size_t count)
 *   @brief              Allocate aligned frame(s)
 *
 *   The syscall target to allocate frames.  All allocations are at least 1 frame and aligned to 12 bits.
@@ -741,7 +741,7 @@ exit:
 *   @retval             -ENOMEM         When there is no physical memory left
 *   @retval             frame           The frame allocated
 *///-----------------------------------------------------------------------------------------------------------------
-Frame_t pmm_PmmAllocateAligned(int, bool low, int bitsAligned, size_t count)
+Frame_t pmm_PmmAllocateAligned(bool low, int bitsAligned, size_t count)
 {
 #if DEBUG_ENABLED(pmm_PmmAllocateAligned)
 
@@ -790,7 +790,7 @@ Frame_t pmm_PmmAllocateAligned(int, bool low, int bitsAligned, size_t count)
 
 
 /****************************************************************************************************************//**
-*   @fn                 Return_t pmm_PmmReleaseFrame(int, Frame_t frame, size_t count)
+*   @fn                 Return_t pmm_PmmReleaseFrame(Frame_t frame, size_t count)
 *   @brief              Release a frame
 *
 *   Quickly release a frame or block of frames by pushing the frames onto the scrub stack and exiting.
@@ -800,7 +800,7 @@ Frame_t pmm_PmmAllocateAligned(int, bool low, int bitsAligned, size_t count)
 *
 *   @returns            0
 *///-----------------------------------------------------------------------------------------------------------------
-Return_t pmm_PmmReleaseFrame(int, Frame_t frame, size_t count)
+Return_t pmm_PmmReleaseFrame(Frame_t frame, size_t count)
 {
     SpinLock(&pmm.scrubLock);
     PushStack(&pmm.scrubStack, frame, count);

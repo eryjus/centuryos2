@@ -168,7 +168,7 @@ ProcessSwitch:
         cmp     dword [r14+PROC_STATUS],PROC_STS_RUNNING    ;; is this the current running process
         jne     .saveStack                  ;; if not RUNNING, do not make the process ready
 
-        mov     rsi,r14                     ;; get the current process to make it ready
+        mov     rdi,r14                     ;; get the current process to make it ready
 
         push    r14
         call    sch_ProcessReady

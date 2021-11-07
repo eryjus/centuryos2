@@ -36,7 +36,7 @@ ServiceRoutine_t serviceTable[MAX_HANDLERS] = { { 0 } };
 //
 // -- Read an service function handler address from the table
 //    -------------------------------------------------------
-Addr_t krn_GetServiceHandler(int, int i)
+Addr_t krn_GetServiceHandler(int i)
 {
     if (i < 0 || i >= MAX_HANDLERS) return -EINVAL;
 
@@ -50,7 +50,7 @@ Addr_t krn_GetServiceHandler(int, int i)
 //
 // -- Set an service function handler address in the table
 //    ----------------------------------------------------
-Return_t krn_SetServiceHandler(int, int i, Addr_t service, Addr_t cr3, Addr_t stack)
+Return_t krn_SetServiceHandler(int i, Addr_t service, Addr_t cr3, Addr_t stack)
 {
     if (i < 0 || i >= MAX_HANDLERS) return -EINVAL;
 

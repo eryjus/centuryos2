@@ -92,7 +92,7 @@ static inline void INVLPG(Addr_t a) { __asm volatile("invlpg (%0)" :: "r"(a) : "
 //
 // -- Check if an address is mapped
 //    -----------------------------
-Return_t krn_MmuIsMapped(int, Addr_t a)
+Return_t krn_MmuIsMapped(Addr_t a)
 {
 //    kprintf("Checking mapping (reporting mapped only)\n");
 
@@ -114,7 +114,7 @@ Return_t krn_MmuIsMapped(int, Addr_t a)
 //
 // -- Safely Unmap a page
 //    -------------------
-int krn_MmuUnmapPage(int, Addr_t a)
+int krn_MmuUnmapPage(Addr_t a)
 {
 #if DEBUG_ENABLED(krn_MmuUnmapPage)
 
@@ -122,7 +122,7 @@ int krn_MmuUnmapPage(int, Addr_t a)
 
 #endif
 
-    if (krn_MmuIsMapped(0, a)) {
+    if (krn_MmuIsMapped(a)) {
 #if DEBUG_ENABLED(krn_MmuUnmapPage)
 
         kprintf("Unmapping address %p..\n", GetPTEntry(a));
@@ -148,7 +148,7 @@ int krn_MmuUnmapPage(int, Addr_t a)
 //
 // -- Map a page to a frame
 //    ---------------------
-int krn_MmuMapPage(int, Addr_t a, Frame_t f, int flags)
+int krn_MmuMapPage(Addr_t a, Frame_t f, int flags)
 {
     a &= ~(PAGE_SIZE - 1);
 
@@ -163,14 +163,14 @@ int krn_MmuMapPage(int, Addr_t a, Frame_t f, int flags)
 #endif
 
     if (!a || !f) return -EINVAL;
-    if (krn_MmuIsMapped(0, a)) {
+    if (krn_MmuIsMapped(a)) {
 #if DEBUG_ENABLED(krn_MmuMapPage)
 
         kprintf("!!! CHECK THE CODE!!! The page is already mapped and will be unmapped!\n");
 
 #endif
 
-        krn_MmuUnmapPage(0, a);
+        krn_MmuUnmapPage(a);
     }
 
 #if DEBUG_ENABLED(krn_MmuMapPage)
@@ -320,12 +320,12 @@ int krn_MmuMapPage(int, Addr_t a, Frame_t f, int flags)
 //
 // -- Map a page in another address space
 //    -----------------------------------
-int krn_MmuMapPageEx(int, Addr_t space, Addr_t a, Frame_t f, int flags)
+int krn_MmuMapPageEx(Addr_t space, Addr_t a, Frame_t f, int flags)
 {
     kprintf("Preparing to map a page in another address space\n");
     Addr_t cr3 = GetAddressSpace();
     LoadCr3(space);
-    int rv = krn_MmuMapPage(0, a, f, flags);
+    int rv = krn_MmuMapPage(a, f, flags);
 
     LoadCr3(cr3);
     kprintf("..done\n");
@@ -337,12 +337,12 @@ int krn_MmuMapPageEx(int, Addr_t space, Addr_t a, Frame_t f, int flags)
 //
 // -- Unmap a page in another address space
 //    -------------------------------------
-int krn_MmuUnmapEx(int, Addr_t space, Addr_t a)
+int krn_MmuUnmapEx(Addr_t space, Addr_t a)
 {
     Addr_t cr3 = GetAddressSpace();
     LoadCr3(space);
 
-    int rv = krn_MmuUnmapPage(0, a);
+    int rv = krn_MmuUnmapPage(a);
 
     LoadCr3(cr3);
 
@@ -358,7 +358,7 @@ extern "C" int kprintf(const char *, ...);
 //
 // -- Dump the MMU Tables for a specific address
 //    ------------------------------------------
-int krn_MmuDump(int, Addr_t addr)
+int krn_MmuDump(Addr_t addr)
 {
     kprintf("\nMmuDump: Walking the page tables for address %p\n", addr);
     kprintf("Level  Entry Address       Index               Next Frame          us  rw  p\n");

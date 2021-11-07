@@ -185,8 +185,8 @@ uint64_t tmr_GetCurrentTimer(void)
 //
 // -- Handle a timer tick
 //    -------------------
-extern "C" Return_t tmr_Tick(int);
-Return_t tmr_Tick(int)
+extern "C" Return_t tmr_Tick(void);
+Return_t tmr_Tick(void)
 {
     if (unlikely(ThisCpu()->cpuNum == 0) && likely(apic->tick != NULL)) apic->tick();
     return apic->currentTimer();
@@ -196,8 +196,8 @@ Return_t tmr_Tick(int)
 //
 // -- Handle an EOI for this LAPIC
 //    ----------------------------
-extern "C" Return_t tmr_Eoi(int);
-Return_t tmr_Eoi(int)
+extern "C" Return_t tmr_Eoi(void);
+Return_t tmr_Eoi(void)
 {
     apic->eoi();
     return 0;
@@ -207,7 +207,7 @@ Return_t tmr_Eoi(int)
 //
 // -- Get the current CPU Id
 //    ----------------------
-extern "C" int ipi_LapicGetId(int)
+extern "C" int ipi_LapicGetId(void)
 {
     return apic->getId();
 }
@@ -217,7 +217,7 @@ extern "C" int ipi_LapicGetId(int)
 //
 // -- Send the Init IPI to a core
 //    ---------------------------
-extern "C" int ipi_SendInit(int, int core)
+extern "C" int ipi_SendInit(int core)
 {
     return apic->sendInit(core);
 }
@@ -227,7 +227,7 @@ extern "C" int ipi_SendInit(int, int core)
 //
 // -- Send the SIPI to a core
 //    -----------------------
-extern "C" int ipi_SendSipi(int, int core, Addr_t vector)
+extern "C" int ipi_SendSipi(int core, Addr_t vector)
 {
     return apic->sendSipi(core, vector);
 }
@@ -237,7 +237,7 @@ extern "C" int ipi_SendSipi(int, int core, Addr_t vector)
 //
 // -- Broadcast an IPI
 //    ----------------
-extern "C" int ipi_SendIpi(int, int vector)
+extern "C" int ipi_SendIpi(int vector)
 {
     return apic->sendIpi(vector);
 }

@@ -201,11 +201,11 @@ void ModuleEarlyInit()
                 kprintf("...... stack at %p\n", currentStack);
 
                 if (currentStack) {
-                    krn_MmuMapPage(0, currentStack, PmmAlloc(), PG_WRT);
+                    krn_MmuMapPage(currentStack, PmmAlloc(), PG_WRT);
                     currentStack += MODULE_STACK_SIZE;
                 }
 
-                krn_SetVectorHandler(0, mod->hooks[h].loc, mod->hooks[h].target, modInternal[i].cr3Addr, currentStack);
+                krn_SetVectorHandler(mod->hooks[h].loc, mod->hooks[h].target, modInternal[i].cr3Addr, currentStack);
             }
 
             for ( ; h < mod->intCnt + mod->internalCnt; h ++) {
@@ -213,11 +213,11 @@ void ModuleEarlyInit()
                 kprintf("...... stack at %p\n", currentStack);
 
                 if (currentStack) {
-                    krn_MmuMapPage(0, currentStack, PmmAlloc(), PG_WRT);
+                    krn_MmuMapPage(currentStack, PmmAlloc(), PG_WRT);
                     currentStack += MODULE_STACK_SIZE;
                 }
 
-                krn_SetInternalHandler(0, mod->hooks[h].loc, mod->hooks[h].target, modInternal[i].cr3Addr, currentStack);
+                krn_SetInternalHandler(mod->hooks[h].loc, mod->hooks[h].target, modInternal[i].cr3Addr, currentStack);
             }
 
             for ( ; h < mod->intCnt + mod->internalCnt + mod->osCnt; h ++) {
@@ -225,11 +225,11 @@ void ModuleEarlyInit()
                 kprintf("...... stack at %p\n", currentStack);
 
                 if (currentStack) {
-                    krn_MmuMapPage(0, currentStack, PmmAlloc(), PG_WRT);
+                    krn_MmuMapPage(currentStack, PmmAlloc(), PG_WRT);
                     currentStack += MODULE_STACK_SIZE;
                 }
 
-                krn_SetServiceHandler(0, mod->hooks[h].loc, mod->hooks[h].target, modInternal[i].cr3Addr, currentStack);
+                krn_SetServiceHandler(mod->hooks[h].loc, mod->hooks[h].target, modInternal[i].cr3Addr, currentStack);
             }
         } else {
             // -- unload the module

@@ -430,7 +430,14 @@ InternalTarget:
 
         mov     rax,internalTable
         lea     rbx,[rbx+rax]           ;; load the table address
-        pop     rax
+        pop     rax                     ;; restore variable parameter count
+
+        mov     rdi,rsi                 ;; adjust parameter locations
+        mov     rsi,rdx
+        mov     rdx,rcx
+        mov     rcx,r8
+        mov     r8,r9
+        mov     r9,r11                  ;; needed for KernelPrintf()
 
         call    CommonTarget            ;; jump to the common handler (below)
         mov     [rsp+8],rax             ;; set the return value
@@ -463,6 +470,13 @@ ServiceTarget:
         mov     rax,serviceTable
         lea     rbx,[rbx+rax]           ;; load the table address
         pop     rax                     ;; restore rax as it may have relevant values
+
+        mov     rdi,rsi                 ;; adjust parameter locations
+        mov     rsi,rdx
+        mov     rdx,rcx
+        mov     rcx,r8
+        mov     r8,r9
+        mov     r9,r11
 
         call    CommonTarget            ;; jump to the common handler (below)
         mov     [rsp+8],rax             ;; set the return value
@@ -527,7 +541,7 @@ CommonTarget:
         je      NoLock
 
         PUSHA
-        lea     rsi,[rbx+32]
+        lea     rdi,[rbx+32]
         call    krn_SpinLock
         POPA
 
@@ -553,8 +567,6 @@ NoCr3:
 
 NoStack:
         ;; -- restore stack operations
-        mov     rdi,rbx                 ;; function call parameter
-
         push    r11                     ;; save the old stack value
         push    r12                     ;; save the old cr3 value
         push    rbx                     ;; save the structure location
@@ -583,7 +595,7 @@ NoCr3Restore:
 NoUnlock:
         ;; -- Unlock the stack
         PUSHA
-        lea     rsi,[rbx+32]
+        lea     rdi,[rbx+32]
         call    krn_SpinUnlock
         POPA
 

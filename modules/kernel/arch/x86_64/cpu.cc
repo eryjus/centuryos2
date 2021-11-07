@@ -52,7 +52,7 @@ volatile int cpusActive = 0;
 //
 // -- return the number of active cores
 //    ---------------------------------
-int krn_ActiveCores(int)
+int krn_ActiveCores(void)
 {
     return cpusActive;
 }
@@ -84,7 +84,7 @@ void CpuApStart(BootInterface_t *interface)
 {
     extern uint8_t SMP_START[];
 
-    krn_MmuMapPage(0, TRAMP_OFF, TRAMP_OFF >> 12, PG_WRT);
+    krn_MmuMapPage(TRAMP_OFF, TRAMP_OFF >> 12, PG_WRT);
     kMemMoveB((void *)TRAMP_OFF, (void *)SMP_START, PAGE_SIZE);
 
     // -- only the actual trampoline code remains mapped.

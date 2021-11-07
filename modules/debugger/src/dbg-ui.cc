@@ -74,7 +74,7 @@ char dbgCmd[DBG_MAX_CMD_LEN];
 //*******************************************************************************************************************
 //  Local Function prototypes
 //-------------------------------------------------------------------------------------------------------------------
-extern "C" Return_t dbg_PromptGeneric(int, const char *prompt, char *result, size_t size);
+extern "C" Return_t dbg_PromptGeneric(const char *prompt, char *result, size_t size);
 
 static void DebuggerGetInput(void);
 static void DebuggerIsolateCommand(void);
@@ -138,7 +138,7 @@ void DebuggerMain(void)
 {
     SchProcessMilliSleep(DEBUGGER_SLEEP_START);
 
-    dbg_Output(0, ANSI_CLEAR ANSI_SET_CURSOR(0,0) ANSI_FG_RED ANSI_ATTR_BOLD
+    dbg_Output(ANSI_CLEAR ANSI_SET_CURSOR(0,0) ANSI_FG_RED ANSI_ATTR_BOLD
             "Welcome to the Century-OS kernel debugger\n");
 
     // -- set the current state to be no module and the starting state
@@ -207,20 +207,20 @@ static void DebuggerPromptState(DbgFullState_t state)
 
     bool first = true;
 
-    dbg_Output(0, "\n (allowed: ");
+    dbg_Output("\n (allowed: ");
 
     for (int i = state.mod->states[state.state].transitionFrom;
             i <= state.mod->states[state.state].transitionTo;
             i ++) {
         if (first) first = false;
-        else dbg_Output(0, ", ");
+        else dbg_Output(", ");
 
-        dbg_Output(0, state.mod->transitions[i].command);
+        dbg_Output(state.mod->transitions[i].command);
     }
 
-    dbg_Output(0, ")\r" ANSI_CURSOR_UP(1));
-    dbg_Output(0, state.mod->states[state.state].name);
-    dbg_Output(0, " :> ");
+    dbg_Output(")\r" ANSI_CURSOR_UP(1));
+    dbg_Output(state.mod->states[state.state].name);
+    dbg_Output(" :> ");
 }
 
 
@@ -277,7 +277,7 @@ static DbgFullState_t DebuggerParseState(DbgFullState_t state)
     }
 
     if (!goodInput) {
-        dbg_Output(0, ANSI_FG_RED "Invalid Input\n");
+        dbg_Output(ANSI_FG_RED "Invalid Input\n");
         dbgCmd[0] = 0;
     }
 
@@ -298,7 +298,7 @@ static DbgFullState_t DebuggerParseState(DbgFullState_t state)
 static void DebuggerPromptTopLevel(void)
 {
     bool first = true;
-    dbg_Output(0, "\n (modules: ");
+    dbg_Output("\n (modules: ");
 
     ListHead_t::List_t *wrk = modList.list.next;
 
@@ -306,14 +306,14 @@ static void DebuggerPromptTopLevel(void)
         DbgModule_t *mod = FIND_PARENT(wrk, DbgModule_t, list);
 
         if (first) first = false;
-        else dbg_Output(0, ", ");
+        else dbg_Output(", ");
 
-        dbg_Output(0, mod->name);
+        dbg_Output(mod->name);
 
         wrk = wrk->next;
     }
 
-    dbg_Output(0, ")\r" ANSI_CURSOR_UP(1) "- :> ");
+    dbg_Output(")\r" ANSI_CURSOR_UP(1) "- :> ");
 }
 
 
@@ -406,7 +406,7 @@ static DbgFullState_t DebuggerParseModule(void)
 
 
     if (!goodInput) {
-        dbg_Output(0, ANSI_FG_RED "Invalid Input\n");
+        dbg_Output(ANSI_FG_RED "Invalid Input\n");
         dbgCmd[0] = 0;
     }
 
@@ -418,11 +418,11 @@ static DbgFullState_t DebuggerParseModule(void)
 
 
 /****************************************************************************************************************//**
-*   @fn                 Return_t dbg_PromptGeneric(int, const char *prompt, char *result, size_t size)
+*   @fn                 Return_t dbg_PromptGeneric(const char *prompt, char *result, size_t size)
 *   @brief              Generic prompt for input and return that back to the caller
 *
 *   @returns            Success of failure of getting the input
-*   @retval             SUCCESS         When the value in the buffer was successfully collected
+*   @retval             0               When the value in the buffer was successfully collected
 *   @retval             -EINVAL         When the prompt is NULL\n
 *                                       When the target response buffer is NULL\n
 *                                       When the size is <= 0
@@ -430,7 +430,7 @@ static DbgFullState_t DebuggerParseModule(void)
 *   Issues a generic prompt (provided by the calling function) and accepts input in the form of a string.  The input
 *   is then size adjusted (as required) to fit the target buffer and then copies into the buffer supplied.
 *///-----------------------------------------------------------------------------------------------------------------
-Return_t dbg_PromptGeneric(int, const char *prompt, char *result, size_t size)
+Return_t dbg_PromptGeneric(const char *prompt, char *result, size_t size)
 {
     if (!assert(prompt != NULL)) return -EINVAL;
     if (!assert(result != NULL)) return -EINVAL;
@@ -440,7 +440,7 @@ Return_t dbg_PromptGeneric(int, const char *prompt, char *result, size_t size)
 
     if (dbgCmd[0] == 0) {
         ksprintf(buf, "%s :> ", prompt);
-        dbg_Output(0, buf);
+        dbg_Output(buf);
         DebuggerGetInput();
     }
 

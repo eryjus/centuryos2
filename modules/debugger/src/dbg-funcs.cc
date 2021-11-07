@@ -38,9 +38,9 @@
 // -- Here are the local function prototypes
 //    --------------------------------------
 extern "C" {
-    Return_t dbg_Register(int, DbgModule_t *mod, DbgState_t *states, DbgTransition_t *transitions);
-    char *dbg_GetResponse(int);
-    Return_t dbg_Installed(int);
+    Return_t dbg_Register(DbgModule_t *mod, DbgState_t *states, DbgTransition_t *transitions);
+    char *dbg_GetResponse(void);
+    Return_t dbg_Installed(void);
 
     Return_t dbg_Dispatch(Addr_t *reg);
 
@@ -145,7 +145,7 @@ void DebuggerHelp(const char *module)
 //
 // -- Output a debugging string to the serial port
 //    --------------------------------------------
-Return_t dbg_Output(int, const char *str)
+Return_t dbg_Output(const char *str)
 {
     DbgSerialPutString(str);
     DbgSerialPutString(ANSI_ATTR_NORMAL);
@@ -158,7 +158,7 @@ Return_t dbg_Output(int, const char *str)
 //
 // -- Register a new debugger function, updating an existing if required
 //    ------------------------------------------------------------------
-Return_t dbg_Register(int, DbgModule_t *mod, DbgState_t *states, DbgTransition_t *transitions)
+Return_t dbg_Register(DbgModule_t *mod, DbgState_t *states, DbgTransition_t *transitions)
 {
     if (!assert(mod != NULL)) return -EINVAL;
     if (!assert(states != NULL)) return -EINVAL;
@@ -212,7 +212,7 @@ Return_t DebuggerEarlyInit(BootInterface_t *loader)
 //
 // -- return that we have a debugger installed
 //    ----------------------------------------
-Return_t dbg_Installed(int)
+Return_t dbg_Installed(void)
 {
     return true;
 }
@@ -236,7 +236,7 @@ Return_t dbg_Dispatch(Addr_t *reg)
 }
 
 
-char *dbg_GetResponse(int)
+char *dbg_GetResponse(void)
 {
     return NULL;
 }
@@ -244,17 +244,17 @@ char *dbg_GetResponse(int)
 
 void DebuggerDumpMods(void)
 {
-    dbg_Output(0, ANSI_CLEAR ANSI_SET_CURSOR(0,0));
-    dbg_Output(0, ANSI_FG_RED ANSI_ATTR_BOLD "List Known Debugger Modules\n");
+    dbg_Output(ANSI_CLEAR ANSI_SET_CURSOR(0,0));
+    dbg_Output(ANSI_FG_RED ANSI_ATTR_BOLD "List Known Debugger Modules\n");
 
     ListHead_t::List_t *wrk = modList.list.next;
 
-    dbg_Output(0, "+----------------------+----------+-------------+-----------+\n");
-    dbg_Output(0, "| " ANSI_ATTR_BOLD ANSI_FG_BLUE "Module Name" ANSI_ATTR_NORMAL
+    dbg_Output("+----------------------+----------+-------------+-----------+\n");
+    dbg_Output("| " ANSI_ATTR_BOLD ANSI_FG_BLUE "Module Name" ANSI_ATTR_NORMAL
             "          | " ANSI_ATTR_BOLD ANSI_FG_BLUE "States" ANSI_ATTR_NORMAL
             "   | " ANSI_ATTR_BOLD ANSI_FG_BLUE "Transitions" ANSI_ATTR_NORMAL " | "
             ANSI_ATTR_BOLD ANSI_FG_BLUE "Functions" ANSI_ATTR_NORMAL " |\n");
-    dbg_Output(0, "+----------------------+----------+-------------+-----------+\n");
+    dbg_Output("+----------------------+----------+-------------+-----------+\n");
 
     while (wrk != &modList.list) {
         char buf[256];
@@ -272,12 +272,12 @@ void DebuggerDumpMods(void)
                 mod->transitionCnt,
                 fc);
 
-        dbg_Output(0, buf);
+        dbg_Output(buf);
 
         wrk = wrk->next;
     }
 
-    dbg_Output(0, "+----------------------+----------+-------------+-----------+\n");
+    dbg_Output("+----------------------+----------+-------------+-----------+\n");
 }
 
 

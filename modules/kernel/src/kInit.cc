@@ -57,24 +57,21 @@ void kInit(void)
     CpuInit();                          // init the cpus tables
     ProcessInit(loaderInterface);
     ModuleEarlyInit();
-
-    VectorTableDump();
-
     CpuApStart(loaderInterface);
     cpus[0].lastTimer = TmrCurrentCount();
-    EnableInt();
-    ModuleLateInit();
 
+    EnableInt();
 #if IS_ENABLED(KERNEL_DEBUGGER)
     CpuDebugInit();
 #endif
+    ModuleLateInit();
 
     // -- take on the Butler role
     CurrentThread()->priority = (ProcPriority_t)PTY_LOW;
     ksprintf(CurrentThread()->command, "Butler");
 
     while (true) {
-        sch_ProcessBlock(0, PROC_MSGW);
+        sch_ProcessBlock(PROC_MSGW);
     }
 }
 
@@ -87,13 +84,13 @@ extern "C" void kInitAp(void)
     int me = LapicGetId();
 
     assert(AtomicRead(&cpus[me].state) == CPU_STARTING);
-    AtomicSet(&cpus[me].state, CPU_STARTED);
 
-    kprintf("Confirming that CPU %d has started\n", me);
     SchedulerCreateKInitAp(me);
 
     TmrApInit(NULL);
     EnableInt();
+    kprintf("Confirming that CPU %d has started\n", me);
+    AtomicSet(&cpus[me].state, CPU_STARTED);
 
     ProcessEnd();
     assert(false);

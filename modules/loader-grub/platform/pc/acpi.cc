@@ -341,7 +341,7 @@ static Rsdp_t *AcpiFindRsdp(void)
 
 #endif
 
-    ldr_MmuMapPage(pg, pg >> 12, PG_KRN);
+    cmn_MmuMapPage(pg, pg >> 12, PG_KRN);
     if (wrk != 0) {
         while (wrk < end) {
             rsdp = (Rsdp_t *)wrk;
@@ -357,14 +357,14 @@ static Rsdp_t *AcpiFindRsdp(void)
 #endif
 
                 rsdp = (Rsdp_t *)wrk;
-                ldr_MmuUnmapPage(pg);
+                cmn_MmuUnmapPage(pg);
                 return rsdp;
             }
 
             wrk += 16;
         }
     }
-    ldr_MmuUnmapPage(pg);
+    cmn_MmuUnmapPage(pg);
 
 #if DEBUG_ENABLED(AcpiFindRsdp)
 
@@ -376,7 +376,7 @@ static Rsdp_t *AcpiFindRsdp(void)
     end = BIOS_END;
 
     for (pg = wrk; pg < end; pg += PAGE_SIZE) {
-        ldr_MmuMapPage(pg, pg >> 12, PG_KRN);
+        cmn_MmuMapPage(pg, pg >> 12, PG_KRN);
     }
     pg = wrk;       // reset pg
 
@@ -419,7 +419,7 @@ static Rsdp_t *AcpiFindRsdp(void)
 
 exit:
     for (pg = wrk; pg < end; pg += PAGE_SIZE) {
-        ldr_MmuUnmapPage(pg);
+        cmn_MmuUnmapPage(pg);
     }
 
 #if DEBUG_ENABLED(AcpiFindRsdp)
@@ -456,8 +456,8 @@ static bool AcpiCheckTable(Addr_t loc, uint32_t sig)
     bool needUnmap = false;
     Addr_t page = loc & ~(PAGE_SIZE - 1);
 
-    if (!MmuIsMapped(page)) {
-        ldr_MmuMapPage(page, page >> 12, PG_KRN);
+    if (!cmn_MmuIsMapped(page)) {
+        cmn_MmuMapPage(page, page >> 12, PG_KRN);
         needUnmap = true;
     }
 
@@ -478,7 +478,7 @@ static bool AcpiCheckTable(Addr_t loc, uint32_t sig)
         SerialPutString(".. (signature check fails)\n");
 
 #endif
-        if (needUnmap) ldr_MmuUnmapPage(page);
+        if (needUnmap) cmn_MmuUnmapPage(page);
 
         return false;
     }
@@ -495,13 +495,13 @@ static bool AcpiCheckTable(Addr_t loc, uint32_t sig)
 
     for (uint32_t i = 0; i < size; i ++) {
         Addr_t wrk = (Addr_t)(&table[i]);
-        if (!MmuIsMapped(wrk)) {
-            ldr_MmuMapPage(wrk, wrk >> 12, PG_KRN);
+        if (!cmn_MmuIsMapped(wrk)) {
+            cmn_MmuMapPage(wrk, wrk >> 12, PG_KRN);
         }
         checksum += table[i];
     }
 
-    if (needUnmap) ldr_MmuUnmapPage(page);
+    if (needUnmap) cmn_MmuUnmapPage(page);
 
     return (checksum & 0xff) == 0;
 }
@@ -717,8 +717,8 @@ static uint32_t AcpiGetTableSig(Addr_t loc, BootInterface_t *hw)
 
 #endif
 
-    if (!MmuIsMapped(page)) {
-        ldr_MmuMapPage(page, page >> 12, PG_KRN);
+    if (!cmn_MmuIsMapped(page)) {
+        cmn_MmuMapPage(page, page >> 12, PG_KRN);
         needUnmap = true;
     }
 
@@ -1210,7 +1210,7 @@ static uint32_t AcpiGetTableSig(Addr_t loc, BootInterface_t *hw)
     }
 
 exit:
-    if (needUnmap) MmuUnmapPage(page);
+    if (needUnmap) cmn_MmuUnmapPage(page);
 
     return rv;
 }
@@ -1248,7 +1248,7 @@ static bool AcpiReadXsdt(Addr_t loc, BootInterface_t *hw)
 
 #endif
 
-    ldr_MmuMapPage(page, page >> 12, PG_KRN);
+    cmn_MmuMapPage(page, page >> 12, PG_KRN);
 
     if (!AcpiCheckTable(loc, MAKE_SIG("XSDT"))) {
 
@@ -1288,7 +1288,7 @@ static bool AcpiReadXsdt(Addr_t loc, BootInterface_t *hw)
     }
 
 exit:
-    ldr_MmuUnmapPage(page);
+    cmn_MmuUnmapPage(page);
     return rv;
 }
 
@@ -1325,7 +1325,7 @@ static bool AcpiReadRsdt(Addr_t loc, BootInterface_t *hw)
 
 #endif
 
-    ldr_MmuMapPage(page, page >> 12, PG_KRN);
+    cmn_MmuMapPage(page, page >> 12, PG_KRN);
 
     if (!AcpiCheckTable(loc, MAKE_SIG("RSDT"))) {
 
@@ -1365,7 +1365,7 @@ static bool AcpiReadRsdt(Addr_t loc, BootInterface_t *hw)
     }
 
 exit:
-    ldr_MmuUnmapPage(page);
+    cmn_MmuUnmapPage(page);
     return rv;
 }
 
@@ -1379,7 +1379,7 @@ void PlatformDiscovery(BootInterface_t *hw)
     rsdp = AcpiFindRsdp();
     Addr_t page = ((Addr_t)rsdp) & ~(PAGE_SIZE - 1);
 
-    ldr_MmuMapPage(page, page >> 12, PG_KRN);
+    cmn_MmuMapPage(page, page >> 12, PG_KRN);
 
     if (AcpiCheckTable(rsdp->xsdtAddress, MAKE_SIG("XSDT"))) {
         AcpiReadXsdt(rsdp->xsdtAddress, hw);
@@ -1392,7 +1392,7 @@ void PlatformDiscovery(BootInterface_t *hw)
     // -- make sure we do not exceed our capability
     if (hw->cpuCount > MAX_CPU) hw->cpuCount = MAX_CPU;
 
-    ldr_MmuUnmapPage(page);
+    cmn_MmuUnmapPage(page);
 }
 
 

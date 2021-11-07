@@ -366,8 +366,8 @@ static Addr_t MBootGetMb1Kernel(void)
 
 #endif
 
-    if (!MmuIsMapped(mbData)) {
-        MmuMapPage(mbData, mbData >> 12, PG_NONE);
+    if (!cmn_MmuIsMapped(mbData)) {
+        cmn_MmuMapPage(mbData, mbData >> 12, PG_NONE);
     }
 
 #if DEBUG_ENABLED(MBootGetMb1Kernel)
@@ -393,8 +393,8 @@ static Addr_t MBootGetMb1Kernel(void)
         for (unsigned int i = 0; i < mb1->modCount; i ++) {
             char *name = (char *)((Addr_t)mods[i].modIdent);
 
-            if (!MmuIsMapped((Addr_t)name)) {
-                MmuMapPage((Addr_t)name, ((Addr_t)name) >> 12, PG_NONE);
+            if (!cmn_MmuIsMapped((Addr_t)name)) {
+                cmn_MmuMapPage((Addr_t)name, ((Addr_t)name) >> 12, PG_NONE);
             }
 
 #if DEBUG_ENABLED(MBootGetMb1Kernel)
@@ -492,8 +492,8 @@ static Addr_t MBootGetMb2Kernel(void)
 
     SerialPutString("MB2\n");
 
-    if (!MmuIsMapped(mbData)) {
-        MmuMapPage(mbData, mbData >> 12, PG_NONE);
+    if (!cmn_MmuIsMapped(mbData)) {
+        cmn_MmuMapPage(mbData, mbData >> 12, PG_NONE);
     }
 
     while (!lastTag) {

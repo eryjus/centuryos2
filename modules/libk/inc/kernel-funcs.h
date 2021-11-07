@@ -15,6 +15,8 @@
 //===================================================================================================================
 
 
+#ifndef __KERNEL_FUNCS_H__
+#define __KERNEL_FUNCS_H__
 #pragma once
 
 
@@ -626,6 +628,6 @@ INTERNAL2(Return_t, IpiSendSipi, INT_IPI_SEND_SIPI, int, Addr_t)
 INTERNAL1(Return_t, IpiSendIpi, INT_IPI_SEND_IPI, int)
 
 
-
+#endif
 
 

@@ -72,7 +72,7 @@ Return_t krn_SetInternalHandler(int i, Addr_t handler, Addr_t cr3, Addr_t stack)
 //    ----------------------------------------------------
 void *krn_AllocAndCopy(void *mem, size_t size)
 {
-    if (!krn_MmuIsMapped((Addr_t)mem)) return 0;
+    if (!cmn_MmuIsMapped((Addr_t)mem)) return 0;
     void *dest = HeapAlloc(size, false);
     kMemMoveB(dest, mem, size);
     return dest;
@@ -169,9 +169,9 @@ void InternalInit(void)
     internalTable[INT_KRN_SPIN_TRY].handler =       (Addr_t)krn_SpinTry;
     internalTable[INT_KRN_SPIN_UNLOCK].handler =    (Addr_t)krn_SpinUnlock;
 
-    internalTable[INT_KRN_MMU_MAP].handler =        (Addr_t)krn_MmuMapPage;
-    internalTable[INT_KRN_MMU_UNMAP].handler =      (Addr_t)krn_MmuUnmapPage;
-    internalTable[INT_KRN_MMU_IS_MAPPED].handler =  (Addr_t)krn_MmuIsMapped;
+    internalTable[INT_KRN_MMU_MAP].handler =        (Addr_t)cmn_MmuMapPage;
+    internalTable[INT_KRN_MMU_UNMAP].handler =      (Addr_t)cmn_MmuUnmapPage;
+    internalTable[INT_KRN_MMU_IS_MAPPED].handler =  (Addr_t)cmn_MmuIsMapped;
     internalTable[INT_KRN_MMU_DUMP].handler =       (Addr_t)krn_MmuDump;
     internalTable[INT_KRN_MMU_MAP_EX].handler =     (Addr_t)krn_MmuMapPageEx;
     internalTable[INT_KRN_MMU_MAP_EX].stack =       0xffffff0000008000 + 0x1000;
@@ -198,8 +198,8 @@ void InternalInit(void)
     internalTable[INT_DBG_INSTALLED].handler =      (Addr_t)krn_DebuggerInstalled;
 
 
-    krn_MmuMapPage(0xffffff0000008000, PmmAlloc(), PG_WRT);
-    krn_MmuMapPage(0xffffff0000009000, PmmAlloc(), PG_WRT);
+    cmn_MmuMapPage(0xffffff0000008000, PmmAlloc(), PG_WRT);
+    cmn_MmuMapPage(0xffffff0000009000, PmmAlloc(), PG_WRT);
 }
 
 

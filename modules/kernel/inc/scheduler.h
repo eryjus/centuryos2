@@ -196,6 +196,8 @@ typedef struct Scheduler_t {
     ListHead_t  listSleeping;               // these are sleeping tasks, which the timer interrupt will investigate
     ListHead_t  listTerminated;             // these are terminated tasks, which are waiting to be torn down
     ListHead_t  globalProcesses;            // this is the complete list of all processes regardless where the reside
+
+    AtomicInt_t enabled;                    //!< Set to 1 when the scheduler is finally enabled in startup
 } Scheduler_t;
 
 

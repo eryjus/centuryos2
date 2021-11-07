@@ -43,7 +43,7 @@ IS_ENABLED(func)                        func>DISABLED
 ## -- First, the kernel debugger enable/disable
 ##    -----------------------------------------
 KERNEL_DEBUGGER                         ENABLED
-DEBUGGER_SLEEP_START                    500
+DEBUGGER_SLEEP_START                    0
 
 
 

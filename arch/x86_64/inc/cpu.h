@@ -312,6 +312,15 @@ inline volatile uint64_t PEEK64(Addr_t regLocation) { return (*((volatile uint64
 
 
 //
+// -- Some assembly CPU instructions
+//    ------------------------------
+inline void INVLPG(Addr_t a) { __asm volatile("invlpg (%0)" :: "r"(a) : "memory"); }
+
+
+
+
+
+//
 // -- Some other function prototypes
 //    ------------------------------
 extern "C" {

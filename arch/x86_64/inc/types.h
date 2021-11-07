@@ -110,5 +110,17 @@ const Addr_t MMU_STACK_INIT_VADDR       = 0xffffaf8010000000;
 extern "C" Addr_t GetAddressSpace(void);
 
 
+// -- if we are not compiling the loader, include the kernel functions
+#ifdef __LOADER__
+extern Frame_t earlyFrame;
+static inline Frame_t PmmAlloc() { return earlyFrame ++; }
+#else
+#include "kernel-funcs.h"
+#endif
+
+
+
+
+
 #endif
 

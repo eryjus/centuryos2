@@ -84,7 +84,7 @@ void CpuApStart(BootInterface_t *interface)
 {
     extern uint8_t SMP_START[];
 
-    krn_MmuMapPage(TRAMP_OFF, TRAMP_OFF >> 12, PG_WRT);
+    cmn_MmuMapPage(TRAMP_OFF, TRAMP_OFF >> 12, PG_WRT);
     kMemMoveB((void *)TRAMP_OFF, (void *)SMP_START, PAGE_SIZE);
 
     // -- only the actual trampoline code remains mapped.

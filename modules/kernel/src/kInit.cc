@@ -64,6 +64,7 @@ void kInit(void)
 #if IS_ENABLED(KERNEL_DEBUGGER)
     CpuDebugInit();
 #endif
+    AtomicSet(&scheduler.enabled, 1);
     ModuleLateInit();
 
     // -- take on the Butler role

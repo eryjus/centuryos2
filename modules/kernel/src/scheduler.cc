@@ -336,6 +336,8 @@ void ProcessCheckQueue(void)
 //    --------------------------------------------------------------
 void ProcessSchedule(void)
 {
+    if (unlikely(!AtomicRead(&scheduler.enabled))) return;
+
     assert_msg(AtomicRead(&scheduler.schedulerLockCount) > 0,
             "Calling `ProcessSchedule()` without holding the proper lock");
     if (!assert(CurrentThread() != NULL)) {
@@ -598,6 +600,7 @@ Return_t ProcessInit(BootInterface_t *loaderInterface)
     ListInit(&scheduler.listSleeping.list);
     ListInit(&scheduler.listTerminated.list);
     ListInit(&scheduler.globalProcesses.list);
+    AtomicSet(&scheduler.enabled, 0);
 
     Process_t *proc = NEW(Process_t);
 

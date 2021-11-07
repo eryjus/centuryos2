@@ -57,7 +57,6 @@ extern "C" void JumpKernel(Addr_t entry, Addr_t stack);
 extern "C" void lInit(void)
 {
     extern BootInterface_t *kernelInterface;
-    extern Frame_t earlyFrame;
     extern Addr_t pml4;
     extern Addr_t gdtr64;
 
@@ -73,7 +72,7 @@ extern "C" void lInit(void)
 
     for (int i = 0x100; i < 0x1ff; i ++) {
         if ((i >= 0x100 && i < 0x140) || (i >= 0x1f0 && i < 0x1ff)) {
-            MmuEmptyPdpt(i);
+            ldr_MmuEmptyPdpt(i);
         }
     }
 
@@ -84,7 +83,7 @@ extern "C" void lInit(void)
 #endif
 
     Frame_t fr = earlyFrame ++;
-    MmuMapPage(INTERFACE_LOCATION, fr, PG_WRT);
+    cmn_MmuMapPage(INTERFACE_LOCATION, fr, PG_WRT);
     kernelInterface = (BootInterface_t *)INTERFACE_LOCATION;
     kernelInterface->modCount = 0;
     kernelInterface->bootVirtAddrSpace = pml4;
@@ -114,10 +113,10 @@ extern "C" void lInit(void)
 
 #endif
 
-    MmuMapPage(KERNEL_STACK + (0 * PAGE_SIZE), stack + 0, PG_WRT);
-    MmuMapPage(KERNEL_STACK + (1 * PAGE_SIZE), stack + 1, PG_WRT);
-    MmuMapPage(KERNEL_STACK + (2 * PAGE_SIZE), stack + 2, PG_WRT);
-    MmuMapPage(KERNEL_STACK + (3 * PAGE_SIZE), stack + 3, PG_WRT);
+    cmn_MmuMapPage(KERNEL_STACK + (0 * PAGE_SIZE), stack + 0, PG_WRT);
+    cmn_MmuMapPage(KERNEL_STACK + (1 * PAGE_SIZE), stack + 1, PG_WRT);
+    cmn_MmuMapPage(KERNEL_STACK + (2 * PAGE_SIZE), stack + 2, PG_WRT);
+    cmn_MmuMapPage(KERNEL_STACK + (3 * PAGE_SIZE), stack + 3, PG_WRT);
 
 #if DEBUG_ENABLED(lInit)
 

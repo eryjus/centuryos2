@@ -201,7 +201,7 @@ void ModuleEarlyInit()
                 kprintf("...... stack at %p\n", currentStack);
 
                 if (currentStack) {
-                    krn_MmuMapPage(currentStack, PmmAlloc(), PG_WRT);
+                    cmn_MmuMapPage(currentStack, PmmAlloc(), PG_WRT);
                     currentStack += MODULE_STACK_SIZE;
                 }
 
@@ -213,7 +213,7 @@ void ModuleEarlyInit()
                 kprintf("...... stack at %p\n", currentStack);
 
                 if (currentStack) {
-                    krn_MmuMapPage(currentStack, PmmAlloc(), PG_WRT);
+                    cmn_MmuMapPage(currentStack, PmmAlloc(), PG_WRT);
                     currentStack += MODULE_STACK_SIZE;
                 }
 
@@ -225,7 +225,7 @@ void ModuleEarlyInit()
                 kprintf("...... stack at %p\n", currentStack);
 
                 if (currentStack) {
-                    krn_MmuMapPage(currentStack, PmmAlloc(), PG_WRT);
+                    cmn_MmuMapPage(currentStack, PmmAlloc(), PG_WRT);
                     currentStack += MODULE_STACK_SIZE;
                 }
 

@@ -60,8 +60,8 @@ DEBUG_CpuApStart                        DISABLED
 ##
 ## -- These marcos turn on/off debug output for functions in `mmu.cc`
 ##    ---------------------------------------------------------------
-DEBUG_krn_MmuUnmapPage                  DISABLED
-DEBUG_krn_MmuMapPage                    DISABLED
+DEBUG_cmn_MmuUnmapPage                  DISABLED
+DEBUG_cmn_MmuMapPage                    DISABLED
 
 
 
@@ -107,9 +107,9 @@ DEBUG_GetPDPTEntry                      DISABLED
 DEBUG_GetPDEntry                        DISABLED
 DEBUG_GetPTEntry                        DISABLED
 DEBUG_MmuIsMapped                       DISABLED
-DEBUG_ldr_MmuMapPage                    DISABLED
-DEBUG_ldr_MmuUnmapPage                  DISABLED
-DEBUG_MmuEmptyPdpt                      DISABLED
+DEBUG_cmn_MmuMapPage                    DISABLED
+DEBUG_cmn_MmuUnmapPage                  DISABLED
+DEBUG_ldr_MmuEmptyPdpt                      DISABLED
 
 
 

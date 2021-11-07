@@ -63,6 +63,8 @@ CFLAGS+=-I $(WS)/modules/$(MODULE)/arch/$(ARCH)
 CFLAGS+=-I $(WS)/targets/$(ARCH)-$(PLAT)/usr/include/kernel
 CFLAGS+=-I $(WS)/targets/$(ARCH)-$(PLAT)/usr/include
 CFLAGS+=-I $(WS)/arch/$(ARCH)/inc
+CFLAGS+=-I $(WS)/modules/common/inc
+CFLAGS+=-I $(WS)/modules/common/arch/$(ARCH)
 
 
 ##

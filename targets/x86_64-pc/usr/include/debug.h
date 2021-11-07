@@ -2,8 +2,8 @@
 #define DEBUG_ENABLED(f) DEBUG_TOKEN_PASTE(f)>DISABLED
 #define DEBUG_DebuggerMain DISABLED
 #define DEBUG_CpuApStart DISABLED
-#define DEBUG_krn_MmuUnmapPage DISABLED
-#define DEBUG_krn_MmuMapPage DISABLED
+#define DEBUG_cmn_MmuUnmapPage DISABLED
+#define DEBUG_cmn_MmuMapPage DISABLED
 #define DEBUG_AcpiFindRsdp DISABLED
 #define DEBUG_AcpiCheckTable DISABLED
 #define DEBUG_AcpiReadXsdt DISABLED
@@ -19,9 +19,9 @@
 #define DEBUG_GetPDEntry DISABLED
 #define DEBUG_GetPTEntry DISABLED
 #define DEBUG_MmuIsMapped DISABLED
-#define DEBUG_ldr_MmuMapPage DISABLED
-#define DEBUG_ldr_MmuUnmapPage DISABLED
-#define DEBUG_MmuEmptyPdpt DISABLED
+#define DEBUG_cmn_MmuMapPage DISABLED
+#define DEBUG_cmn_MmuUnmapPage DISABLED
+#define DEBUG_ldr_MmuEmptyPdpt DISABLED
 #define DEBUG_pmm_LateInit DISABLED
 #define DEBUG_PmmCleanProcess DISABLED
 #define DEBUG_pmm_PmmReleaseFrame DISABLED

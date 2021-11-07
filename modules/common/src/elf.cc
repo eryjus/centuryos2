@@ -27,11 +27,6 @@
 #include "elf.h"
 
 
-// -- if we are not compiling the loader, include the kernel functions
-#ifndef __LOADER__
-#include "kernel-funcs.h"
-#endif
-
 
 
 /****************************************************************************************************************//**
@@ -274,7 +269,7 @@ Addr_t ElfLoadImage(Addr_t location)
 {
     Addr_t rv = 0;
 
-    MmuMapPage(location, location >> 12, PG_NONE);
+    cmn_MmuMapPage(location, location >> 12, PG_NONE);
 
     if (ElfValidateHeader(location)) {
         Elf64EHdr_t *eHdr = (Elf64EHdr_t *)location;
@@ -294,7 +289,7 @@ Addr_t ElfLoadImage(Addr_t location)
                         f = PmmAlloc();
                     }
 
-                    MmuMapPage(virt, f, (pHdr[i].pType&PF_W?PG_WRT:PG_NONE));
+                    cmn_MmuMapPage(virt, f, (pHdr[i].pType&PF_W?PG_WRT:PG_NONE));
 
                     virt += PAGE_SIZE;
                     phys += PAGE_SIZE;
@@ -305,7 +300,7 @@ Addr_t ElfLoadImage(Addr_t location)
         }
 
         rv = eHdr->eEntry;
-        MmuUnmapPage(location);
+        cmn_MmuUnmapPage(location);
     }
 
     return rv;

@@ -358,4 +358,48 @@ Now, do I want to move `serial.h` to the common folder?  Same for `elf-func.h`. 
 This is all done.  Ready to commit again.
 
 
+---
+
+### 2021-Nov-07
+
+On to the next Redmine:
+
+---
+
+## Version 0.0.13i -- [Redmine #514](http://eryjus.ddns.net:3000/issues/514)
+
+This Redmine is concerned with consolidating the mmu components into a single source.  The code should be relatively common except for the debugging code.
+
+I have an assert failure:
+
+```
+Starting new process with address space 0x000000023fff4000
+
+!!! ASSERT FAILURE !!!
+/home/adam/workspace/centuryos2/modules/kernel/src/scheduler.cc(433) AtomicRead(&scheduler.schedulerLockCount) == 0 `ProcessStart()` still has a scheduler lock remaining
+```
+
+Could this be one of the races?  Since it went away on the next run, I'm thinking yes.
+
+I think I will need to hold the scheduler locked until everything is ready.  For this, I think I can use a simple `AtomicInt_t`.
+
+---
+
+I believe that solved my race condition as well.
+
+I am going to commit.  Nope!!
+
+I am going to document all the new sources I created.
+
+---
+
+OK, the MMU sources have been documented.  Time for a commit.
+
+
+
+
+
+
+
+
 

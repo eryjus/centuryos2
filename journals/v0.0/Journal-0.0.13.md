@@ -438,4 +438,22 @@ Documenting....
 Completing the documentation.
 
 
+---
+
+## Version 0.0.13k -- [Redmine #518](http://eryjus.ddns.net:3000/issues/518)
+
+This Redmine is concerned with addressing the situation where the loader has not pages than is accounted for.  The loader will now dynamically map the proper number of pages accounting for the size of the loader.
+
+
+---
+
+### 2021-Nov-14
+
+That issue is complete.  I am also going to take care of #520 at the same time.  This Redmine is concerned with making certain that the name of a process does not overwrite the bounds of the buffer -- just a little bit of defensive programming.
+
+That change is also complete.
+
+
+
+
 

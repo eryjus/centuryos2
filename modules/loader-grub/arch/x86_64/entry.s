@@ -38,6 +38,7 @@
 ;; -- declare some external symbols
 ;;    -----------------------------
                 extern      lInit
+                extern      __loaderEnd
 
 
 ;;
@@ -274,21 +275,28 @@ entry:
                 or          eax,0x103                       ;; set the flags
                 mov         [ebx],eax                       ;; set the pt table
 
+                mov         ecx,__loaderEnd                 ;; get the end of the loader
+                sub         ecx,0x100000                    ;; subtract the starting address
+                shr         ecx,12                          ;; convert that to a page count
+
                 mov         ebx,[pt]                        ;; get the address of the pt table
                 mov         eax,0x100103                    ;; set this loader address and flags
-                mov         [ebx + (256*8)],eax             ;; set the page
+                mov         edi,256                         ;; need a dest register
+
+.loop:
+                mov         [ebx + (edi*8)],eax             ;; set the page
+
+                dec         ecx                             ;; 1 page mapped
+                inc         edi                             ;; next table entry
+                cmp         ecx,0                           ;; done?
+                je          .more
 
                 add         eax,0x1000                      ;; next frame
-                mov         [ebx + (257*8)],eax             ;; set the page
-
-                add         eax,0x1000                      ;; next frame
-                mov         [ebx + (258*8)],eax             ;; set the page
-
-                add         eax,0x1000                      ;; next frame
-                mov         [ebx + (259*8)],eax             ;; set the page
+                jmp         .loop
 
 
 ;; -- take care of some additional mappings now
+.more:
                 mov         eax,0xb0103                     ;; video output
                 mov         [ebx + (0xb0*8)],eax            ;; map that
 

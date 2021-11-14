@@ -534,6 +534,12 @@ Process_t *sch_ProcessCreate(const char *name, Addr_t startingAddr, Addr_t addrS
     // -- set the name of the process
     kprintf(".. naming the process: %s\n", name);
     int len = kStrLen(name + 1);
+
+    // -- make sure we do not blow out the buffer
+    if (len > CMD_LEN - 1) {
+        ((char *)name)[CMD_LEN] = 0;
+    }
+
     rv->command[len + 1] = 0;
     kStrCpy(rv->command, name);
 

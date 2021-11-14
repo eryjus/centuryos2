@@ -68,6 +68,7 @@ typedef enum {
 } MadtIcType;
 
 
+
 /****************************************************************************************************************//**
 *   @typedef            RsdpSig_t
 *   @brief              A formalization of the structure of the RSDP signature

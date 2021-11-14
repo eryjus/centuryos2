@@ -396,10 +396,46 @@ I am going to document all the new sources I created.
 OK, the MMU sources have been documented.  Time for a commit.
 
 
+---
+
+## Version 0.0.13j -- [Redmine #517](http://eryjus.ddns.net:3000/issues/517)
+
+This Redmine is concerned with addressing the code duplication in the LAPIC sources.  Several things are duplicated between the xAPIC and the x2APIC sources.
+
+This should be fun because I have multiple implementations of the same function names.
+
+---
+
+Looks like I still have a problem with the scheduler.
+
+Ok, I have the LAPIC code sorted out.  Most of the duplication has been removed.  However, the `...EarlyInit()` functions still have a lot of duplication.  For the moment, I am going to leave that alone.  There are enough differences sprinkled around the code I'm not sure I need to add all the conditionals.  It may be worth it, but I am going to sleep on that first.  In the meantime, I still have a lot of documentation to complete.
+
+But that will be tomorrow as well.
 
 
+---
+
+### 2021-Nov-08
+
+Debugging....
+
+Got it.  The LAPIC module was no longer being loaded.  That is fixed.  Now for some documentation.
+
+Looks like I broke it again.
 
 
+---
+
+### 2021-Nov-10
+
+Documenting....
+
+
+---
+
+### 2021-Nov-13
+
+Completing the documentation.
 
 
 

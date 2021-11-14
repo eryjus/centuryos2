@@ -57,6 +57,7 @@ void kInit(void)
     CpuInit();                          // init the cpus tables
     ProcessInit(loaderInterface);
     ModuleEarlyInit();
+InternalTableDump();
     CpuApStart(loaderInterface);
     cpus[0].lastTimer = TmrCurrentCount();
 

@@ -53,7 +53,7 @@ DEBUG_DebuggerMain                      DISABLED
 ##
 ## -- These marcos turn on/off debug output for functions in `cpu.cc`
 ##    ---------------------------------------------------------------
-DEBUG_CpuApStart                        DISABLED
+DEBUG_CpuApStart                        DSIABLED
 
 
 
@@ -62,6 +62,15 @@ DEBUG_CpuApStart                        DISABLED
 ##    ---------------------------------------------------------------
 DEBUG_cmn_MmuUnmapPage                  DISABLED
 DEBUG_cmn_MmuMapPage                    DISABLED
+
+
+
+
+##
+## == LAPIC MODULE
+##    ============
+DEBUG_ipi_SendInit                      DISABLED
+
 
 
 
@@ -109,7 +118,7 @@ DEBUG_GetPTEntry                        DISABLED
 DEBUG_MmuIsMapped                       DISABLED
 DEBUG_cmn_MmuMapPage                    DISABLED
 DEBUG_cmn_MmuUnmapPage                  DISABLED
-DEBUG_ldr_MmuEmptyPdpt                      DISABLED
+DEBUG_ldr_MmuEmptyPdpt                  DISABLED
 
 
 

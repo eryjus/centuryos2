@@ -3,7 +3,7 @@
 *   @brief              Common serial functions independent of arch/plat
 *   @author             Adam Clark (hobbyos@eryjus.com)
 *   @date               2021-Nov-16
-*   @since              v0.0.01
+*   @since              v0.0.13
 *
 *   @copyright          Copyright (c)  2017-2021 -- Adam Clark\n
 *                       Licensed under "THE BEER-WARE LICENSE"\n

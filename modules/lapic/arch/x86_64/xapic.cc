@@ -1,140 +1,50 @@
-//===================================================================================================================
-//
-//  xapic.cc -- Functions to handle the xapic initialization
-//
-//        Copyright (c)  2017-2021 -- Adam Clark
-//        Licensed under "THE BEER-WARE LICENSE"
-//        See License.md for details.
-//
-//  -----------------------------------------------------------------------------------------------------------------
-//
-//     Date      Tracker  Version  Pgmr  Description
-//  -----------  -------  -------  ----  ---------------------------------------------------------------------------
-//  2021-May-06  Initial  v0.0.8   ADCL  Initial version
-//
-//===================================================================================================================
+/****************************************************************************************************************//**
+*   @file               xapic.cc
+*   @brief              Functions to handle the XAPIC
+*   @author             Adam Clark (hobbyos@eryjus.com)
+*   @date               2021-May-06
+*   @since              v0.0.01
+*
+*   @copyright          Copyright (c)  2017-2021 -- Adam Clark\n
+*                       Licensed under "THE BEER-WARE LICENSE"\n
+*                       See \ref LICENSE.md for details.
+*
+* ------------------------------------------------------------------------------------------------------------------
+*
+*   |     Date    | Tracker |  Version | Pgmr | Description
+*   |:-----------:|:-------:|:--------:|:----:|:--------------------------------------------------------------------
+*   | 2021-May-06 | Initial |  v0.0.08 | ADCL | Initial version
+*
+*///=================================================================================================================
+
 
 
 #include "types.h"
 #include "boot-interface.h"
 #include "kernel-funcs.h"
+#include "cpu.h"
 #include "lapic.h"
 
 
 
-//
-// -- The current tick count
-//    ----------------------
-static uint64_t ticker = 0;
+/********************************************************************************************************************
+*   See documentation in `lapic.h`
+*///-----------------------------------------------------------------------------------------------------------------
+extern Apic_t xapic;
 
 
 
-//
-// -- This is the spurious IRQ handler
-//    --------------------------------
-static void LApicSpurious(Addr_t *regs)
-{
-}
-
-
-#if 0
-//
-// -- this is used during initialization to calibrate the timer
-//    ---------------------------------------------------------
-static void LApicInitTimeout(Addr_t *regs)
-{
-}
-#endif
-
-
-//
-// -- check if the register is readable
-//    ---------------------------------
-static bool IsReadable(ApicRegister_t reg)
-{
-    switch (reg) {
-        case APIC_LOCAL_ID:
-        case APIC_LOCAL_VERSION:
-        case APIC_TPR:
-        case APIC_APR:
-        case APIC_PPR:
-        case APIC_RRD:
-        case APIC_LDR:
-        case APIC_DFR:
-        case APIC_SIVR:
-        case APIC_ESR:
-        case APIC_CMCI:
-        case APIC_ICR1:
-        case APIC_ICR2:
-        case APIC_LVT_TIMER:
-        case APIC_LVT_THERMAL_SENSOR:
-        case APIC_LVT_PERF_COUNTING_REG:
-        case APIC_LVT_LINT0:
-        case APIC_LVT_LINT1:
-        case APIC_LVT_ERROR:
-        case APIC_TIMER_ICR:
-        case APIC_TIMER_CCR:
-        case APIC_TIMER_DCR:
-            return true;
-
-        default:
-            return false;
-    }
-}
-
-
-//
-// -- check if the register is writable
-//    ----------------------------------
-static bool IsWritable(ApicRegister_t reg)
-{
-    switch (reg) {
-        case APIC_TPR:
-        case APIC_EOI:
-        case APIC_SIVR:
-        case APIC_ESR:
-        case APIC_CMCI:
-        case APIC_ICR1:
-        case APIC_ICR2:
-        case APIC_LVT_TIMER:
-        case APIC_LVT_THERMAL_SENSOR:
-        case APIC_LVT_PERF_COUNTING_REG:
-        case APIC_LVT_LINT0:
-        case APIC_LVT_LINT1:
-        case APIC_LVT_ERROR:
-        case APIC_TIMER_ICR:
-        case APIC_TIMER_DCR:
-            return true;
-
-        default:
-            return false;
-    }
-}
-
-//
-// -- Check for a status register
-//    ---------------------------
-static bool IsStatus(ApicRegister_t reg)
-{
-    if (reg == APIC_ISR_BASE || reg == APIC_TMR_BASE || reg == APIC_IRR_BASE) return true;
-    else return false;
-}
-
-
-
-//
-// -- Get the APIC hardware version (xAPIC or x2APIC)
-//    -----------------------------------------------
-static ApicVersion_t GetVersion(void)
-{
-    return XAPIC;
-}
-
-
-//
-// -- Read an APIC register
-//    ---------------------
-static uint32_t ReadApicRegister(ApicRegister_t reg)
+/****************************************************************************************************************//**
+*   @fn                 uint32_t ReadXapicRegister(ApicRegister_t reg)
+*   @brief              Read an APIC register
+*
+*   Read an XAPIC register and return its contents
+*
+*   @param              reg                 The APIC register in question
+*
+*   @returns            The contents of the register read; 0 if an invalid register
+*///-----------------------------------------------------------------------------------------------------------------
+static uint32_t ReadXapicRegister(ApicRegister_t reg)
 {
     if (!IsReadable(reg)) return 0;
 
@@ -142,10 +52,17 @@ static uint32_t ReadApicRegister(ApicRegister_t reg)
 }
 
 
-//
-// -- Write an APIC register
-//    ----------------------
-static void WriteApicRegister(ApicRegister_t reg, uint32_t val)
+
+/****************************************************************************************************************//**
+*   @fn                 void WriteXapicRegister(ApicRegister_t reg, uint32_t val)
+*   @brief              Write an APIC register
+*
+*   Write a value to an XAPIC register
+*
+*   @param              reg                 The APIC register in question
+*   @param              val                 The value to write to the register
+*///-----------------------------------------------------------------------------------------------------------------
+static void WriteXapicRegister(ApicRegister_t reg, uint32_t val)
 {
     if (!IsWritable(reg)) return;
 
@@ -153,10 +70,22 @@ static void WriteApicRegister(ApicRegister_t reg, uint32_t val)
 }
 
 
-//
-// -- Check APIC Status Register
-//    --------------------------
-static bool CheckApicStatus(ApicRegister_t reg, uint8_t index)
+
+/****************************************************************************************************************//**
+*   @fn                 bool CheckXapicStatus(ApicRegister_t reg, uint8_t index)
+*   @brief              Check APIC Status Register
+*
+*   Check an XAPIC status register and return if it is set
+*
+*   @param              reg                 The APIC register in question
+*   @param              index               The index of the register status to check
+*
+*   @returns            If the status bit is set
+*
+*   @retval             false               The status bit is not set
+*   @retval             true                The status but is set
+*///-----------------------------------------------------------------------------------------------------------------
+static bool CheckXapicStatus(ApicRegister_t reg, uint8_t index)
 {
     if (!IsStatus(reg)) return false;
 
@@ -167,22 +96,20 @@ static bool CheckApicStatus(ApicRegister_t reg, uint8_t index)
 }
 
 
-//
-// -- Issue an EOI
-//    ------------
-static void Eoi(void)
-{
-    WriteApicRegister(APIC_EOI, 0);
-}
 
-
-//
-// -- Early Initialization function
-//    NOTE: when this function is called with `loaderInterface != 0`, then it is the original
-//    initialization.  When `loaderInterface == NULL`, then it is subsequent initialization for
-//    additional boot processors.  Additionally, IA32_APIC_BASE_MSR__BSP also indicates that this
-//    the BSP.
-//    -------------------------------------------------------------------------------------------
+/****************************************************************************************************************//**
+*   @fn                 int EarlyInit(BootInterface_t *loaderInterface)
+*   @brief              Early Initialization function
+*
+*   @note               when this function is called with `loaderInterface != 0`, then it is the original
+*                       initialization.  When `loaderInterface == NULL`, then it is subsequent initialization for
+*                       additional boot processors.  Additionally, IA32_APIC_BASE_MSR__BSP also indicates that this
+*                       the BSP.
+*
+*   @param              loaderInterface     The Loader Interface structure containing hardware info
+*
+*   @returns            0
+*///-----------------------------------------------------------------------------------------------------------------
 static int EarlyInit(BootInterface_t *loaderInterface)
 {
     static int freq = 1000;
@@ -205,10 +132,10 @@ static int EarlyInit(BootInterface_t *loaderInterface)
     //
     // -- SW enable the Local APIC timer
     //    ------------------------------
-    WriteApicRegister(APIC_ESR, 0);
-    __asm volatile("nop\n");
-    WriteApicRegister(APIC_SIVR, 39 | APIC_SOFTWARE_ENABLE);
-    __asm volatile("nop\n");
+    WriteXapicRegister(APIC_ESR, 0);
+    NOP();
+    WriteXapicRegister(APIC_SIVR, 39 | APIC_SOFTWARE_ENABLE);
+    NOP();
 
     if (isBoot) {
         SetVectorHandler(INT_SPURIOUS, (Addr_t)LApicSpurious, GetAddressSpace(), 0);
@@ -218,16 +145,16 @@ static int EarlyInit(BootInterface_t *loaderInterface)
     KernelPrintf(".. Initializing to a defined state\n");
 
     // -- here we initialize the LAPIC to a defined state -- taken from Century32
-    WriteApicRegister(APIC_DFR, 0xffffffff);       // ipi flat model??
-    WriteApicRegister(APIC_LDR, ReadApicRegister(APIC_LDR) | (1<<24));    // set logical apic to 1
-    WriteApicRegister(APIC_LVT_TIMER, APIC_LVT_MASKED);           // mask the timer during setup
-    WriteApicRegister(APIC_LVT_PERF_COUNTING_REG, APIC_LVT_MASKED);
-    WriteApicRegister(APIC_LVT_LINT0, APIC_LVT_MASKED);
-    WriteApicRegister(APIC_LVT_LINT1, APIC_LVT_MASKED);
-    WriteApicRegister(APIC_LVT_ERROR, APIC_LVT_MASKED);
-    WriteApicRegister(APIC_TPR, 0);
-    WriteApicRegister(APIC_TIMER_DCR, 0x03);       // divide value is 16
-    WriteApicRegister(APIC_LVT_TIMER, 32);        // timer is vector 32; now unmasked
+    WriteXapicRegister(APIC_DFR, 0xffffffff);       // ipi flat model??
+    WriteXapicRegister(APIC_LDR, ReadXapicRegister(APIC_LDR) | (1<<24));    // set logical apic to 1
+    WriteXapicRegister(APIC_LVT_TIMER, APIC_LVT_MASKED);           // mask the timer during setup
+    WriteXapicRegister(APIC_LVT_PERF_COUNTING_REG, APIC_LVT_MASKED);
+    WriteXapicRegister(APIC_LVT_LINT0, APIC_LVT_MASKED);
+    WriteXapicRegister(APIC_LVT_LINT1, APIC_LVT_MASKED);
+    WriteXapicRegister(APIC_LVT_ERROR, APIC_LVT_MASKED);
+    WriteXapicRegister(APIC_TPR, 0);
+    WriteXapicRegister(APIC_TIMER_DCR, 0x03);       // divide value is 16
+    WriteXapicRegister(APIC_LVT_TIMER, 32);        // timer is vector 32; now unmasked
 
 
     // -- enable the PIC timer in one-shot mode
@@ -251,11 +178,11 @@ static int EarlyInit(BootInterface_t *loaderInterface)
         OUTB(0x61, tmp | 1);
 
         // -- reset the APIC counter to -1
-        WriteApicRegister(APIC_TIMER_ICR, 0xffffffff);
+        WriteXapicRegister(APIC_TIMER_ICR, 0xffffffff);
 
         while (!(INB(0x61) & 0x20)) {}  // -- busy wait here
 
-        WriteApicRegister(APIC_LVT_TIMER, APIC_LVT_MASKED);
+        WriteXapicRegister(APIC_LVT_TIMER, APIC_LVT_MASKED);
 
         // -- remap the 8259 PIC to some obscure interrupts
         OUTB(0x20, 0x11);       // starts the initialization sequence (in cascade mode)
@@ -273,10 +200,10 @@ static int EarlyInit(BootInterface_t *loaderInterface)
         //
         // -- Now we can calculate the cpu frequency, converting back to a full second
         //    ------------------------------------------------------------------------
-        uint64_t cpuFreq = (0xffffffff - ReadApicRegister(APIC_TIMER_CCR)) * 16 * 20;
+        uint64_t cpuFreq = (0xffffffff - ReadXapicRegister(APIC_TIMER_CCR)) * 16 * 20;
         xapic.factor = cpuFreq / freq / 16;
 
-        if (((((uint64_t)x2apic.factor) >> 32) & 0xffffffff) != 0) {
+        if (((((uint64_t)xapic.factor) >> 32) & 0xffffffff) != 0) {
             KernelPrintf("PANIC: The factor is too large for the architecture!\n");
             while(true) {
                 __asm volatile ("hlt");
@@ -289,141 +216,63 @@ static int EarlyInit(BootInterface_t *loaderInterface)
     //
     // -- Now, program the Timer
     //    ----------------------
-    WriteApicRegister(APIC_TIMER_ICR, xapic.factor);
-    WriteApicRegister(APIC_LVT_TIMER, APIC_LVT_TIMER_PERIODIC | INT_TIMER);
+    WriteXapicRegister(APIC_TIMER_ICR, xapic.factor);
+    WriteXapicRegister(APIC_LVT_TIMER, APIC_LVT_TIMER_PERIODIC | INT_TIMER);
 
     return 0;
 }
 
 
-//
-// -- Called on each timer tick from CPU0
-//    -----------------------------------
-static void Tick(void)
-{
-    ticker += 1000;
-}
 
-
-//
-// -- Get the current timer count
-//    ---------------------------
-static uint64_t CurrentTimer(void)
-{
-    return ticker;
-}
-
-
-//
-// -- Get the LPAIC ID
-//    ----------------
+/****************************************************************************************************************//**
+*   @fn                 int GetId(void)
+*   @brief              Get the LPAIC ID
+*
+*   Get the Local APIC ID, which will be the CPU number
+*
+*   @returns            CPU number
+*///-----------------------------------------------------------------------------------------------------------------
 static int GetId(void)
 {
-    return (int)ReadApicRegister(APIC_LOCAL_ID) >> 24;
+    return (int)ReadXapicRegister(APIC_LOCAL_ID) >> 24;
 }
 
 
-//
-// -- Send the INIT IPI
-//    -----------------
-static Return_t SendInit(int core)
+
+/****************************************************************************************************************//**
+*   @fn                 void WriteXapicIcr(uint64_t val)
+*   @brief              Write 64-bits to the ICR register
+*
+*   Write 64-bits to the ICR register
+*
+*   @param              val                 The value to write to the ICR register
+*///-----------------------------------------------------------------------------------------------------------------
+static void WriteXapicIcr(uint64_t val)
 {
-    // -- Hi bits are xxxx xxxx 0000 0000 0000 0000 0000 0000
-    // -- Lo bits are 0000 0000 0000 xx00 xx0x xxxx 0000 0000
-    //                               ++   || | |+-+
-    //                               |    || | | |
-    //                               |    || | | +--------- delivery mode (101)
-    //    Destination Shorthand (00) +    || | +----------- destination mode (0)
-    //                                    || +------------- delivery status (1)
-    //                                    |+--------------- level (1)
-    //                                    +---------------- trigger (1)
-    //
-    //   or 0000 0000 0000 0000 1101 0101 0000 0000 (0x0000d500)
+    uint32_t hi = (uint32_t)((val >> 32) & 0xffffffff);
+    uint32_t lo = (uint32_t)(val & 0xffffffff);
 
-    uint32_t hi = (core & 0xff) << 24;
-    uint32_t lo = 0x0000d500;
-
-    WriteApicRegister(APIC_ICR2, hi);
-    WriteApicRegister(APIC_ICR1, lo);
-
-    return 0;
+    WriteXapicRegister(APIC_ICR2, hi);
+    WriteXapicRegister(APIC_ICR1, lo);
 }
 
 
-//
-// -- Send the INIT IPI
-//    -----------------
-static Return_t SendSipi(int core, Addr_t vector)
-{
-    // -- Hi bits are xxxx xxxx 0000 0000 0000 0000 0000 0000
-    // -- Lo bits are 0000 0000 0000 xx00 xx0x xxxx 0000 0000
-    //                               ++   || | |+-+ +-------+
-    //                               |    || | | |      +   startup vector (vector >> 12)
-    //                               |    || | | +--------- delivery mode (110)
-    //    Destination Shorthand (00) +    || | +----------- destination mode (0)
-    //                                    || +------------- delivery status (1)
-    //                                    |+--------------- level (1)
-    //                                    +---------------- trigger (1)
-    //
-    //   or 0000 0000 0000 0000 1101 0110 0000 0000 (0x0000d600)
 
-    uint32_t hi = (core & 0xff) << 24;
-    uint32_t lo = 0x0000d600 | ((vector >> 12) & 0xff);
-
-    WriteApicRegister(APIC_ICR2, hi);
-    WriteApicRegister(APIC_ICR1, lo);
-
-    return 0;
-}
-
-
-//
-// -- Broadcast an IPI
-//    ----------------
-static Return_t SendIpi(int vector)
-{
-    // -- Hi bits are 0000 0000 0000 0000 0000 0000 0000 0000
-    // -- Lo bits are 0000 0000 0000 xx00 0000 0000 xxxx xxxx
-    //                               ++             +-------+
-    //                               |                  +-- vector (vector >> 12)
-    //                               |
-    //                               |
-    //    Destination Shorthand (11) +
-    //
-    //   or 0000 0000 0000 1100 0000 0000 0000 0000 (0x000c0000)
-
-    uint32_t lo = 0x000c0000 | (vector & 0xff);
-
-    WriteApicRegister(APIC_ICR2, 0);
-    WriteApicRegister(APIC_ICR1, lo);
-
-//    KernelPrintf("ESR Result: %p\n", ReadApicRegister(APIC_ESR));
-
-//    SchProcessMilliSleep(500);
-
-    return 0;
-}
-
-
-//
-// -- Create the driver structure for the X2APIC
-//    ------------------------------------------
+/********************************************************************************************************************
+*   See documentation in `lapic.h`
+*///-----------------------------------------------------------------------------------------------------------------
 Apic_t xapic = {
     .baseAddr = LAPIC_MMIO,
     .factor = 0,
+    .ticker = 0,
+    .version = XAPIC,
     .earlyInit = EarlyInit,
     .init = NULL,
-    .getVersion = GetVersion,
-    .readApicRegister = ReadApicRegister,
-    .writeApicRegister = WriteApicRegister,
-    .checkIndexedStatus = CheckApicStatus,
-    .eoi = Eoi,
+    .readApicRegister = ReadXapicRegister,
+    .writeApicRegister = WriteXapicRegister,
+    .writeApicIcr = WriteXapicIcr,
+    .checkIndexedStatus = CheckXapicStatus,
     .getId = GetId,
-    .tick = Tick,
-    .currentTimer = CurrentTimer,
-    .sendInit = SendInit,
-    .sendSipi = SendSipi,
-    .sendIpi = SendIpi,
 };
 
 

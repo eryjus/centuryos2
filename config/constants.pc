@@ -50,5 +50,19 @@ COM1_BASE                               0x3f8
 
 
 
+##
+## -- LAPIC Constants
+##    ---------------
+LAPIC_MMIO                              0xffffaffffffff000
+APIC_SOFTWARE_ENABLE                    (1<<8)
 
+IA32_APIC_BASE_MSR__BSP                 (1<<8)
+IA32_APIC_BASE_MSR__EN                  (1<<11)
+
+## -- X2APIC
+IA32_APIC_BASE_MSR__EXTD                (1<<10)
+
+## -- LVT Constants
+APIC_LVT_MASKED                         (1<<16)
+APIC_LVT_TIMER_PERIODIC                 (0b01<<17)
 

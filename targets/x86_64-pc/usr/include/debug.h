@@ -1,9 +1,10 @@
 #define DEBUG_TOKEN_PASTE(x) DEBUG_##x
 #define DEBUG_ENABLED(f) DEBUG_TOKEN_PASTE(f)>DISABLED
 #define DEBUG_DebuggerMain DISABLED
-#define DEBUG_CpuApStart DISABLED
+#define DEBUG_CpuApStart DSIABLED
 #define DEBUG_cmn_MmuUnmapPage DISABLED
 #define DEBUG_cmn_MmuMapPage DISABLED
+#define DEBUG_ipi_SendInit DISABLED
 #define DEBUG_AcpiFindRsdp DISABLED
 #define DEBUG_AcpiCheckTable DISABLED
 #define DEBUG_AcpiReadXsdt DISABLED

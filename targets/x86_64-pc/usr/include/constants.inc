@@ -38,3 +38,10 @@
 %define BIOS 0xe0000
 %define BIOS_END 0xfffff
 %define COM1_BASE 0x3f8
+%define LAPIC_MMIO 0xffffaffffffff000
+%define APIC_SOFTWARE_ENABLE (1<<8)
+%define IA32_APIC_BASE_MSR__BSP (1<<8)
+%define IA32_APIC_BASE_MSR__EN (1<<11)
+%define IA32_APIC_BASE_MSR__EXTD (1<<10)
+%define APIC_LVT_MASKED (1<<16)
+%define APIC_LVT_TIMER_PERIODIC (0b01<<17)

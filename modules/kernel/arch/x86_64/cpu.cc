@@ -128,7 +128,16 @@ void CpuApStart(BootInterface_t *interface)
         cpuStarting = i;
         AtomicSet(&cpus[i].state, CPU_STARTING);
 
+#if DEBUG_ENABLED(CpuApStart)
+        kprintf(".. Sending INIT\n");
+#endif
+
         IpiSendInit(i);
+
+#if DEBUG_ENABLED(CpuApStart)
+        kprintf(".. Sending Startup INI\n");
+#endif
+
         IpiSendSipi(i, TRAMP_OFF);
 
         uint64_t timeout = TmrCurrentCount() + 500000;

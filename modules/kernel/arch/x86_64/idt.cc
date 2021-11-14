@@ -677,7 +677,7 @@ void IntInit(void)
 // -- handle the kernel debugger, or if none a generic handler
 //    --------------------------------------------------------
 #if IS_ENABLED(KERNEL_DEBUGGER)
-    IdtSetHandler(0xe1, 8, &DebuggerTarget, 0, 0);      // 225
+    IdtSetHandler(DEBUGGER_INT, 8, &DebuggerTarget, 0, 0);      // 225
 #else
     ISR_VECTOR(225)
 #endif

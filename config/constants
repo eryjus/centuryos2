@@ -79,6 +79,81 @@ INT_SPURIOUS                            0xff
 
 
 ##
+## == These are constants used in the LIBK
+##    ====================================
+
+
+##
+## -- Internal Function Numbers
+##    -------------------------
+## -- Internal Table Maintenance operations
+INT_GET_INTERNAL                        0x000
+INT_SET_INTERNAL                        0x001
+INT_GET_VECTOR                          0x002
+INT_SET_VECTOR                          0x003
+INT_GET_SERVICE                         0x004
+INT_SET_SERVICE                         0x005
+
+## -- Output functions
+INT_PRINTF                              0x008
+
+## -- Spinlock functions
+INT_KRN_SPIN_LOCK                       0x010
+INT_KRN_SPIN_TRY                        0x011
+INT_KRN_SPIN_UNLOCK                     0x012
+
+## -- MMU Functions
+INT_KRN_MMU_MAP                         0x018
+INT_KRN_MMU_UNMAP                       0x019
+INT_KRN_MMU_IS_MAPPED                   0x01a
+INT_KRN_MMU_DUMP                        0x01b
+INT_KRN_MMU_MAP_EX                      0x01c
+INT_KRN_MMU_UNMAP_EX                    0x01d
+
+## -- Kernel Utility Functions
+INT_KRN_COPY_MEM                        0x020
+INT_KRN_RLS_MEM                         0x021
+INT_KRN_CORES_ACTIVE                    0x022
+INT_KRN_PAUSE_CORES                     0x023
+INT_KRN_RELEASE_CORES                   0x024
+
+## -- Timer Module Functions
+INT_TMR_CURRENT_COUNT                   0x040
+INT_TMR_TICK                            0x041
+INT_TMR_EOI                             0x042
+INT_TMR_REINIT                          0x043
+
+## -- PMM Module Functions
+INT_PMM_ALLOC                           0x050
+INT_PMM_RELEASE                         0x051
+
+## -- Scheduler Module Functions
+INT_SCH_TICK                            0x060
+INT_SCH_CREATE                          0x061
+INT_SCH_READY                           0x062
+INT_SCH_BLOCK                           0x063
+INT_SCH_UNBLOCK                         0x064
+INT_SCH_SLEEP_UNTIL                     0x065
+
+## -- Debugger functions
+INT_DBG_INSTALLED                       0x070
+INT_DBG_REGISTER                        0x071
+INT_DBG_OUTPUT                          0x072
+INT_DBG_PROMPT_GENERIC                  0x073
+
+## -- LAPIC/IPI functions
+INT_IPI_CURRENT_CPU                     0x080
+INT_IPI_SEND_INIT                       0x081
+INT_IPI_SEND_SIPI                       0x082
+INT_IPI_SEND_IPI                        0x083
+
+
+## -- Debugger Ineterrupt
+DEBUGGER_INT                            0xe1
+
+
+
+##
 ## == These are constants used in the LOADER-GRUB
 ##    ===========================================
 
@@ -91,3 +166,17 @@ MAGIC2                                  0xe85250d6
 MB1SIG                                  0x2badb002
 MB2SIG                                  0x36d76289
 MBFLAGS                                 ((1<<1)|(1<<2))
+
+
+
+
+##
+## == These are constants used in the PMM
+##    ===================================
+
+
+##
+## -- PMM constants
+##    -------------
+SCRUB_LIMIT                             16
+

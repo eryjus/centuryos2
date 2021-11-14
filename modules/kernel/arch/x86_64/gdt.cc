@@ -283,6 +283,16 @@ Gdtr_t gdtr = {
 
 
 
+extern "C" void SetCpuStruct(int cpu)
+{
+//    __asm volatile("mov %0,%%gs" :: "r"((cpu * 3 * 8) + 0x48) : "memory");
+    kprintf("Initializing GS to be at base %p\n", &(cpus[cpu].cpu));
+    WRMSR(IA32_KERNEL_GS_BASE, (Addr_t)&(cpus[cpu].cpu));
+    __asm volatile ("swapgs" ::: "memory");
+}
+
+
+
 //
 // -- Initialize the GS GDT entry
 //    ---------------------------
@@ -292,9 +302,7 @@ void GsInit(void)
     cpus[0].cpuNum = 0;
     AtomicSet(&cpus[0].state, CPU_STARTED);
 
-    kprintf("Initializing GS to be at base %p\n", &(cpus[0].cpu));
-    WRMSR(IA32_KERNEL_GS_BASE, (Addr_t)&(cpus[0].cpu));
-    __asm volatile ("swapgs" ::: "memory");
+    SetCpuStruct(0);
 }
 
 

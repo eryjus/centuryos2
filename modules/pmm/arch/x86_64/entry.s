@@ -22,6 +22,7 @@
                 extern      pmm_PmmReleaseFrame
                 extern      pmm_LateInit
 
+%include        'constants.inc'
 
                 section     .text
 
@@ -38,10 +39,10 @@ header:
                 dq          0                                                           ;; interrupts
                 dq          2                                                           ;; internal Services
                 dq          0                                                           ;; OS services
-                dq          0x050                                                       ;; internal function 1
+                dq          INT_PMM_ALLOC                                               ;; internal function 1
                 dq          pmm_PmmAllocateAligned                                      ;; .. target address
                 dq          0                                                           ;; .. stack
-                dq          0x051                                                       ;; internal function 2
+                dq          INT_PMM_RELEASE                                             ;; internal function 2
                 dq          pmm_PmmReleaseFrame                                         ;; .. target address
                 dq          0                                                           ;; .. stack
 

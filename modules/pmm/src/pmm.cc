@@ -845,20 +845,34 @@ void PmmCleanProcess(void)
 #endif
 
         if (MmuIsMapped((Addr_t)pmm.scrubStack) == true) {
+            Frame_t frame = pmm.scrubStack->frame;
+            size_t count = pmm.scrubStack->count;
+
 #if DEBUG_ENABLED(PmmCleanProcess)
 
-            KernelPrintf(".. found a block to clean\n");
+            KernelPrintf(".. found a block to clean: %p for %x blocks\n", frame, count);
 
 #endif
 
-            Frame_t frame = pmm.scrubStack->frame;
-            size_t count = pmm.scrubStack->count;
-            PopStack(&pmm.scrubStack);
+            if (count > SCRUB_LIMIT) {
+                frame = frame + count - SCRUB_LIMIT;
+                count = SCRUB_LIMIT;
+                pmm.scrubStack->count -= SCRUB_LIMIT;
+
+#if DEBUG_ENABLED(PmmCleanProcess)
+
+            KernelPrintf(".. adjusting the block: %p for %x blocks\n", frame, count);
+
+#endif
+            } else {
+                PopStack(&pmm.scrubStack);
+            }
+
             SpinUnlock(&pmm.scrubLock);
 
 #if DEBUG_ENABLED(PmmCleanProcess)
 
-            KernelPrintf(".. scrubbing the block: %p for %d blocks\n", frame, count);
+            KernelPrintf(".. scrubbing the block: %p for %x blocks\n", frame, count);
 
 #endif
 

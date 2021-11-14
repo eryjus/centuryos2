@@ -802,11 +802,7 @@ void SchedulerCreateKInitAp(int cpu)
 
     proc->virtAddrSpace = GetAddressSpace();
 
-    __asm volatile("mov %0,%%gs" :: "r"((cpu * 3 * 8) + 0x48) : "memory");
-    kprintf("Initializing GS to be at base %p\n", &(cpus[cpu].cpu));
-    WRMSR(IA32_KERNEL_GS_BASE, (Addr_t)&(cpus[cpu].cpu));
-    __asm volatile ("swapgs" ::: "memory");
-
+    SetCpuStruct(cpu);
     CurrentThreadAssign(proc);
 
     ProcessAddGlobal(proc);

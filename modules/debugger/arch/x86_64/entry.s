@@ -47,19 +47,19 @@ header:
         dq      1                                                           ;; interrupts
         dq      4                                                           ;; internal Services
         dq      0                                                           ;; OS services
-        dq      0xe1                                                        ;; Interrupt 1
+        dq      DEBUGGER_INT                                                ;; Interrupt 1
         dq      dbg_Dispatch                                                ;; .. target address
         dq      0                                                           ;; .. stack
-        dq      0x070                                                       ;; internal function 1
+        dq      INT_DBG_INSTALLED                                           ;; internal function 1
         dq      dbg_Installed                                               ;; .. target address
         dq      0                                                           ;; .. stack
-        dq      0x071                                                       ;; internal function 2
+        dq      INT_DBG_REGISTER                                            ;; internal function 2
         dq      dbg_Register                                                ;; .. target address
         dq      0                                                           ;; .. stack
-        dq      0x072                                                       ;; internal function 3
+        dq      INT_DBG_OUTPUT                                              ;; internal function 3
         dq      dbg_Output                                                  ;; .. target address
         dq      0                                                           ;; .. stack
-        dq      0x073                                                       ;; internal function 4
+        dq      INT_DBG_PROMPT_GENERIC                                      ;; internal function 4
         dq      dbg_PromptGeneric                                           ;; .. target address
         dq      0                                                           ;; .. stack
 
@@ -72,6 +72,6 @@ header:
 ;;    Prototype: void DebuggerCall(Addr_t p1, Addr_t p2, Addr_t p3, Addr_t addrSpace, Addr_t function, Addr_t stack);
 ;;    ---------------------------------------------------------------------------------------------------------------
 DebuggerCall:
-        int     0xe1
+        int     DEBUGGER_INT
         ret
 

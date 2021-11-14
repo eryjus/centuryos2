@@ -454,6 +454,18 @@ That issue is complete.  I am also going to take care of #520 at the same time. 
 That change is also complete.
 
 
+---
 
+## Version 0.0.13l -- [Redmine #521](http://eryjus.ddns.net:3000/issues/521)
+
+This Redmine is concerned with addressing the arch-specific code that is located in the `SchedulerCreateKInitAp()` function.
+
+That was a quick fix.  Next will be #525, which is concerned with how the PMM scrubs its blocks -- making sure that it is completed in small blocks, not all at once.
+
+This is done too....  The thing now is that the PMM leaves those blocks fragmented.  Therefore, when I get into allocating contiguous blocks, it will be harder to do that.  I am not going to work on that now and will wait until I have a real need to worry about it.  I can adjust the fragmentation with `SCRUB_LIMIT`.
+
+The last 2 Redmines (#541 and #542) are some general cleanup tasks.  I will take those on here as well, hopefully wrapping up this version.
+
+OK, those 2 items are also cleaned up, which completes the goals for this version.  I do still have a race condition to figure out.
 
 

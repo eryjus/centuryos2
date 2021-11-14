@@ -247,7 +247,7 @@ Return_t cmn_MmuMapPage(Addr_t a, Frame_t f, int flags)
         ent->rw = 1;
         ent->p = 1;
 
-        __asm volatile ("wbnoinvd" ::: "memory");
+        WBNOINVD();
         INVLPG((Addr_t)GetPDPTEntry(a));
 
         uint64_t *tbl = (uint64_t *)((Addr_t)GetPDPTEntry(a) & 0xfffffffffffff000);
@@ -280,7 +280,7 @@ Return_t cmn_MmuMapPage(Addr_t a, Frame_t f, int flags)
         ent->rw = 1;
         ent->p = 1;
 
-        __asm volatile ("wbnoinvd" ::: "memory");
+        WBNOINVD();
         INVLPG((Addr_t)GetPDEntry(a));
 
         uint64_t *tbl = (uint64_t *)((Addr_t)GetPDEntry(a) & 0xfffffffffffff000);
@@ -311,7 +311,7 @@ Return_t cmn_MmuMapPage(Addr_t a, Frame_t f, int flags)
         ent->rw = 1;
         ent->p = 1;
 
-        __asm volatile ("wbnoinvd" ::: "memory");
+        WBNOINVD();
         INVLPG((Addr_t)GetPTEntry(a));
 
         uint64_t *tbl = (uint64_t *)((Addr_t)GetPTEntry(a) & 0xfffffffffffff000);
@@ -354,7 +354,7 @@ Return_t cmn_MmuMapPage(Addr_t a, Frame_t f, int flags)
     ent->us = (flags&PG_DEV?1:0);
     ent->p = 1;
 
-    __asm volatile ("wbnoinvd" ::: "memory");
+    WBNOINVD();
     INVLPG((Addr_t)a);
 
 #if DEBUG_ENABLED(cmn_MmuMapPage)

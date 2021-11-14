@@ -15,6 +15,7 @@
 ;;===================================================================================================================
 
 
+
                 global      header
 
                 extern      X2ApicInitEarly
@@ -26,6 +27,8 @@
                 extern      ipi_SendInit
                 extern      ipi_SendSipi
                 extern      ipi_SendIpi
+
+%include        'constants.inc'
 
                 section     .text
 
@@ -42,28 +45,28 @@ header:
                 dq          0                                                           ;; interrupts
                 dq          8                                                           ;; internal Services
                 dq          0                                                           ;; OS services
-                dq          0x040                                                       ;; Internal fctn 0x040 (Tmr Cnt)
+                dq          INT_TMR_CURRENT_COUNT                                       ;; Internal fctn 0x040 (Tmr Cnt)
                 dq          tmr_GetCurrentTimer                                         ;; .. target address
                 dq          0                                                           ;; .. stack
-                dq          0x041                                                       ;; Internal fctn 0x041 (Tick)
+                dq          INT_TMR_TICK                                                ;; Internal fctn 0x041 (Tick)
                 dq          tmr_Tick                                                    ;; .. target address
                 dq          0                                                           ;; .. stack
-                dq          0x042                                                       ;; Internal fctn 0x042 (EOI)
+                dq          INT_TMR_EOI                                                 ;; Internal fctn 0x042 (EOI)
                 dq          tmr_Eoi                                                     ;; .. target address
                 dq          0                                                           ;; .. stack
-                dq          0x043                                                       ;; Internal fctn 0x043 (reInit)
+                dq          INT_TMR_REINIT                                              ;; Internal fctn 0x043 (reInit)
                 dq          X2ApicInitEarly                                             ;; .. target address
                 dq          0                                                           ;; .. stack
-                dq          0x080                                                       ;; Internal fctn 0x080 (LAPICID)
+                dq          INT_IPI_CURRENT_CPU                                         ;; Internal fctn 0x080 (LAPICID)
                 dq          ipi_LapicGetId                                              ;; .. target address
                 dq          0                                                           ;; .. stack
-                dq          0x081                                                       ;; Internal fctn 0x081 (INIT)
+                dq          INT_IPI_SEND_INIT                                           ;; Internal fctn 0x081 (INIT)
                 dq          ipi_SendInit                                                ;; .. target address
                 dq          0                                                           ;; .. stack
-                dq          0x082                                                       ;; Internal fctn 0x082 (SIPI)
+                dq          INT_IPI_SEND_SIPI                                           ;; Internal fctn 0x082 (SIPI)
                 dq          ipi_SendSipi                                                ;; .. target address
                 dq          0                                                           ;; .. stack
-                dq          0x083                                                       ;; Internal fctn 0x082 (SIPI)
+                dq          INT_IPI_SEND_IPI                                            ;; Internal fctn 0x082 (SIPI)
                 dq          ipi_SendIpi                                                 ;; .. target address
                 dq          0                                                           ;; .. stack
 

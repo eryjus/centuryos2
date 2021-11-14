@@ -90,7 +90,7 @@ inline struct Process_t *CurrentThread(void)  {
         Process_t *rv; __asm("mov %%gs:(8),%0" : "=r"(rv) :: "memory"); return rv;
 }
 inline void CurrentThreadAssign(Process_t *p) { __asm("mov %0,%%gs:(8)" :: "r"(p) : "memory"); }
-
+extern "C" void SetCpuStruct(int cpu);
 
 
 //
@@ -156,6 +156,16 @@ inline void OUTB(uint16_t port, uint8_t val)
 inline void NOP(void)
 {
     __asm volatile ("nop" ::: "memory");
+}
+
+
+
+//
+// -- Synchronize the cpu caches
+//    --------------------------
+inline void WBNOINVD(void)
+{
+    __asm volatile ("wbnoinvd" ::: "memory");
 }
 
 

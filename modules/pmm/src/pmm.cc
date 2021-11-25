@@ -27,6 +27,8 @@
 #include "types.h"
 #include "boot-interface.h"
 #include "kernel-funcs.h"
+#include <sys/ipc.h>
+#include <sys/msg.h>
 
 
 
@@ -813,8 +815,39 @@ Return_t pmm_PmmReleaseFrame(Frame_t frame, size_t count)
 
 #endif
 
-//    MessageQueueSend(butlerMsgq, BUTLER_CLEAN_PMM, 0, 0);
+    int msqid = msgget(KEY_PMM_CLEANER, IPC_CREAT | 0666);
+    struct {
+        long msgtyp;
+        char text[0];
+    } msg = {0};
+    msgsnd(msqid, &msg, 0, 0);
+
     return 0;
+}
+
+
+
+/****************************************************************************************************************//**
+*   @fn                 void PmmApiProcess(void)
+*   @brief              Process to handle the API calls (Messages)
+*
+*   This process runs to respond to API calls to allocate or free PMM blocks
+*///-----------------------------------------------------------------------------------------------------------------
+void PmmApiProcess(void)
+{
+    KernelPrintf("Starting the PMM API handler\n");
+    int msqid = msgget(KEY_PMM_API, IPC_CREAT | 0600);
+    assert_msg(msqid != -1, "Unable to obtain the Message Queue!!");
+
+    struct {
+        long msgtyp;
+        char text[1];
+    } msg;
+
+    while (true) {
+        KernelPrintf("\n\nPMM Looking for a message\n\n");
+        msgrcv(msqid, &msg, 0, 0, 0);
+    }
 }
 
 
@@ -826,8 +859,14 @@ Return_t pmm_PmmReleaseFrame(Frame_t frame, size_t count)
 *   This process runs to clean blocks of frames from the scrub stack and insert them onto the proper low or normal
 *   stack.
 *///-----------------------------------------------------------------------------------------------------------------
-void PmmCleanProcess(void)
+static void PmmCleanProcess(void)
 {
+    struct {
+        long msgtyp;
+        char text[0];
+    } msg;
+
+    int msqid = msgget(KEY_PMM_CLEANER, IPC_CREAT | 0666);
 #if DEBUG_ENABLED(PmmCleanProcess)
 
     KernelPrintf("Starting the PMM Cleaner\n");
@@ -919,7 +958,7 @@ void PmmCleanProcess(void)
 #endif
 
             SpinUnlock(&pmm.scrubLock);
-            SchProcessBlock(PRC_MSGW);
+            msgrcv(msqid, &msg, 0, 0, 0);
         }
     }
 }
@@ -940,6 +979,7 @@ void pmm_LateInit(void)
 
 #endif
 
+    SchProcessCreate("PMM API", (Addr_t)PmmApiProcess, GetAddressSpace(), PTY_OS);
     SchProcessCreate("PMM Cleaner", (Addr_t)PmmCleanProcess, GetAddressSpace(), PTY_LOW);
 
 #if DEBUG_ENABLED(pmm_LateInit)

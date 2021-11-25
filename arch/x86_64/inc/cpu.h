@@ -16,6 +16,7 @@
 
 
 #pragma once
+#include <sys/ipc.h>
 #ifndef __CPU_H__
 #define __CPU_H__
 

@@ -17,6 +17,7 @@
 
 #ifndef __KERNEL_FUNCS_H__
 #define __KERNEL_FUNCS_H__
+#include "lists.h"
 #pragma once
 
 
@@ -288,9 +289,9 @@ INTERNAL2(Return_t, MmuUnmapPageEx, INT_KRN_MMU_UNMAP_EX, Addr_t, Addr_t)
 //
 // -- Function 0x020 -- Copy user-space memory into kernel memory
 //
-//    Prototype: void *KrnCopyMem(void *mem, size_t size);
+//    Prototype: void *KrnCopyMem(const void *mem, size_t size);
 //    -----------------------------------------------------------
-INTERNAL2(void *, KrnCopyMem, INT_KRN_COPY_MEM, void *, size_t)
+INTERNAL2(void *, KrnCopyMem, INT_KRN_COPY_MEM, const void *, size_t)
 
 
 //
@@ -422,7 +423,7 @@ INTERNAL1(Return_t, SchProcessReady, INT_SCH_READY, Process_t *)
 //
 // -- Function 0x063 -- Block the current process with the specified status code
 //
-//    Prototype: Return_t SchProcessBlock(int status);
+//    Prototype: Return_t SchProcessBlock(int status, ListHead_t *head);
 //    --------------------------------------------------------------------------
 #define PRC_INIT        0
 #define PRC_RUNNING     1
@@ -432,7 +433,7 @@ INTERNAL1(Return_t, SchProcessReady, INT_SCH_READY, Process_t *)
 #define PRC_SEMW        5
 #define PRC_DLYW        6
 #define PRC_MSGW        7
-INTERNAL1(Return_t, SchProcessBlock, INT_SCH_BLOCK, int)
+INTERNAL2(Return_t, SchProcessBlock, INT_SCH_BLOCK, int, ListHead_t *)
 
 
 //
@@ -453,6 +454,13 @@ inline Return_t SchProcessMicroSleep(uint64_t u) { return SchProcessMicroSleepUn
 inline Return_t SchProcessMilliSleep(uint64_t m) { return SchProcessMicroSleepUntil(TmrCurrentCount() + (m * 1000)); }
 inline Return_t SchProcessSleep(uint64_t s) { return SchProcessMicroSleepUntil(TmrCurrentCount() + (s * 1000000)); }
 
+
+//
+// -- Function 0x066 -- Ready all processes on a list
+//
+//    Prototype: Return_t SchReadyList(ListHead_t *head);
+//    --------------------------------------------------------------------------------------
+INTERNAL1(Return_t, SchReadyList, INT_SCH_READY_LIST, ListHead_t *)
 
 
 // ========================

@@ -89,6 +89,7 @@ AtomicInt_t coresEngaged = { 0 };
 //    -----------------------------------------------
 extern "C" void IpiPauseCores(Addr_t *regs)
 {
+//    kprintf("CPU%d is reporting engaged!\n", LapicGetId());
     AtomicInc(&coresEngaged);
     cpus[LapicGetId()].stackTop = (Addr_t)regs;
 

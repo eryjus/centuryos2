@@ -1,5 +1,6 @@
 # -- Specific files to ignore
 TupRules.inc
+compile_commands.json
 
 
 # These are the directories and files we will ignore
@@ -9,6 +10,7 @@ TupRules.inc
 .settings
 .tup
 .vscode
+.cache
 img
 org.kde.konsole.desktop
 p1
@@ -30,11 +32,12 @@ targets/**/inc/constants.*
 targets/**/config
 targets/**/debug
 targets/**/inc/debug.h
-targets/**/bin/usr/include/*.h
+targets/**/usr/include/*.h
+targets/**/usr/include/sys/*.h
 targets/**/usr/include/kernel/*.h
+targets/**/usr/include/kernel/arch/*.h
 
 
-targets/x86_64-pc/usr/include/debug.h
-targets/x86_64-pc/usr/include/constants.inc
-targets/x86_64-pc/usr/include/constants.h
+targets/**/usr/include/*.h
+targets/**/usr/include/*.inc
 

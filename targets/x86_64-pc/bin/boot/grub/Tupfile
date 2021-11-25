@@ -38,6 +38,8 @@ include_rules
         echo "  module /boot/pmm.elf pmm"                           >> %o;      \
         echo "  module /boot/lapic.elf lapic"                       >> %o;      \
         echo "  module /boot/debugger.elf debugger"                 >> %o;      \
+        echo "  module /boot/msgq.elf msgq"                         >> %o;      \
+        echo "  module /boot/rtc.elf rtc"                           >> %o;      \
         echo "  boot"                                               >> %o;      \
         echo "}"                                                    >> %o;      \
         echo "menuentry \"CenturyOS (Multiboot2)\" {"               >> %o;      \
@@ -46,6 +48,8 @@ include_rules
         echo "  module2 /boot/pmm.elf pmm"                          >> %o;      \
         echo "  module2 /boot/lapic.elf lapic"                      >> %o;      \
         echo "  module2 /boot/debugger.elf debugger"                >> %o;      \
+        echo "  module2 /boot/msgq.elf msgq"                        >> %o;      \
+        echo "  module2 /boot/rtc.elf rtc"                          >> %o;      \
         echo "  boot"                                               >> %o;      \
         echo "}"                                                    >> %o;      \
 |> grub.cfg

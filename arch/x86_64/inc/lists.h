@@ -64,7 +64,6 @@ typedef struct ListHead_t {
 
     List_t list;
     Spinlock_t lock;            // -- this or a "bigger" lock must be obtained to change the list contents
-    size_t count;               // -- this is available for use by software; not used by `lists.h`
 } ListHead_t;
 
 

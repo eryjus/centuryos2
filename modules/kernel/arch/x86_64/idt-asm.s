@@ -16,9 +16,11 @@
 
 
 %include "constants.inc"
+%include "errno.inc"
 
 
         global  InternalTarget
+        global  ServiceTarget
 
         extern  internalTable
         extern  serviceTable
@@ -441,6 +443,14 @@ InternalTarget:
 
         call    CommonTarget            ;; jump to the common handler (below)
         mov     [rsp+8],rax             ;; set the return value
+
+        mov     r11,r9
+        mov     r9,r8
+        mov     r8,rcx
+        mov     rcx,rdx
+        mov     rdx,rsi
+        mov     rsi,rdi
+
         jmp     ExitPoint
 
 
@@ -480,6 +490,14 @@ ServiceTarget:
 
         call    CommonTarget            ;; jump to the common handler (below)
         mov     [rsp+8],rax             ;; set the return value
+
+        mov     r11,r9
+        mov     r9,r8
+        mov     r8,rcx
+        mov     rcx,rdx
+        mov     rdx,rsi
+        mov     rsi,rdi
+
         jmp     ExitPoint
 
 
@@ -487,7 +505,7 @@ ServiceTarget:
 ;; -- Return the proper error code
 ;;    ----------------------------
 Einval:
-        mov     qword [rsp+8],-22
+        mov     qword [rsp+8],-ENOSYS
         jmp     ExitPoint
 
 

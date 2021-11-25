@@ -43,7 +43,7 @@ CFLAGS += -mno-sse2
 ##
 ## -- The macros that are used for the build
 ##    --------------------------------------
-!as = | $(WS)/targets/$(ARCH)-$(PLAT)/usr/include/constants.inc     |> nasm -felf64 $(NFLAGS) $(CCDEFINE)  -o %o %f     |> %B.o
-!cc = | $(DEPS)                                                         |> $(CC) $(CFLAGS) $(CCDEFINE) -o %o %f             |> %B.o
+!as = | $(WS)/targets/$(ARCH)-$(PLAT)/usr/include/constants.inc         |> ^j^ nasm -felf64 $(NFLAGS) $(CCDEFINE)  -o %o %f     |> %B.o
+!cc = | $(DEPS)                                                         |> ^j^ $(CC) $(CFLAGS) $(CCDEFINE) -o %o %f             |> %B.o
 
 

@@ -49,6 +49,7 @@ LDFLAGS += -O2
 ##    -------------------------------------
 CFLAGS += -ffreestanding
 CFLAGS += -nostdlib
+CFLAGS += -nostdinc
 CFLAGS += -fno-builtin
 CFLAGS += -fno-unwind-tables
 CFLAGS += -fno-exceptions
@@ -57,6 +58,7 @@ CFLAGS += -g
 CFLAGS += -Werror
 CFLAGS += -Wall
 CFLAGS += -c
+CFLAGS += -DCURRENT_YEAR=$(CURRENT_YEAR)
 
 CFLAGS+=-I $(WS)/modules/$(MODULE)/inc
 CFLAGS+=-I $(WS)/modules/$(MODULE)/arch/$(ARCH)
@@ -71,7 +73,11 @@ CFLAGS+=-I $(WS)/modules/common/arch/$(ARCH)
 ## -- Call out the dependencies
 ##    -------------------------
 DEPS+= $(WS)/targets/$(ARCH)-$(PLAT)/usr/include/*
+DEPS+= $(WS)/targets/$(ARCH)-$(PLAT)/usr/include/sys/*
 DEPS+= $(WS)/targets/$(ARCH)-$(PLAT)/usr/include/kernel/*
 DEPS+= $(WS)/targets/$(ARCH)-$(PLAT)/usr/include/kernel/arch/*
+
+
+SDEPS+= $(WS)/targets/$(ARCH)-$(PLAT)/usr/include/*
 
 

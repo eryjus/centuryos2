@@ -111,7 +111,11 @@ extern "C" Addr_t krn_PauseCores(void)
 
     IpiSendIpi(IPI_PAUSE_CORES);
     int active = KrnActiveCores();
-    while (AtomicRead(&coresEngaged) != active) {}
+//    kprintf("%d cores running; I am CPU%d\n", active, LapicGetId());
+    while (AtomicRead(&coresEngaged) != active) {
+//        kprintf("%d cores engaged\n", AtomicRead(&coresEngaged));
+//        for (volatile int i = 0; i < 1000000; i ++) {}
+    }
 
     return flags;
 }

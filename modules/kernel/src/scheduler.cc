@@ -63,7 +63,10 @@
 #include "kernel-funcs.h"
 #include "boot-interface.h"
 #include "internals.h"
+#include "spinlock.h"
 #include "scheduler.h"
+
+#include <sys/msg.h>
 
 
 
@@ -136,7 +139,7 @@ void ProcessLockScheduler(bool save)
 {
     if (AtomicRead(&scheduler.schedulerLockCount) == 0 || scheduler.lockCpu != ThisCpu()->cpuNum) {
         Addr_t flags = DisableInt();
-        SpinLock(&schedulerLock);
+        krn_SpinLock(&schedulerLock);
 
         scheduler.lockCpu = ThisCpu()->cpuNum;
 
@@ -167,7 +170,7 @@ void ProcessUnlockScheduler(void)
     assert_msg(AtomicRead(&scheduler.schedulerLockCount) > 0, "schedulerLockCount out if sync");
 
     if (AtomicDecAndTest0(&scheduler.schedulerLockCount)) {
-        SpinUnlock(&schedulerLock);
+        krn_SpinUnlock(&schedulerLock);
         RestoreInt(scheduler.flags);
     }
 }
@@ -404,7 +407,7 @@ void ProcessTerminate(Process_t *proc)
     if (proc == CurrentThread()) {
         assert(proc->stsQueue.next == &proc->stsQueue);
         Enqueue(&scheduler.listTerminated, &proc->stsQueue);
-        sch_ProcessBlock(PROC_TERM);
+        sch_ProcessBlock(PROC_TERM, NULL);
     } else {
         kprintf(".. termianting another process\n");
         ProcessListRemove(proc);
@@ -412,6 +415,12 @@ void ProcessTerminate(Process_t *proc)
         proc->status = PROC_TERM;
     }
 
+    struct {
+        long msgtyp;
+        char text[0];
+    } msg = {0};
+
+    msgsnd(msgget(KEY_BUTLER, 0), &msg, 0, 0);
     ProcessUnlockAndSchedule();
 }
 
@@ -430,12 +439,6 @@ void ProcessStart(void)
     kprintf("Starting new process with address space %p\n", GetAddressSpace());
 
     ProcessUnlockScheduler();
-
-    assert_msg(AtomicRead(&scheduler.schedulerLockCount) == 0,
-            "`ProcessStart()` still has a scheduler lock remaining");
-
-    assert_msg(AtomicRead(&scheduler.postponeCount) == 0, "`ProcessStart()` with a pending process change");
-
     EnableInt();
 }
 
@@ -450,12 +453,18 @@ void ProcessEnd(void)
     Process_t *proc = CurrentThread();
     assert(proc->stsQueue.next == &proc->stsQueue);
     Enqueue(&scheduler.listTerminated, &proc->stsQueue);
-    sch_ProcessBlock(PROC_TERM);
+    sch_ProcessBlock(PROC_TERM, NULL);
 
     // -- send a message with the scheduler already locked
-//    _MessageQueueSend(butlerMsgq, BUTLER_CLEAN_PROCESS, 0, 0, false);
+    struct {
+        long msgtyp;
+        char text[0];
+    } msg = {0};
+
+    msgsnd(msgget(KEY_BUTLER, 0), &msg, 0, 0);
 
     ProcessUnlockAndSchedule();
+    while (true) {}
 }
 
 
@@ -663,7 +672,7 @@ Return_t ProcessInit(BootInterface_t *loaderInterface)
 //
 // -- Functions to block the current process
 //    --------------------------------------
-Return_t sch_ProcessBlock(ProcStatus_t reason)
+Return_t sch_ProcessBlock(ProcStatus_t reason, ListHead_t *list)
 {
     if (!assert(reason >= PROC_INIT && reason <= PROC_MSGW)) return -EINVAL;
     if (!assert(CurrentThread() != NULL)) return -EINVAL;
@@ -671,8 +680,8 @@ Return_t sch_ProcessBlock(ProcStatus_t reason)
 //    kprintf("Blocking current process %p\n", CurrentThread());
 
     ProcessLockAndPostpone();
+    if (list) ListAddTail(list, &CurrentThread()->stsQueue);
     CurrentThread()->status = reason;
-    CurrentThread()->pendingErrno = 0;
     AtomicSet(&CurrentThread()->quantumLeft, 0);
     ProcessSchedule();
 
@@ -764,7 +773,7 @@ Return_t sch_ProcessMicroSleepUntil(uint64_t when)
     CurrentThread()->wakeAtMicros = when;
     if (when < scheduler.nextWake) scheduler.nextWake = when;
     Enqueue(&scheduler.listSleeping, &(CurrentThread()->stsQueue));
-    sch_ProcessBlock(PROC_DLYW);
+    sch_ProcessBlock(PROC_DLYW, NULL);
     ProcessUnlockAndSchedule();
 
     return 0;
@@ -818,6 +827,27 @@ void SchedulerLateInit(void)
 #if IS_ENABLED(KERNEL_DEBUGGER)
     SchedulerDebugInit();
 #endif
+}
+
+
+//
+// -- Ready all processes in the list
+//    -------------------------------
+Return_t sch_ProcessReadyList(ListHead_t *head)
+{
+    ProcessLockAndPostpone();
+
+    ListHead_t::List_t *wrk = head->list.next;
+    while (wrk != &head->list) {
+        ListRemoveInit(wrk);
+
+        sch_ProcessReady(FIND_PARENT(wrk, Process_t, stsQueue));
+        wrk = wrk->next;
+    }
+
+    ProcessUnlockAndSchedule();
+
+    return 0;
 }
 
 
@@ -1249,10 +1279,6 @@ void DebugShowProcess(void)
 
     ksprintf(buf, "| " ANSI_ATTR_BOLD "Wake tick number" ANSI_ATTR_NORMAL "        | %-16d           |\n",
             proc->wakeAtMicros);
-    DbgOutput(buf);
-
-    ksprintf(buf, "| " ANSI_ATTR_BOLD "Pending Error Number" ANSI_ATTR_NORMAL "    | %-5d                      |\n",
-            proc->pendingErrno);
     DbgOutput(buf);
 
     DbgOutput("+-------------------------+----------------------------+\n");

@@ -35,7 +35,7 @@ include_rules
 ##
 ## -- The rules to build the objects
 ##    ------------------------------
-: $(WS)/modules/kernel/inc/errno.h |> cp %f %o |> errno.h
+: foreach  $(WS)/modules/libc/inc/*.h |> cp %f %o |> %B.h
 
 
 ##
@@ -43,6 +43,8 @@ include_rules
 ##    -----------------------------------------------
 : $(WS)/targets/$(TARGET)/config |> awk '{if (substr($0,1,1) != "#" && $1 != "") print "#define " $1" "$2 }' %f > %o |> constants.h
 : $(WS)/targets/$(TARGET)/config |> awk '{if (substr($0,1,1) != "#" && $1 != "") print "%%define " $1" "$2 }' %f > %o |> constants.inc
+
+: errno.h |> awk '{if (substr($0,1,7) == "#define") print "%%define " $2" "$3 }' %f > %o |> errno.inc
 
 
 : $(WS)/targets/$(TARGET)/debug |> awk '{if (substr($0,1,1) != "#" && $1 != "") print "#define " $1" "$2 }' %f > %o |> debug.h

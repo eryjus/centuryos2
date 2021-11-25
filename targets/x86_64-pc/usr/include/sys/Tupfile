@@ -1,0 +1,40 @@
+#####################################################################################################################
+##
+##  Tupfile -- An alternative to 'make` build system -- build the object files for the kernel
+##
+##        Copyright (c)  2017-2021 -- Adam Clark
+##        Licensed under "THE BEER-WARE LICENSE"
+##        See License.md for details.
+##
+##  This file sets up the build environment for the x86_64-pc build.
+##
+## -----------------------------------------------------------------------------------------------------------------
+##
+##     Date      Tracker  Version  Pgmr  Description
+##  -----------  -------  -------  ----  ---------------------------------------------------------------------------
+##  2021-Nov-21  Initial  v0.0.13  ADCL  Initial version
+##
+#####################################################################################################################
+
+
+##
+## -- Define the target ARCH and PLATFORM
+##    -----------------------------------
+ARCH=x86_64
+PLAT=pc
+TARGET=$(ARCH)-$(PLAT)
+
+
+##
+## -- Go get some additional information for building the targets
+##    -----------------------------------------------------------
+include_rules
+
+
+
+##
+## -- The rules to build the objects
+##    ------------------------------
+: foreach  $(WS)/modules/libc/inc/sys/*.h |> cp %f %o |> %B.h
+
+

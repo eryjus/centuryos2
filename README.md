@@ -69,3 +69,16 @@ Redmine is an open source issue tracking application can be found here: https://
 I have created a web page for this project.  You can visit the web page at http://centuryos.eryjus.com.  Documentation os the OS (Doxygen generated) is available there.
 
 
+***Doxygen-generated documentation***
+
+Several documentation components are lifted from the POSIX.1 specification:
+
+```
+The Open Group Base Specifications Issue 7, 2018 edition
+IEEE Std 1003.1-2017 (Revision of IEEE Std 1003.1-2008)
+Copyright © 2001-2018 IEEE and The Open Group
+```
+
+
+
+

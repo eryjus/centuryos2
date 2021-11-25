@@ -48,7 +48,7 @@ CFLAGS+=-DMMU_HEAP_END=0xffff980000000000
 : foreach  $(WS)/modules/common/platform/$(PLAT)/*.cc       | $(DEPS)           |> !cc |>
 : foreach  $(WS)/modules/common/arch/$(ARCH)/*.cc           | $(DEPS)           |> !cc |>
 
-: foreach  $(WS)/modules/$(MODULE)/arch/$(ARCH)/*.s                             |> !as |>
+: foreach  $(WS)/modules/$(MODULE)/arch/$(ARCH)/*.s         | $(SDEPS)          |> !as |>
 : foreach  $(WS)/modules/$(MODULE)/arch/$(ARCH)/*.cc        | $(DEPS)           |> !cc |>
 
 : foreach  $(WS)/modules/$(MODULE)/src/*.cc                 | $(DEPS)           |> !cc |>

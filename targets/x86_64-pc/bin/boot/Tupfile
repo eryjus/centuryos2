@@ -38,9 +38,10 @@ LDFLAGS += -L $(X86_64_LDFLAGS)
 LDFLAGS += -L $(WS)/targets/$(TARGET)/lib
 LIB += -l gcc
 LIB += -l k
+LIB += -l c
 
 
-DEPS += $(WS)/targets/$(TARGET)/lib/libk.a
+DEPS += $(WS)/targets/$(TARGET)/lib/*
 
 
 ##
@@ -52,6 +53,8 @@ PMM_LS=$(WS)/modules/pmm/arch/$(ARCH)/$(TARGET).ld
 LAPIC_LS=$(WS)/modules/pmm/arch/$(ARCH)/$(TARGET).ld
 SCHEDULER_LS=$(WS)/modules/scheduler/arch/$(ARCH)/$(TARGET).ld
 DEBUGGER_LS=$(WS)/modules/debugger/arch/$(ARCH)/$(TARGET).ld
+MSGQ_LS=$(WS)/modules/msgq/arch/$(ARCH)/$(TARGET).ld
+RTC_LS=$(WS)/modules/rtc/arch/$(ARCH)/$(TARGET).ld
 
 
 ##
@@ -61,4 +64,7 @@ DEBUGGER_LS=$(WS)/modules/debugger/arch/$(ARCH)/$(TARGET).ld
 : ../../obj/kernel/$(ARCH)/*.o          | $(KERNEL_LS) $(DEPS)          |> $(LD) -T $(KERNEL_LS) $(LDFLAGS) -o %o %f $(LIB);        |> kernel.elf
 : ../../obj/pmm/$(ARCH)/*.o             | $(PMM_LS) $(DEPS)             |> $(LD) -T $(PMM_LS) $(LDFLAGS) -o %o %f $(LIB);           |> pmm.elf
 : ../../obj/lapic/$(ARCH)/*.o           | $(LAPIC_LS) $(DEPS)           |> $(LD) -T $(LAPIC_LS) $(LDFLAGS) -o %o %f $(LIB);         |> lapic.elf
-: ../../obj/debugger/$(ARCH)/*.o        | $(DEBUGGER_LS) $(DEPS)        |> $(LD) -T $(DEBUGGER_LS) $(LDFLAGS) -o %o %f $(LIB);       |> debugger.elf
+: ../../obj/debugger/$(ARCH)/*.o        | $(DEBUGGER_LS) $(DEPS)        |> $(LD) -T $(DEBUGGER_LS) $(LDFLAGS) -o %o %f $(LIB);      |> debugger.elf
+: ../../obj/msgq/$(ARCH)/*.o            | $(MSGQ_LS) $(DEPS)            |> $(LD) -T $(MSGQ_LS) $(LDFLAGS) -o %o %f $(LIB);          |> msgq.elf
+: ../../obj/rtc/$(ARCH)/*.o             | $(RTC_LS) $(DEPS)             |> $(LD) -T $(RTC_LS) $(LDFLAGS) -o %o %f $(LIB);          |> rtc.elf
+

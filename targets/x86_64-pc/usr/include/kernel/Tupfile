@@ -44,6 +44,7 @@ include_rules
 : $(WS)/arch/$(ARCH)/inc/types.h |> cp %f %o |> types.h
 
 : $(WS)/modules/kernel/inc/scheduler.h |> cp %f %o |> scheduler.h
+: $(WS)/modules/kernel/inc/printf.h |> cp %f %o |> printf.h
 
 : $(WS)/modules/debugger/inc/debugger.h |> cp %f %o |> debugger.h
 

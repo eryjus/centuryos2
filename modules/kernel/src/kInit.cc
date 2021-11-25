@@ -26,6 +26,12 @@
 #include "scheduler.h"
 #include "kernel-funcs.h"
 #include "modules.h"
+#include "cpu.h"
+
+#include <sys/ipc.h>
+#include <sys/msg.h>
+#include <time.h>
+
 
 
 //
@@ -57,7 +63,6 @@ void kInit(void)
     CpuInit();                          // init the cpus tables
     ProcessInit(loaderInterface);
     ModuleEarlyInit();
-InternalTableDump();
     CpuApStart(loaderInterface);
     cpus[0].lastTimer = TmrCurrentCount();
 
@@ -69,11 +74,23 @@ InternalTableDump();
     ModuleLateInit();
 
     // -- take on the Butler role
+    kprintf("!!! Re-tasking kInit() to be the Butler Task!\n");
     CurrentThread()->priority = (ProcPriority_t)PTY_LOW;
     ksprintf(CurrentThread()->command, "Butler");
 
+    int msqid = msgget(((key_t)'A') << 56, IPC_CREAT | 0660);
+    assert_msg(msqid != -1, "The butler Message Queue could not be allocated\n");
+    kprintf("The msqid is %d\n", msqid);
+
     while (true) {
-        sch_ProcessBlock(PROC_MSGW);
+//        sch_ProcessBlock(PROC_MSGW, NULL);
+        struct {
+            long msgtyp;
+            char text[0];
+        } msg;
+
+BOCHS_INSTRUMENTATION
+        msgrcv(msqid, &msg, 0, 0, 0);
     }
 }
 

@@ -300,6 +300,7 @@ extern Addr_t isr254;
 extern Addr_t isr255;
 
 extern Addr_t InternalTarget;
+extern Addr_t ServiceTarget;
 extern Addr_t TimerVector;
 
 
@@ -547,7 +548,9 @@ void IntInit(void)
     ISR_VECTOR(97)
     ISR_VECTOR(98)
     ISR_VECTOR(99)
-    ISR_VECTOR(100)
+
+    IdtSetHandler(0x64, 8, &ServiceTarget, 0, 0);       // 100
+
     ISR_VECTOR(101)
     ISR_VECTOR(102)
     ISR_VECTOR(103)

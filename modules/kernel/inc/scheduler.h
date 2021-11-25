@@ -53,9 +53,11 @@
 #pragma once
 
 
+#include "lists.h"
 #include "types.h"
 #include "boot-interface.h"
 #include "printf.h"
+#include <sys/ipc.h>
 
 
 //
@@ -140,7 +142,10 @@ typedef struct Process_t {
     uint64_t wakeAtMicros;              // Wake this process at or after this micros since boot
     ListHead_t::List_t stsQueue;        // This is the location on the current status queue
     ListHead_t::List_t globalList;      // This is the global list entry
-    int pendingErrno;                   // this is the pending error number for a blocked process
+    uid_t realUid;                      // The original user id (real)
+    gid_t realGid;                      // The original group id (real)
+    uid_t uid;                          // Effective uid
+    gid_t gid;                          // Effective gid
 
     ListHead_t references;              // NOTE the lock is required to update this structure
 } Process_t;
@@ -215,7 +220,7 @@ extern "C" {
     void ProcessNewStack(Process_t *proc, Addr_t startingAddr);
     Process_t *sch_ProcessCreate(const char *name, Addr_t startingAddr, Addr_t addrSpace, ProcPriority_t pty);
     Return_t sch_Tick(uint64_t now);
-    Return_t sch_ProcessBlock(ProcStatus_t reason);
+    Return_t sch_ProcessBlock(ProcStatus_t reason, ListHead_t *list);
     Return_t sch_ProcessReady(Process_t *proc);
     Return_t sch_ProcessUnblock(Process_t *proc);
     Return_t sch_ProcessMicroSleepUntil(uint64_t when);
@@ -225,7 +230,12 @@ extern "C" {
     void SchedulerCreateKInitAp(int cpu);
     const char *ProcStatusStr(ProcStatus_t s);
     const char *ProcPriorityStr(ProcPriority_t p);
+    Return_t sch_ProcessReadyList(ListHead_t *head);
 }
+
+
+inline uid_t EffectiveUid(void) { return CurrentThread()->uid; }
+inline gid_t EffectiveGid(void) { return CurrentThread()->gid; }
 
 
 extern Scheduler_t scheduler;

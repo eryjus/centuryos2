@@ -116,6 +116,7 @@ all: init
 .PHONY: init
 init: TupRules.inc
 	if [ ! -f .tup/db ]; then `tup init`; fi;
+	tup compiledb
 	doxygen .doxygen
 
 
@@ -125,6 +126,7 @@ init: TupRules.inc
 TupRules.inc: Makefile
 	echo WS = `pwd` > $@
 	echo X86_64_LDFLAGS = $(dir $(X86_64-LIB)) >> $@
+	echo CURRENT_YEAR = `date +%Y` >> $@
 
 
 ## ==================================================================================================================

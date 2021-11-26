@@ -74,7 +74,8 @@ int kprintf(const char *fmt, ...)
 
 
     if (pCnt > 6) {
-        return kprintf("ERROR: Too many `kprintf()` parameters; use 6 or less!\n");
+        kprintf("ERROR: Too many `kprintf()` parameters; use 6 or less!\n");
+        return 0;
     }
 
    int printed = 0;

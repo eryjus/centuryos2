@@ -65,6 +65,7 @@
 #include "internals.h"
 #include "spinlock.h"
 #include "scheduler.h"
+#include "mmu.h"
 
 #include <sys/msg.h>
 
@@ -120,7 +121,12 @@ Spinlock_t schedulerLock = {0};
 //    --------------------------------
 static void ProcessIdle(void)
 {
+#if DEBUG_ENABLED(ProcessIdle)
+
     kprintf("Starting the idle process\n");
+
+#endif
+
     CurrentThread()->priority = PTY_IDLE;
 
     while (true) {
@@ -213,7 +219,13 @@ static Process_t *ProcessNext(ProcPriority_t pty)
     } else if (IsListEmpty(&scheduler.queueIdle) == false && PTY_IDLE >= pty) {
         return FIND_PARENT(scheduler.queueIdle.list.next, Process_t, stsQueue);
     } else {
-//        kprintf(".. no next process\n");
+
+#if DEBUG_ENABLED(ProcessNext)
+
+        kprintf(".. no next process\n");
+
+#endif
+
         return NULL;
     }
 }
@@ -245,7 +257,14 @@ static void ProcessAddGlobal(Process_t *proc)
 {
     ProcessLockAndPostpone();
 
-    kprintf(".. Checking scheduler Global Process List: %p (%p)\n", &scheduler.globalProcesses, scheduler.globalProcesses);
+#if DEBUG_ENABLED(ProcessAddGlobal)
+
+    kprintf(".. Checking scheduler Global Process List: %p (%p)\n",
+            &scheduler.globalProcesses,
+            scheduler.globalProcesses);
+
+#endif
+
     ListAddTail(&scheduler.globalProcesses, &proc->globalList);
 
     ProcessUnlockAndSchedule();
@@ -409,7 +428,13 @@ void ProcessTerminate(Process_t *proc)
         Enqueue(&scheduler.listTerminated, &proc->stsQueue);
         sch_ProcessBlock(PROC_TERM, NULL);
     } else {
+
+#if DEBUG_ENABLED(ProcessTerminate)
+
         kprintf(".. termianting another process\n");
+
+#endif
+
         ProcessListRemove(proc);
         Enqueue(&scheduler.listTerminated, &proc->stsQueue);
         proc->status = PROC_TERM;
@@ -436,7 +461,11 @@ void ProcessStart(void)
     assert_msg(AtomicRead(&scheduler.schedulerLockCount) == 1,
             "`ProcessStart()` is executing while too many locks are held");
 
+#if DEBUG_ENABLED(ProcessStart)
+
     kprintf("Starting new process with address space %p\n", GetAddressSpace());
+
+#endif
 
     ProcessUnlockScheduler();
     EnableInt();
@@ -527,12 +556,21 @@ Return_t sch_Tick(uint64_t now)
 //    --------------------------------------------------------------
 Process_t *sch_ProcessCreate(const char *name, Addr_t startingAddr, Addr_t addrSpace, ProcPriority_t pty)
 {
+#if DEBUG_ENABLED(sch_ProcessCreate)
+
     kprintf("Creating a new process named at %p (%s), starting at %p\n", name, name, startingAddr);
     kprintf(".. the address space for this process in %p\n", addrSpace);
 
+#endif
+
     Process_t *rv = NEW(Process_t);
     if (!assert_msg(rv != NULL, "Out of memory allocating a new Process_t")) {
+#if DEBUG_ENABLED(sch_ProcessCreate)
+
         kprintf("Out of memory allocating a new Process_t");
+
+#endif
+
         while (true) {
             __asm volatile("hlt");
         }
@@ -541,7 +579,12 @@ Process_t *sch_ProcessCreate(const char *name, Addr_t startingAddr, Addr_t addrS
     kMemSetB(rv, 0, sizeof(Process_t));
 
     // -- set the name of the process
+#if DEBUG_ENABLED(sch_ProcessCreate)
+
     kprintf(".. naming the process: %s\n", name);
+
+#endif
+
     int len = kStrLen(name + 1);
 
     // -- make sure we do not blow out the buffer
@@ -567,7 +610,12 @@ Process_t *sch_ProcessCreate(const char *name, Addr_t startingAddr, Addr_t addrS
     //
     // -- Construct the stack for the architecture
     //    ----------------------------------------
+#if DEBUG_ENABLED(sch_ProcessCreate)
+
     kprintf(".. Creating the new Process's stack\n");
+
+#endif
+
     rv->virtAddrSpace = addrSpace;
     ProcessNewStack(rv, startingAddr);
 
@@ -575,7 +623,12 @@ Process_t *sch_ProcessCreate(const char *name, Addr_t startingAddr, Addr_t addrS
     //
     // -- Put this process on the queue to execute
     //    ----------------------------------------
+#if DEBUG_ENABLED(sch_ProcessCreate)
+
     kprintf(".. Readying the new process to be scheduled: %p\n", rv);
+
+#endif
+
     sch_ProcessReady(rv);
 
 
@@ -588,11 +641,19 @@ Process_t *sch_ProcessCreate(const char *name, Addr_t startingAddr, Addr_t addrS
 //    ---------------------------------
 Return_t ProcessInit(BootInterface_t *loaderInterface)
 {
-    // -- map/unmap this address to build out the intermediate tables
-    MmuMapPage(MMU_STACK_INIT_VADDR, 1, 0);
-    MmuUnmapPage(MMU_STACK_INIT_VADDR);
+#if DEBUG_ENABLED(ProcessInit)
 
     kprintf("ProcessInit() called\n");
+
+#endif
+
+    krn_StackAlloc(KERNEL_STACK);               // -- Need to make sure the stack we are using is allocated!
+
+    // -- map/unmap this address to build out the intermediate tables
+//    cmn_MmuMapPage(MMU_STACK_INIT_VADDR, 1, 0);
+//    cmn_MmuUnmapPage(MMU_STACK_INIT_VADDR);
+
+#if DEBUG_ENABLED(ProcessInit)
 
     kprintf("Process table offsets:\n");
     kprintf("  TOS: %d\n", offsetof(Process_t, tosProcessSwap));
@@ -605,6 +666,7 @@ Return_t ProcessInit(BootInterface_t *loaderInterface)
     kprintf("  Lock count: %d (%d)\n", offsetof(Scheduler_t, schedulerLockCount), sizeof (AtomicInt_t));
     kprintf("  Postpone count: %d (%d)\n", offsetof(Scheduler_t, postponeCount), sizeof(AtomicInt_t));
 
+#endif
 
     ListInit(&scheduler.queueOS.list);
     ListInit(&scheduler.queueHigh.list);
@@ -619,7 +681,11 @@ Return_t ProcessInit(BootInterface_t *loaderInterface)
 
     Process_t *proc = NEW(Process_t);
 
+#if DEBUG_ENABLED(ProcessInit)
+
     kprintf(".. the current process is located at %p\n", proc);
+
+#endif
 
     if (!assert(proc != NULL)) {
         kprintf("FATAL: Unable to allocate Current Process structure\n");
@@ -651,18 +717,35 @@ Return_t ProcessInit(BootInterface_t *loaderInterface)
     ProcessAddGlobal(proc);           // no lock required -- still single threaded
     CurrentThreadAssign(proc);
 
+#if DEBUG_ENABLED(ProcessInit)
+
     kprintf(".. The current timer for the kInit process is %p\n", proc->timeUsed);
+
+#endif
 
     //
     // -- Create an idle process for each CPU
     //    -----------------------------------
     for (int i = 0; i < loaderInterface->cpuCount; i ++) {
+#if DEBUG_ENABLED(ProcessInit)
+
         kprintf("starting idle process %d\n", i, ProcessIdle);
+#endif
+
         sch_ProcessCreate("Idle Process", (Addr_t)ProcessIdle, GetAddressSpace(), PTY_IDLE);
     }
 
-    ThisCpu()->lastTimer = TmrCurrentCount();
+#if DEBUG_ENABLED(ProcessInit)
+
+        kprintf("Grabbing the timer!\n");
+#endif
+
+#if DEBUG_ENABLED(ProcessInit)
+
+    kprintf("The initial time was set to %ld\n", ThisCpu()->lastTimer);
     kprintf("ProcessInit() complete\n");
+
+#endif
 
     return 0;
 }
@@ -793,7 +876,13 @@ void SchedulerCreateKInitAp(int cpu)
 
     // -- set the name of the process
     ksprintf(name, "kInitAp(%d)", cpu);
+
+#if DEBUG_ENABLED(SchedulerCreateKInitAp)
+
     kprintf(".. naming the process: %s\n", name);
+
+#endif
+
     int len = kStrLen(name + 1);
     proc->command[len + 1] = 0;
     kStrCpy(proc->command, name);
@@ -947,13 +1036,11 @@ DbgModule_t schedModule = {
 //    ----------------------------------------
 void SchedulerDebugInit(void)
 {
-    extern Addr_t __stackSize;
-
-    schedModule.stack = StackFind();
-    for (Addr_t s = schedModule.stack; s < schedModule.stack + __stackSize; s += PAGE_SIZE) {
+    schedModule.stack = krn_StackFind();
+    for (Addr_t s = schedModule.stack; s < schedModule.stack + STACK_SIZE; s += PAGE_SIZE) {
         MmuMapPage(s, PmmAlloc(), PG_WRT);
     }
-    schedModule.stack += __stackSize;
+    schedModule.stack += STACK_SIZE;
 
     DbgRegister(&schedModule, schedStates, schedTrans);
 }

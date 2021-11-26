@@ -30,7 +30,6 @@
 #include "boot-interface.h"
 #include "kernel-funcs.h"
 #include "heap.h"
-#include "stacks.h"
 
 
 
@@ -183,15 +182,13 @@ Return_t dbg_Register(DbgModule_t *mod, DbgState_t *states, DbgTransition_t *tra
 Return_t DebuggerEarlyInit(BootInterface_t *loader)
 {
 #if IS_ENABLED(KERNEL_DEBUGGER)
-    extern Addr_t __stackSize;
-
     ProcessInitTable();
 
-    debuggerModule.stack = StackFind();
-    for (Addr_t s = debuggerModule.stack; s < debuggerModule.stack + __stackSize; s += PAGE_SIZE) {
+    debuggerModule.stack = KrnStackFind();
+    for (Addr_t s = debuggerModule.stack; s < debuggerModule.stack + STACK_SIZE; s += PAGE_SIZE) {
         MmuMapPage(s, PmmAlloc(), PG_WRT);
     }
-    debuggerModule.stack += __stackSize;
+    debuggerModule.stack += STACK_SIZE;
 
     ListInit(&modList.list);
 

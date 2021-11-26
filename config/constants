@@ -129,6 +129,9 @@ INT_KRN_RLS_MEM                         0x021
 INT_KRN_CORES_ACTIVE                    0x022
 INT_KRN_PAUSE_CORES                     0x023
 INT_KRN_RELEASE_CORES                   0x024
+INT_KRN_STACK_FIND                      0x025
+INT_KRN_STACK_ALLOC                     0x026
+INT_KRN_STACK_RELEASE                   0x027
 
 ## -- Timer Module Functions
 INT_TMR_CURRENT_COUNT                   0x040

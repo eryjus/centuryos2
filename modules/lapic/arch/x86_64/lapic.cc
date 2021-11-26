@@ -494,8 +494,6 @@ extern "C" int ipi_SendIpi(int vector)
 #if IS_ENABLED(KERNEL_DEBUGGER) || defined(__DOXYGEN__)
 
 
-#include "stacks.h"
-
 
 /****************************************************************************************************************//**
 *   @fn                 void DebugTimerCounts(void)
@@ -578,13 +576,11 @@ DbgModule_t tmrModule = {
 *///-----------------------------------------------------------------------------------------------------------------
 extern "C" void LapicDebugInit(void)
 {
-    extern Addr_t __stackSize;
-
-    tmrModule.stack = StackFind();
-    for (Addr_t s = tmrModule.stack; s < tmrModule.stack + __stackSize; s += PAGE_SIZE) {
+    tmrModule.stack = KrnStackFind();
+    for (Addr_t s = tmrModule.stack; s < tmrModule.stack + STACK_SIZE; s += PAGE_SIZE) {
         MmuMapPage(s, PmmAlloc(), PG_WRT);
     }
-    tmrModule.stack += __stackSize;
+    tmrModule.stack += STACK_SIZE;
 
     DbgRegister(&tmrModule, tmrStates, tmrTrans);
 }

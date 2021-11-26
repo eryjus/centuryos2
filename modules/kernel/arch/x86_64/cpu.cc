@@ -111,14 +111,18 @@ void CpuApStart(BootInterface_t *interface)
 
     for (int i = 1; i < interface->cpuCount; i ++) {
 #if DEBUG_ENABLED(CpuApStart)
+
         kprintf("Preparing to start CPU %d\n", i);
+
 #endif
 
-        Addr_t kStack = StackFind();
+        Addr_t kStack = KrnStackFind();
         trampLoader->kStack = kStack + STACK_SIZE;
 
 #if DEBUG_ENABLED(CpuApStart)
+
         kprintf(".. Preparing a stack at %p\n", kStack);
+
 #endif
 
         for (int j = 0; j < STACK_SIZE; j += PAGE_SIZE) {
@@ -129,13 +133,17 @@ void CpuApStart(BootInterface_t *interface)
         AtomicSet(&cpus[i].state, CPU_STARTING);
 
 #if DEBUG_ENABLED(CpuApStart)
+
         kprintf(".. Sending INIT\n");
+
 #endif
 
         IpiSendInit(i);
 
 #if DEBUG_ENABLED(CpuApStart)
+
         kprintf(".. Sending Startup INI\n");
+
 #endif
 
         IpiSendSipi(i, TRAMP_OFF);
@@ -154,8 +162,10 @@ void CpuApStart(BootInterface_t *interface)
         cpusActive ++;
 
 #if DEBUG_ENABLED(CpuApStart)
+
         kprintf("CPU %d has reported its startup is complete\n", i);
         kprintf(".. There are now %d CPUs active\n", cpusActive);
+
 #endif
     }
 }

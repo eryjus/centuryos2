@@ -18,7 +18,6 @@
 
 #include "types.h"
 #include "kernel-funcs.h"
-#include "stacks.h"
 #include "heap.h"
 
 

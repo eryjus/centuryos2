@@ -282,13 +282,11 @@ DbgModule_t cpuModule = {
 *///-----------------------------------------------------------------------------------------------------------------
 extern "C" void CpuDebugInit(void)
 {
-    extern Addr_t __stackSize;
-
-    cpuModule.stack = StackFind();
-    for (Addr_t s = cpuModule.stack; s < cpuModule.stack + __stackSize; s += PAGE_SIZE) {
+    cpuModule.stack = KrnStackFind();
+    for (Addr_t s = cpuModule.stack; s < cpuModule.stack + STACK_SIZE; s += PAGE_SIZE) {
         MmuMapPage(s, PmmAlloc(), PG_WRT);
     }
-    cpuModule.stack += __stackSize;
+    cpuModule.stack += STACK_SIZE;
 
     DbgRegister(&cpuModule, cpuStates, cpuTrans);
 }

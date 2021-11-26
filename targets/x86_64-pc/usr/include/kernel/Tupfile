@@ -40,7 +40,6 @@ include_rules
 : $(WS)/modules/common/inc/elf.h |> cp %f %o |> elf.h
 : $(WS)/modules/libk/inc/heap.h |> cp %f %o |> heap.h
 : $(WS)/modules/common/inc/serial.h |> cp %f %o |> serial.h
-: $(WS)/modules/libk/inc/stacks.h |> cp %f %o |> stacks.h
 : $(WS)/arch/$(ARCH)/inc/types.h |> cp %f %o |> types.h
 
 : $(WS)/modules/kernel/inc/scheduler.h |> cp %f %o |> scheduler.h

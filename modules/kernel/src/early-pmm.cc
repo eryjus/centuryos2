@@ -31,7 +31,11 @@ Frame_t PmmEarlyFrame(void)
     extern BootInterface_t *loaderInterface;
     Frame_t rv = loaderInterface->nextEarlyFrame ++;
 
+#if DEBUG_ENABLED(PmmEarlyFrame)
+
     kprintf(".. (new early frame: %p)\n", rv);
+
+#endif
 
     return rv;
 }

@@ -56,11 +56,10 @@ Return_t krn_SetInternalHandler(int i, Addr_t handler, Addr_t cr3, Addr_t stack)
 {
     if (i < 0 || i >= MAX_HANDLERS) return -EINVAL;
 
-    kprintf("Setting internal handler %d to %p from %p\n", i, handler, cr3);
+//    kprintf("Setting internal handler %d to %p from %p\n", i, handler, cr3);
 
     internalTable[i].handler = handler;
     internalTable[i].cr3 = cr3;
-    internalTable[i].stack = stack;
     internalTable[i].runtimeRegs = 0;
 
     return 0;
@@ -155,9 +154,9 @@ void InternalInit(void)
     for (int i = 0; i < MAX_HANDLERS; i ++) {
         internalTable[i].handler = (Addr_t)NULL;
         internalTable[i].cr3 = 0;
-        internalTable[i].stack = 0;
+//        internalTable[i].stack = 0;
         internalTable[i].runtimeRegs = 0;
-        internalTable[i].lock = {0};
+//        internalTable[i].lock = {0};
     }
 
     internalTable[INT_GET_INTERNAL].handler =       (Addr_t)krn_GetInternalHandler;
@@ -178,10 +177,10 @@ void InternalInit(void)
     internalTable[INT_KRN_MMU_IS_MAPPED].handler =  (Addr_t)cmn_MmuIsMapped;
     internalTable[INT_KRN_MMU_DUMP].handler =       (Addr_t)krn_MmuDump;
     internalTable[INT_KRN_MMU_MAP_EX].handler =     (Addr_t)krn_MmuMapPageEx;
-    internalTable[INT_KRN_MMU_MAP_EX].stack =       0xffffff0000008000 + 0x1000;
+//    internalTable[INT_KRN_MMU_MAP_EX].stack =       0xffffff0000008000 + 0x1000;
     internalTable[INT_KRN_MMU_MAP_EX].cr3 =         GetAddressSpace();
     internalTable[INT_KRN_MMU_UNMAP_EX].handler =   (Addr_t)krn_MmuUnmapEx;
-    internalTable[INT_KRN_MMU_UNMAP_EX].stack =     0xffffff0000009000 + 0x1000;
+//    internalTable[INT_KRN_MMU_UNMAP_EX].stack =     0xffffff0000009000 + 0x1000;
     internalTable[INT_KRN_MMU_UNMAP_EX].cr3 =       GetAddressSpace();
 
     internalTable[INT_KRN_COPY_MEM].handler =       (Addr_t)krn_AllocAndCopy;
@@ -189,6 +188,9 @@ void InternalInit(void)
     internalTable[INT_KRN_CORES_ACTIVE].handler =   (Addr_t)krn_ActiveCores;
     internalTable[INT_KRN_PAUSE_CORES].handler =    (Addr_t)krn_PauseCores;
     internalTable[INT_KRN_RELEASE_CORES].handler =  (Addr_t)krn_ReleaseCores;
+    internalTable[INT_KRN_STACK_FIND].handler =     (Addr_t)krn_StackFind;
+    internalTable[INT_KRN_STACK_ALLOC].handler =    (Addr_t)krn_StackAlloc;
+    internalTable[INT_KRN_STACK_RELEASE].handler =  (Addr_t)krn_StackRelease;
 
     internalTable[INT_PMM_ALLOC].handler =          (Addr_t)PmmEarlyFrame;
 
@@ -202,8 +204,8 @@ void InternalInit(void)
     internalTable[INT_DBG_INSTALLED].handler =      (Addr_t)krn_DebuggerInstalled;
 
 
-    cmn_MmuMapPage(0xffffff0000008000, PmmAlloc(), PG_WRT);
-    cmn_MmuMapPage(0xffffff0000009000, PmmAlloc(), PG_WRT);
+//    cmn_MmuMapPage(0xffffff0000008000, PmmAlloc(), PG_WRT);
+//    cmn_MmuMapPage(0xffffff0000009000, PmmAlloc(), PG_WRT);
 }
 
 
@@ -218,8 +220,8 @@ void InternalTableDump(void)
 
     for (int i = 0; i < MAX_HANDLERS; i ++) {
         if (internalTable[i].handler != 0 || internalTable[i].cr3 != 0) {
-            kprintf("  %d: %p from context %p on stack %p\n", i, internalTable[i].handler,
-                    internalTable[i].cr3, internalTable[i].stack);
+            kprintf("  %d (%p): %p from context %p\n", i, &internalTable[i], internalTable[i].handler,
+                    internalTable[i].cr3);
         }
     }
 }

@@ -112,10 +112,7 @@ isr%1:
         push    rbx
 
         mov     rax,[rsp+16]
-        mov     rbx,rax
         shl     rax,5                   ;; 32 bytes in the structure; offset the service
-        shl     rbx,4                   ;; add another 16 bytes to the structure;
-        add     rax,rbx                 ;; total of 48 bytes.
 
         mov     rbx,vectorTable
         lea     rbx,[rbx+rax]           ;; load the table address
@@ -394,14 +391,13 @@ IntCommonTarget:
         push    rax
         push    rbx
 
-        mov     rax,[rsp+16]
-        mov     rbx,rax
+        push    rax
+        mov     rax,[rsp+16]            ;; get the interrupt number
         shl     rax,5                   ;; 32 bytes in the structure; offset the service
-        shl     rbx,4                   ;; add another 16 bytes to the structure;
-        add     rax,rbx                 ;; total of 48 bytes.
 
         mov     rbx,vectorTable
         lea     rbx,[rbx+rax]           ;; load the table address
+        pop     rax
 
         call    CommonTarget            ;; jump to the common handler (below)
         jmp     ExitPoint
@@ -424,15 +420,12 @@ InternalTarget:
         cmp     rbx,MAX_HANDLERS
         jge     Einval
 
-        push    rax
-        mov     rax,rbx
-        shl     rax,5                   ;; 32 bytes in the structure; offset the service
-        shl     rbx,4                   ;; add another 16 bytes to the structure;
-        add     rbx,rax                 ;; total of 48 bytes.
+        shl     rbx,5                   ;; 32 bytes in the structure; offset the service
 
+        push    rax
         mov     rax,internalTable
         lea     rbx,[rbx+rax]           ;; load the table address
-        pop     rax                     ;; restore variable parameter count
+        pop     rax
 
         mov     rdi,rsi                 ;; adjust parameter locations
         mov     rsi,rdx
@@ -471,15 +464,12 @@ ServiceTarget:
         cmp     rbx,MAX_HANDLERS
         jge     Einval
 
-        push    rax                     ;; save rax as it may have relevant values
-        mov     rax,rbx
-        shl     rax,5                   ;; 32 bytes in the structure; offset the service
-        shl     rbx,4                   ;; add another 16 bytes to the structure;
-        add     rbx,rax                 ;; total of 48 bytes.
+        shl     rbx,5                   ;; 32 bytes in the structure; offset the service
 
+        push    rax
         mov     rax,serviceTable
         lea     rbx,[rbx+rax]           ;; load the table address
-        pop     rax                     ;; restore rax as it may have relevant values
+        pop     rax
 
         mov     rdi,rsi                 ;; adjust parameter locations
         mov     rsi,rdx
@@ -515,7 +505,7 @@ Einval:
 CommonTarget:
         ;; -- check the function; exit if none to call
         cmp     qword [rbx+0],0
-        je      Exit
+        je      ExitPoint
 
         ;; -- Push general purpose registers
         push    rcx
@@ -554,18 +544,7 @@ CommonTarget:
         mov     bp,gs
         push    rbp
 
-        ;; -- Now we need to lock the stack until the address space and the stack are replaced
-        cmp     qword [rbx+16],0
-        je      NoLock
-
-        PUSHA
-        lea     rdi,[rbx+32]
-        call    krn_SpinLock
-        POPA
-
-        ;; -- save the old stack location for register values
-NoLock:
-        mov     [rbx+24],rsp            ;; save the stack pointer containing the regs
+        mov     [rbx+16],rsp            ;; save the stack pointer containing the regs
 
         ;; -- no more stack activity!
         mov     rbp,[rbx+8]
@@ -575,17 +554,6 @@ NoLock:
         mov     cr3,rbp                 ;; maps the new address space
 
 NoCr3:
-        mov     r11,rsp                 ;; save the stack location for later
-        mov     rbp,[rbx+16]
-        cmp     rbp,0
-        je      NoStack
-
-        ;; -- get the new stack location
-        mov     rsp,rbp
-
-NoStack:
-        ;; -- restore stack operations
-        push    r11                     ;; save the old stack value
         push    r12                     ;; save the old cr3 value
         push    rbx                     ;; save the structure location
 
@@ -593,10 +561,6 @@ NoStack:
 
         pop     rbx                     ;; restore the structure location
         pop     r12                     ;; get the old cr3
-        pop     r11                     ;; get the old stack value
-
-        ;; -- lock stack operations again; address space not static
-        mov     rsp,r11                 ;; unconditionally restore the stack
 
         ;; -- do we need to restore a virtual address context?
         mov     r11,cr3
@@ -606,17 +570,6 @@ NoStack:
         mov     cr3,r12                 ;; restore the old cr3
 
 NoCr3Restore:
-        ;; -- Restore stack operations -- back in an original context
-        cmp     qword [rbx+16],0
-        je      NoUnlock
-
-NoUnlock:
-        ;; -- Unlock the stack
-        PUSHA
-        lea     rdi,[rbx+32]
-        call    krn_SpinUnlock
-        POPA
-
         ;; -- pop the segment registers
         pop     rbp                     ;; discard gs
         pop     rbp                     ;; discard fs

@@ -285,7 +285,12 @@ Gdtr_t gdtr = {
 
 extern "C" void SetCpuStruct(int cpu)
 {
+#if DEBUG_ENABLED(SetCpuStruct)
+
     kprintf("Initializing GS to be at base %p\n", &(cpus[cpu].cpu));
+
+#endif
+
     WRMSR(IA32_KERNEL_GS_BASE, (Addr_t)&(cpus[cpu].cpu));
     __asm volatile ("swapgs" ::: "memory");
 }

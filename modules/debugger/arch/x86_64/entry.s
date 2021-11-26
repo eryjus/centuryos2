@@ -43,25 +43,19 @@ header:
         db      'D','E','B','U','G','G','E','R',0,0,0,0,0,0,0,0             ;; Name
         dq      DebuggerEarlyInit                                           ;; Early Init
         dq      DebuggerLateInit                                            ;; Late Init
-        dq      0xffffaf4000000000                                          ;; Stack Locations
         dq      1                                                           ;; interrupts
         dq      4                                                           ;; internal Services
         dq      0                                                           ;; OS services
         dq      DEBUGGER_INT                                                ;; Interrupt 1
         dq      dbg_Dispatch                                                ;; .. target address
-        dq      0                                                           ;; .. stack
         dq      INT_DBG_INSTALLED                                           ;; internal function 1
         dq      dbg_Installed                                               ;; .. target address
-        dq      0                                                           ;; .. stack
         dq      INT_DBG_REGISTER                                            ;; internal function 2
         dq      dbg_Register                                                ;; .. target address
-        dq      0                                                           ;; .. stack
         dq      INT_DBG_OUTPUT                                              ;; internal function 3
         dq      dbg_Output                                                  ;; .. target address
-        dq      0                                                           ;; .. stack
         dq      INT_DBG_PROMPT_GENERIC                                      ;; internal function 4
         dq      dbg_PromptGeneric                                           ;; .. target address
-        dq      0                                                           ;; .. stack
 
 
 

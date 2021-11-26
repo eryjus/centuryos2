@@ -56,40 +56,113 @@ void kInit(void)
 
     kprintf("Welcome!\n");
 
+#if DEBUG_ENABLED(kInit)
+
+    kprintf("IntInit()\n");
+
+#endif
+
     IntInit();                          // init the interrupt table (hardware structure)
+
+#if DEBUG_ENABLED(kInit)
+
+    kprintf("VectorInit()\n");
+
+#endif
+
     VectorInit();                       // init the vector table (OS structure)
+
+#if DEBUG_ENABLED(kInit)
+
+    VectorTableDump();
+    kprintf("InternalInit()\n");
+
+#endif
+
     InternalInit();                     // init the internal function table
+
+#if DEBUG_ENABLED(kInit)
+
+    InternalTableDump();
+    kprintf("ServiceInit()\n");
+
+#endif
+
     ServiceInit();                      // init the OS services table
+
+#if DEBUG_ENABLED(kInit)
+
+    ServiceTableDump();
+    kprintf("CpuInit()\n");
+
+#endif
+
     CpuInit();                          // init the cpus tables
+
+#if DEBUG_ENABLED(kInit)
+
+    kprintf("ProcessInit()\n");
+
+#endif
+
     ProcessInit(loaderInterface);
+
+#if DEBUG_ENABLED(kInit)
+
+    kprintf("ModuleEarlyInit()\n");
+
+#endif
+
     ModuleEarlyInit();
+
+#if DEBUG_ENABLED(kInit)
+
+    kprintf("CpuApStart()\n");
+
+#endif
+
     CpuApStart(loaderInterface);
     cpus[0].lastTimer = TmrCurrentCount();
 
+#if DEBUG_ENABLED(kInit)
+
+    kprintf("EnableInt()\n");
+
+#endif
     EnableInt();
+
 #if IS_ENABLED(KERNEL_DEBUGGER)
     CpuDebugInit();
 #endif
+
     AtomicSet(&scheduler.enabled, 1);
     ModuleLateInit();
 
     // -- take on the Butler role
+#if DEBUG_ENABLED(kInit)
+
     kprintf("!!! Re-tasking kInit() to be the Butler Task!\n");
+
+#endif
+
     CurrentThread()->priority = (ProcPriority_t)PTY_LOW;
     ksprintf(CurrentThread()->command, "Butler");
 
     int msqid = msgget(((key_t)'A') << 56, IPC_CREAT | 0660);
     assert_msg(msqid != -1, "The butler Message Queue could not be allocated\n");
+
+#if DEBUG_ENABLED(kInit)
+
     kprintf("The msqid is %d\n", msqid);
 
+#endif
+
     while (true) {
-//        sch_ProcessBlock(PROC_MSGW, NULL);
         struct {
             long msgtyp;
             char text[0];
         } msg;
 
-BOCHS_INSTRUMENTATION
         msgrcv(msqid, &msg, 0, 0, 0);
     }
 }
@@ -108,7 +181,13 @@ extern "C" void kInitAp(void)
 
     TmrApInit(NULL);
     EnableInt();
+
+#if DEBUG_ENABLED(kInitAp)
+
     kprintf("Confirming that CPU %d has started\n", me);
+
+
+#endif
     AtomicSet(&cpus[me].state, CPU_STARTED);
 
     ProcessEnd();

@@ -25,10 +25,6 @@ SEARCH_DIR("=/usr/lib");
 
 CODE_VIRT  = 0xffffa00000000000;
 
-STACK_START = 0xffffaf0000000000;
-STACK_COUNT = 32;
-STACK_SIZE = 0x1000 * 4;
-
 HEAP_START = 0xffffb00000000000;
 HEAP_END   = 0xffffb80000000000;
 
@@ -190,9 +186,6 @@ SECTIONS
     .data :
         {
             /* provide some additional data elements */
-            __stackStart = .;       QUAD(STACK_START);
-            __stackSize = .;        QUAD(STACK_SIZE);
-            __stackCount = .;       QUAD(STACK_COUNT);
             __heapStart = .;        QUAD(HEAP_START);
             __heapEnd = .;          QUAD(HEAP_END);
 

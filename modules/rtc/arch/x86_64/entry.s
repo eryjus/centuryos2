@@ -34,13 +34,11 @@ header:
         db      'R','T','C',0,0,0,0,0,0,0,0,0,0,0,0,0                       ;; Name
         dq      RtcInit                                                     ;; Early Init
         dq      0                                                           ;; Late Init
-        dq      0xffffaf4000000000                                          ;; Stack Locations
         dq      0                                                           ;; interrupts
         dq      0                                                           ;; internal Services
         dq      1                                                           ;; OS services
         dq      SVC_RTCTIME                                                 ;; OS Service 1
         dq      rtc_GetTime                                                 ;; .. target address
-        dq      0                                                           ;; .. stack
 
 
 

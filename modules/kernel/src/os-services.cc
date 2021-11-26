@@ -54,13 +54,11 @@ Return_t krn_SetServiceHandler(int i, Addr_t service, Addr_t cr3, Addr_t stack)
 {
     if (i < 0 || i >= MAX_HANDLERS) return -EINVAL;
 
-    kprintf("Setting service handler %d to %p from %p\n", i, service, cr3);
+//    kprintf("Setting service handler %d to %p from %p\n", i, service, cr3);
 
     serviceTable[i].handler = service;
     serviceTable[i].cr3 = cr3;
-    serviceTable[i].stack = stack;
     serviceTable[i].runtimeRegs = 0;
-    serviceTable[i].lock = {0};
 
     return 0;
 }
@@ -94,8 +92,8 @@ void ServiceTableDump(void)
 
     for (int i = 0; i < MAX_HANDLERS; i ++) {
         if (serviceTable[i].handler != 0 || serviceTable[i].cr3 != 0) {
-            kprintf("  %d: %p from context %p on stack %p\n", i, serviceTable[i].handler,
-                    serviceTable[i].cr3, serviceTable[i].stack);
+            kprintf("  %d: %p from context %p\n", i, serviceTable[i].handler,
+                    serviceTable[i].cr3);
         }
     }
 }

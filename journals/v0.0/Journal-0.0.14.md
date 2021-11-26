@@ -214,3 +214,120 @@ Another thought is to remap the existing stack physical memory into the new proc
 I think I am going to put the stacks in kernel address space.  I may come back to this decision (yet again) in the future, but for now, this seems the best option.  I may add in some stack checking code to ensure that the stack is not over- or under-flowed at some point in the future.
 
 This change is going to be invasive.  I am going to make a commit where I stand now so I have a roll-back position.
+
+
+## Version 0.0.14a -- Move the stack management and addresses into kernel space
+
+Even though I committed against v0.0.14 already, I am splitting off this micro-version for the purposes of recovery -- if it comes to that.
+
+So, here are the rough steps needed to get this task done:
+1. Move the `stacks` code from `libk` to the kernel and publish internal functions; change everything to use the internal functions.
+2. Update the `stacks` code to use the full range of stacks in the kernel.
+3. Update the `module` code to use the current stack for early- and late-init.
+4. Update the `ServiceRoutine_t` type to remove `lock` and `stack`; update system calls & assembly code accordingly.
+
+If I have planned this out properly, I should be able to get a proper test at the end of each step and the kernel fill not fault out or deadlock any worse that it does now.  In fact, I have changed the offending code in Butler to not fault out just so I can get good tests while I am completing this work.
+
+
+---
+
+Step 1 will be the most intrusive.
+
+First some sanity checks:
+
+```c++
+        uint64_t *t = (uint64_t *)(modInternal[i].cr3Addr);
+        for (int j = 0; j < 512; j ++) {
+            if ((j >= 0x100 && j < 0x140) || (j >= 0x1f0 && j < 0x1ff)) {   // -- kernel and stacks
+                t[j] = cr3[j];
+            } else t[j]  = 0;
+        }
+```
+
+The module source is copying the stacks space to each address space.  Good.
+
+The wiki has the following space earmarked for stacks:
+
+| Entry Number | From Address | To Address | Usage |
+|-----|----------------|----------------|--------|
+| 1f0 | f800 0000 0000 | f87f ffff ffff | Stacks |
+
+Good.
+
+The kernel linker script has stacks being established:
+
+```ld
+STACK_START = 0xffffaf0000000000;
+STACK_COUNT = 32;
+STACK_SIZE = 0x1000 * 4;
+```
+
+This needs to be changed.
+
+```
+(f880 0000 0000 - f800 0000 0000) / 4000 = 33554432 stacks
+```
+
+So, I will start with those updates.  But those stacks require 4MB memory to manage.  That is too much.  1 4K page can manage 32768 stacks.  That seems much more reasonable right now.  I will start there.
+
+So that range will be from `0xfffff80000000000` to `0xfffff80020000000`.
+
+With that change alone I start triple faulting.
+
+So I can focus on the real problem, let me get some of the noise out of the way.  I will start with the scheduler, which has lots of functions to work through.
+
+With the noise eliminated, I can say I am faulting somewhere in `ProcessInit()`:
+
+```
+Hello
+Welcome!
+IntInit()
+VectorInit()
+InternalInit()
+ServiceInit()
+CpuInit()
+ProcessInit()
+```
+
+Turns out I was stepping on the current stack.  That cleaned up, I am booting again.
+
+The next step is going to be to relocate the stack stuff to the kernel module.  This should break a few things.
+
+This worked surprisingly well!!
+
+```
++---------------------------+----------+----------+----------+------------------+------------------+------------------+------------------+
+| Command                   | PID      | Priority | Status   | Proc Address     | Time Used        | Top of Stack     | Address Space    |
++---------------------------+----------+----------+----------+------------------+------------------+------------------+------------------+
+| Butler                    |        0 | LOW      | MSGW     | ffff900000001068 | 0000000000000bb8 | fffff80000003ee0 | 0000000001004000 |
+| Idle Process              |        1 | IDLE     | READY    | ffff900000001170 | 000000000015ed48 | fffff80000007df0 | 0000000001004000 |
+| Idle Process              |        2 | IDLE     | RUNNING  | ffff900000001278 | 0000000000163780 | fffff8000000bdf0 | 0000000001004000 |
+| Idle Process              |        3 | IDLE     | READY    | ffff900000001380 | 000000000015f518 | fffff8000000fdf0 | 0000000001004000 |
+| Idle Process              |        4 | IDLE     | RUNNING  | ffff900000001488 | 000000000016c420 | fffff80000013df0 | 0000000001004000 |
+| kInitAp(1)                |        5 | LOW      | TERM     | ffff900000001590 | 00000000000007d0 | fffff8000001bdc0 | 0000000001004000 |
+| kInitAp(2)                |        6 | LOW      | TERM     | ffff900000001698 | 00000000000003e8 | fffff8000001fdc0 | 0000000001004000 |
+| kInitAp(3)                |        7 | LOW      | TERM     | ffff9000000017a0 | fffffffffff862c8 | fffff80000023dc0 | 0000000001004000 |
+| PMM API                   |        8 | OS       | MSGW     | ffff900000001ce0 | 00000000000007d0 | ffffaf4000003d60 | 000000000108f000 |
+| PMM Cleaner               |        9 | LOW      | RUNNING  | ffff900000001de8 | 00000000002c76d0 | fffff80000033f70 | 000000000108f000 |
+| Debugger                  |       10 | OS       | RUNNING  | ffff9000000022e0 | 00000000002c4020 | fffff8000003ff70 | 000000023ffe3000 |
++---------------------------+----------+----------+----------+------------------+------------------+------------------+------------------+
+```
+
+The only thing that has the wrong stack is the PMM API process.
+
+So, from my list above, 1, 2, and 3 are basically done.  The next step for #3 is going to be to remove the stack member from the entry function.
+
+Finally will be to clean up the `ServiceRoutine_t` structure and associated assembly.
+
+
+---
+
+### 2021-Nov-26
+
+OK, I have all the code changed.  But I left a bunch of stuff commented out.  I still have quite a bit of cleanup to complete,
+
+
+
+
+
+

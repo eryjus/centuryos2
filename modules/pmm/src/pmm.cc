@@ -996,7 +996,6 @@ void pmm_LateInit(void)
 
 #if IS_ENABLED(KERNEL_DEBUGGER)
 #include "debugger.h"
-#include "stacks.h"
 
 
 //
@@ -1050,13 +1049,11 @@ DbgModule_t pmmModule = {
 *///-----------------------------------------------------------------------------------------------------------------
 void PmmDebugInit(void)
 {
-    extern Addr_t __stackSize;
-
-    pmmModule.stack = StackFind();
-    for (Addr_t s = pmmModule.stack; s < pmmModule.stack + __stackSize; s += PAGE_SIZE) {
+    pmmModule.stack = KrnStackFind();
+    for (Addr_t s = pmmModule.stack; s < pmmModule.stack + STACK_SIZE; s += PAGE_SIZE) {
         MmuMapPage(s, PmmAlloc(), PG_WRT);
     }
-    pmmModule.stack += __stackSize;
+    pmmModule.stack += STACK_SIZE;
 
     DbgRegister(&pmmModule, pmmStates, pmmTrans);
 }

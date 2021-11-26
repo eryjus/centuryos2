@@ -19,6 +19,9 @@
 #include "stacks.h"
 #include "kernel-funcs.h"
 #include "heap.h"
+#include "stacks.h"
+#include "mmu.h"
+#include "spinlock.h"
 #include "scheduler.h"
 
 
@@ -38,26 +41,56 @@ void ProcessNewStack(Process_t *proc, Addr_t startingAddr)
     Frame_t *stackFrames = NULL;
     const size_t frameCount = STACK_SIZE / PAGE_SIZE;
 
-    KernelPrintf("Creating a new Process stack\n");
-    KernelPrintf(".. allocating frames for the stack\n");
+#if DEBUG_ENABLED(ProcessNewStack)
+
+    kprintf("Creating a new Process stack\n");
+    kprintf(".. allocating frames for the stack\n");
+
+#endif
+
     stackFrames = (Frame_t *)HeapAlloc(sizeof (Frame_t *) * frameCount, false);
     assert_msg(stackFrames != NULL, "HeapAlloc() ran out of memory allocating stack frames!");
-    KernelPrintf(".. Temporary Stack Frames are located at %p\n", stackFrames);
+
+#if DEBUG_ENABLED(ProcessNewStack)
+
+    kprintf(".. Temporary Stack Frames are located at %p\n", stackFrames);
+
+#endif
 
     for (int i = 0; i < frameCount; i ++) {
-        KernelPrintf(".. allocating stack frame %d of %d\n", i + 1, frameCount);
+
+#if DEBUG_ENABLED(ProcessNewStack)
+
+        kprintf(".. allocating stack frame %d of %d\n", i + 1, frameCount);
+
+#endif
         stackFrames[i] = PmmAlloc();
     }
 
-    KernelPrintf(".. Locking the stack build spinlock\n");
+#if DEBUG_ENABLED(ProcessNewStack)
+
+    kprintf(".. Locking the stack build spinlock\n");
+
+#endif
+
     Addr_t flags = DisableInt();
-    SpinLock(&mmuStackInitLock); {
-        KernelPrintf(".. Mapping the stack to the temporary build address\n");
+    krn_SpinLock(&mmuStackInitLock); {
+#if DEBUG_ENABLED(ProcessNewStack)
+
+        kprintf(".. Mapping the stack to the temporary build address\n");
+
+#endif
+
         for (int i = 0; i < frameCount; i ++) {
-            MmuMapPage(MMU_STACK_INIT_VADDR + (PAGE_SIZE * i), stackFrames[i], PG_WRT);
+            cmn_MmuMapPage(MMU_STACK_INIT_VADDR + (PAGE_SIZE * i), stackFrames[i], PG_WRT);
         }
 
-        KernelPrintf(".. Building the stack contents\n");
+#if DEBUG_ENABLED(ProcessNewStack)
+
+        kprintf(".. Building the stack contents\n");
+
+#endif
+
         stack = (Addr_t *)(MMU_STACK_INIT_VADDR + STACK_SIZE);
 
         *--stack = (Addr_t)ProcessEnd;         // -- just in case, we will self-terminate
@@ -79,27 +112,67 @@ void ProcessNewStack(Process_t *proc, Addr_t startingAddr)
         *--stack = 0;                          // -- r14
         *--stack = 0;                          // -- r15
 
-        KernelPrintf(".. Unmapping the stack from temporary address space\n");
+#if DEBUG_ENABLED(ProcessNewStack)
+
+        kprintf(".. Unmapping the stack from temporary address space\n");
+
+#endif
+
         for (int i = 0; i < frameCount; i ++) {
-            MmuUnmapPage(MMU_STACK_INIT_VADDR + (PAGE_SIZE * i));
+            cmn_MmuUnmapPage(MMU_STACK_INIT_VADDR + (PAGE_SIZE * i));
         }
 
-        KernelPrintf(".. Unlocking the spinlock\n");
-        SpinUnlock(&mmuStackInitLock);
+#if DEBUG_ENABLED(ProcessNewStack)
+
+        kprintf(".. Unlocking the spinlock\n");
+
+#endif
+
+        krn_SpinUnlock(&mmuStackInitLock);
         RestoreInt(flags);
     }
 
-    KernelPrintf(".. Finding a stack address\n");
-    Addr_t stackLoc = StackFind();    // get a new stack
+#if DEBUG_ENABLED(ProcessNewStack)
+
+    kprintf(".. Finding a stack address\n");
+
+#endif
+
+    Addr_t stackLoc = krn_StackFind();    // get a new stack
+
+#if DEBUG_ENABLED(ProcessNewStack)
+
+    kprintf(".... Stack address is determined to be %p\n", stackLoc);
+
+#endif
+
     assert(stackLoc != 0);
     proc->tosProcessSwap = ((Addr_t)stack - MMU_STACK_INIT_VADDR) + stackLoc;
 
-    KernelPrintf("Mapping the stack into address space %p\n", GetAddressSpace());
+
+#if DEBUG_ENABLED(ProcessNewStack)
+
+    kprintf("Mapping the stack into address space %p\n", GetAddressSpace());
+
+#endif
+
     for (int i = 0; i < frameCount; i ++) {
-        KernelPrintf(".. in space %p: frame %d (%p to %p)\n", proc->virtAddrSpace, i,
+
+#if DEBUG_ENABLED(ProcessNewStack)
+
+        kprintf(".. in space %p: frame %d (%p to %p)\n", proc->virtAddrSpace, i,
                 stackLoc + (PAGE_SIZE * i), stackFrames[i]);
+
+#endif
+
         MmuMapPageEx(proc->virtAddrSpace, stackLoc + (PAGE_SIZE * i), stackFrames[i], PG_WRT);
-        KernelPrintf(".. page mapped in the other address space\n");
+
+#if DEBUG_ENABLED(ProcessNewStack)
+
+        kprintf(".. page mapped in the other address space\n");
+
+#endif
+
     }
 
     HeapFree(stackFrames);

@@ -323,6 +323,27 @@ INTERNAL1(Return_t, KrnReleaseCores, INT_KRN_RELEASE_CORES, Addr_t)
 
 
 
+//
+// -- Function 0x025 -- Find a Stack
+//    ------------------------------
+INTERNAL0(Addr_t, KrnStackFind, INT_KRN_STACK_FIND)
+
+
+
+//
+// -- Function 0x026 -- Allocate a stack
+//    ----------------------------------
+INTERNAL1(Return_t, KrnStackAlloc, INT_KRN_STACK_ALLOC, Addr_t)
+
+
+
+//
+// -- Function 0x026 -- Release a stack
+//    ---------------------------------
+INTERNAL1(Return_t, KrnStackRelease, INT_KRN_STACK_RELEASE, Addr_t)
+
+
+
 // =====================
 // == Timer functions ==
 // =====================

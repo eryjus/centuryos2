@@ -117,7 +117,7 @@ static int EarlyInit(BootInterface_t *loaderInterface)
     bool isBoot = (apicBaseMsr & IA32_APIC_BASE_MSR__BSP) != 0;
     Frame_t apicFrame = apicBaseMsr >> 12;
 
-    KernelPrintf("Local xAPIC Init\n");
+    KernelPrintf("Local xAPIC Early Init\n");
 
     if (isBoot) {
         // -- enable the APIC and x2apic mode
@@ -126,7 +126,7 @@ static int EarlyInit(BootInterface_t *loaderInterface)
                 | (apicBaseMsr & ~(PAGE_SIZE-1)));
 
         MmuMapPage(xapic.baseAddr, apicFrame, PG_WRT|PG_DEV);
-        MmuDump(xapic.baseAddr);
+//        MmuDump(xapic.baseAddr);
     }
 
     //
@@ -212,6 +212,7 @@ static int EarlyInit(BootInterface_t *loaderInterface)
     }
 
     KernelPrintf(".. Finally program the timer\n");
+
 
     //
     // -- Now, program the Timer

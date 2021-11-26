@@ -53,7 +53,29 @@ DEBUG_DebuggerMain                      DISABLED
 ##
 ## -- These marcos turn on/off debug output for functions in `cpu.cc`
 ##    ---------------------------------------------------------------
-DEBUG_CpuApStart                        DSIABLED
+DEBUG_CpuApStart                        DISABLED
+
+
+
+##
+## -- These marcos turn on/off debug output for functions in `early-pmm.cc`
+##    ---------------------------------------------------------------------
+DEBUG_PmmEarlyFrame                     DISABLED
+
+
+
+##
+## -- These marcos turn on/off debug output for functions in `gdt.cc`
+##    ---------------------------------------------------------------
+DEBUG_SetCpuStruct                      DISABLED
+
+
+
+##
+## -- These marcos turn on/off debug output for functions in `kInit.cc`
+##    -----------------------------------------------------------------
+DEBUG_kInit                             DISABLED
+DEBUG_kInitAp                           DISABLED
 
 
 
@@ -62,7 +84,29 @@ DEBUG_CpuApStart                        DSIABLED
 ##    ---------------------------------------------------------------
 DEBUG_cmn_MmuUnmapPage                  DISABLED
 DEBUG_cmn_MmuMapPage                    DISABLED
+DEBUG_krn_MmuMapPageEx                  DISABLED
 
+
+##
+## -- These marcos turn on/off debug output for functions in `scheduler.cc`
+##    ---------------------------------------------------------------------
+DEBUG_ProcessIdle                       DISABLED
+DEBUG_ProcessNext                       DISABLED
+DEBUG_ProcessAddGlobal                  DISABLED
+DEBUG_ProcessTerminate                  DISABLED
+DEBUG_ProcessStart                      DISABLED
+DEBUG_sch_ProcessCreate                 DISABLED
+DEBUG_ProcessInit                       DISABLED
+DEBUG_SchedulerCreateKInitAp            DISABLED
+DEBUG_ProcessNewStack                   DISABLED
+
+
+
+##
+## -- These marcos turn on/off debug output for functions in `module.cc`
+##    ------------------------------------------------------------------
+DEBUG_ModuleCheck                       DISABLED
+DEBUG_ModuleEarlyInit                   DISABLED
 
 
 
@@ -72,6 +116,29 @@ DEBUG_cmn_MmuMapPage                    DISABLED
 DEBUG_ipi_SendInit                      DISABLED
 
 
+
+
+
+##
+## == LIBK MODULE
+##    ===========
+
+
+
+##
+## -- These marcos turn on/off debug output for functions in `heap.cc`
+##    ----------------------------------------------------------------
+DEBUG_HeapExpand                        DISABLED
+DEBUG_HeapInit                          DISABLED
+
+
+
+##
+## -- These marcos turn on/off debug output for functions in `stacks.cc`
+##    ------------------------------------------------------------------
+DEBUG_StackInit                         DISABLED
+DEBUG_StackDoAlloc                      DISABLED
+DEBUG_StackFind                         DISABLED
 
 
 

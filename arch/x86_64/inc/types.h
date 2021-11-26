@@ -53,12 +53,6 @@ typedef unsigned long size_t;
 #define BYTE_ALIGNMENT      8
 
 
-//
-// -- The allocated stack size
-//    ------------------------
-#define STACK_SIZE                      (4096*4)
-
-
 
 //
 // -- Foundational Types
@@ -88,11 +82,12 @@ typedef struct Spinlock_t {
 typedef struct ServiceRoutine_t {
     Addr_t handler;
     Addr_t cr3;
-    Addr_t stack;
     Addr_t runtimeRegs;
-    Spinlock_t lock;
+    Addr_t reserved;
 } ServiceRoutine_t;
 
+static_assert(sizeof(ServiceRoutine_t) == 32, "requirement: ServiceRoutine_t must be 32 bytes long;" \
+            " check `idt-asm.s` carefully");
 
 
 //

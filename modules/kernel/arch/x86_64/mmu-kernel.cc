@@ -31,13 +31,23 @@
 *///-----------------------------------------------------------------------------------------------------------------
 Return_t krn_MmuMapPageEx(Addr_t space, Addr_t a, Frame_t f, int flags)
 {
+#if DEBUG_ENABLED(krn_MmuMapPageEx)
+
     kprintf("Preparing to map a page in another address space\n");
+
+#endif
+
     Addr_t cr3 = GetAddressSpace();
     LoadCr3(space);
     int rv = cmn_MmuMapPage(a, f, flags);
 
     LoadCr3(cr3);
+
+#if DEBUG_ENABLED(krn_MmuMapPageEx)
+
     kprintf("..done\n");
+
+#endif
 
     return rv;
 }

@@ -60,9 +60,7 @@ Return_t krn_SetVectorHandler(int i, Addr_t handler, Addr_t cr3, Addr_t stack)
 
     vectorTable[i].handler = handler;
     vectorTable[i].cr3 = cr3;
-    vectorTable[i].stack = stack;
     vectorTable[i].runtimeRegs = 0;
-    vectorTable[i].lock = {0};
 
     return 0;
 }
@@ -165,8 +163,8 @@ void VectorTableDump(void)
 
     for (int i = 0; i < 256; i ++) {
         if (vectorTable[i].handler != 0 || vectorTable[i].cr3 != 0) {
-            kprintf("  %d: %p from context %p (Stack: %p)\n", i, vectorTable[i].handler,
-                    vectorTable[i].cr3, vectorTable[i].stack);
+            kprintf("  %d: %p from context %p\n", i, vectorTable[i].handler,
+                    vectorTable[i].cr3);
         }
     }
 }

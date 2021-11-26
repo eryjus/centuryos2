@@ -33,11 +33,9 @@ targets/**/config
 targets/**/debug
 targets/**/inc/debug.h
 targets/**/usr/include/*.h
+targets/**/usr/include/*.inc
 targets/**/usr/include/sys/*.h
 targets/**/usr/include/kernel/*.h
 targets/**/usr/include/kernel/arch/*.h
 
-
-targets/**/usr/include/*.h
-targets/**/usr/include/*.inc
 

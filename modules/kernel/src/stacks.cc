@@ -20,8 +20,9 @@
 
 
 #include "types.h"
-#include "kernel-funcs.h"
+#include "spinlock.h"
 #include "heap.h"
+#include "printf.h"
 #include "stacks.h"
 
 
@@ -61,16 +62,23 @@ static void StackInit(void)
 {
     extern Addr_t __stackStart;
     extern Addr_t __stackCount;
-    extern Addr_t __stackSize;
 
-    KernelPrintf("===================================================================\n");
-    KernelPrintf("Initializing %d stacks for address space %p\n", __stackCount, GetAddressSpace());
-    KernelPrintf("===================================================================\n");
+#if DEBUG_ENABLED(StackInit)
+
+    kprintf("===================================================================\n");
+    kprintf("Initializing %d stacks for address space %p\n", __stackCount, GetAddressSpace());
+    kprintf("===================================================================\n");
+
+#endif
 
     int bits = sizeof(Bitmap_t) * 8;
     int stacksCount = (__stackCount + (bits - 1)) / bits;
 
-    KernelPrintf(".. initializing %d stack indices in address space %p\n", stacksCount, GetAddressSpace());
+#if DEBUG_ENABLED(StackInit)
+
+    kprintf(".. initializing %d stack indices in address space %p\n", stacksCount, GetAddressSpace());
+
+#endif
 
     stackManager = (StackManager_t *)HeapAlloc(sizeof(StackManager_t) + (stacksCount * sizeof(Bitmap_t)), false);
 
@@ -81,7 +89,7 @@ static void StackInit(void)
     stackManager->stackCount = __stackCount;
     stackManager->elementCount = stacksCount;
     stackManager->bits = bits;
-    stackManager->stackSize = __stackSize;
+    stackManager->stackSize = STACK_SIZE;
     stackManager->startStart = __stackStart;
 
     kMemSetB(stackManager->stacks, 0, stacksCount * sizeof(Bitmap_t));
@@ -94,11 +102,21 @@ static void StackInit(void)
 //    ------------------------------
 static void StackDoAlloc(Addr_t stack)
 {
-    KernelPrintf("stackManager = %p\n", stackManager);
+#if DEBUG_ENABLED(StackDoAlloc)
+
+    kprintf("stackManager = %p\n", stackManager);
+
+#endif
+
     if (unlikely(stackManager == NULL)) StackInit();
 
-    KernelPrintf("Preparing to allocate stack at %p (starts at %p)\n", stack, stackManager->startStart);
-    KernelPrintf(".. (end of stacks is at %p\n", stackManager->startStart + (stackManager->stackCount * stackManager->stackSize));
+#if DEBUG_ENABLED(StackDoAlloc)
+
+    kprintf("Preparing to allocate stack at %p (starts at %p)\n", stack, stackManager->startStart);
+    kprintf(".. (end of stacks is at %p\n", stackManager->startStart + (stackManager->stackCount * stackManager->stackSize));
+
+#endif
+
     stack &= ~(stackManager->stackSize - 1);
 
     int idx = ((stack - stackManager->startStart) / stackManager->stackSize) / stackManager->bits;
@@ -107,7 +125,11 @@ static void StackDoAlloc(Addr_t stack)
     if (!assert(stack >= stackManager->startStart)) return;
     if (!assert(stack < stackManager->startStart + (stackManager->stackCount * stackManager->stackSize))) return;
 
-    KernelPrintf("Marking the stack %p at index %d and offset %d as used\n", stack, idx, off);
+#if DEBUG_ENABLED(StackDoAlloc)
+
+    kprintf("Marking the stack %p at index %d and offset %d as used\n", stack, idx, off);
+
+#endif
 
     stackManager->stacks[idx] |= (1 << off);
 }
@@ -117,11 +139,13 @@ static void StackDoAlloc(Addr_t stack)
 //
 // -- Allocate a stack
 //    ----------------
-void StackAlloc(Addr_t stack)
+Return_t krn_StackAlloc(Addr_t stack)
 {
-    SpinLock(&lock); {
+    krn_SpinLock(&lock); {
         StackDoAlloc(stack);
-    } SpinUnlock(&lock);
+    } krn_SpinUnlock(&lock);
+
+    return 0;
 }
 
 
@@ -129,12 +153,17 @@ void StackAlloc(Addr_t stack)
 //
 // -- Find an available stack and allocate it
 //    ---------------------------------------
-Addr_t StackFind(void)
+Addr_t krn_StackFind(void)
 {
     Addr_t rv = 0;
 
-    SpinLock(&lock); {
-        KernelPrintf("stackManager = %p\n", stackManager);
+    krn_SpinLock(&lock); {
+#if DEBUG_ENABLED(StackDoAlloc)
+
+        kprintf("stackManager = %p\n", stackManager);
+
+#endif
+
         if (unlikely(stackManager == NULL)) StackInit();
 
         for (int i = 0; i < stackManager->elementCount; i ++) {
@@ -143,7 +172,13 @@ Addr_t StackFind(void)
                     if ((stackManager->stacks[i] & (1 << j)) == 0) {
                         rv = stackManager->startStart + (stackManager->stackSize * ((i * stackManager->bits) + j));
                         StackDoAlloc(rv);
-                        KernelPrintf("In address space %p, allocating stack %p\n", GetAddressSpace(), rv);
+
+#if DEBUG_ENABLED(StackDoAlloc)
+
+                        kprintf("In address space %p, allocating stack %p\n", GetAddressSpace(), rv);
+
+#endif
+
                         goto exit;
                     }
                 }
@@ -151,7 +186,7 @@ Addr_t StackFind(void)
         }
 
 exit:
-        SpinUnlock(&lock);
+        krn_SpinUnlock(&lock);
     }
 
     return rv;
@@ -162,18 +197,22 @@ exit:
 //
 // -- Release a stack
 //    ---------------
-void StackRelease(Addr_t stack)
+Return_t krn_StackRelease(Addr_t stack)
 {
     int idx = ((stack - stackManager->startStart) / stackManager->stackSize) / stackManager->bits;
     int off = ((stack - stackManager->startStart) / stackManager->stackSize) % stackManager->bits;
 
-    if (!assert(stack >= stackManager->startStart)) return;
-    if (!assert(stack < stackManager->startStart + (stackManager->stackCount * stackManager->stackSize))) return;
-
-    SpinLock(&lock); {
-        stackManager->stacks[idx] &= ~(1 << off);
-        SpinUnlock(&lock);
+    if (!assert(stack >= stackManager->startStart)) return -EINVAL;
+    if (!assert(stack < stackManager->startStart + (stackManager->stackCount * stackManager->stackSize))) {
+        return -EINVAL;
     }
+
+    krn_SpinLock(&lock); {
+        stackManager->stacks[idx] &= ~(1 << off);
+        krn_SpinUnlock(&lock);
+    }
+
+    return 0;
 }
 
 

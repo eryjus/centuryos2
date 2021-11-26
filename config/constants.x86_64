@@ -35,6 +35,8 @@ TRAMP_OFF                   0x3000
 ## -- MMU Constants
 ##    -------------
 PAGE_SIZE                   0x1000
+STACK_SIZE                  (4096*4)
+
 
 PML4_ENTRY_ADDRESS          ((Addr_t)0xfffffffffffff000)
 PDPT_ENTRY_ADDRESS          ((Addr_t)0xffffffffffe00000)

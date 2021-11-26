@@ -41,32 +41,23 @@ header:
                 db          'x','2','A','P','I','C',0,0,0,0,0,0,0,0,0,0                 ;; Name
                 dq          X2ApicInitEarly                                             ;; Early Init
                 dq          Init                                                        ;; Late Init
-                dq          0xffffaf4000000000                                          ;; Stack Locations
                 dq          0                                                           ;; interrupts
                 dq          8                                                           ;; internal Services
                 dq          0                                                           ;; OS services
                 dq          INT_TMR_CURRENT_COUNT                                       ;; Internal fctn 0x040 (Tmr Cnt)
                 dq          tmr_GetCurrentTimer                                         ;; .. target address
-                dq          0                                                           ;; .. stack
                 dq          INT_TMR_TICK                                                ;; Internal fctn 0x041 (Tick)
                 dq          tmr_Tick                                                    ;; .. target address
-                dq          0                                                           ;; .. stack
                 dq          INT_TMR_EOI                                                 ;; Internal fctn 0x042 (EOI)
                 dq          tmr_Eoi                                                     ;; .. target address
-                dq          0                                                           ;; .. stack
                 dq          INT_TMR_REINIT                                              ;; Internal fctn 0x043 (reInit)
                 dq          X2ApicInitEarly                                             ;; .. target address
-                dq          0                                                           ;; .. stack
                 dq          INT_IPI_CURRENT_CPU                                         ;; Internal fctn 0x080 (LAPICID)
                 dq          ipi_LapicGetId                                              ;; .. target address
-                dq          0                                                           ;; .. stack
                 dq          INT_IPI_SEND_INIT                                           ;; Internal fctn 0x081 (INIT)
                 dq          ipi_SendInit                                                ;; .. target address
-                dq          0                                                           ;; .. stack
                 dq          INT_IPI_SEND_SIPI                                           ;; Internal fctn 0x082 (SIPI)
                 dq          ipi_SendSipi                                                ;; .. target address
-                dq          0                                                           ;; .. stack
                 dq          INT_IPI_SEND_IPI                                            ;; Internal fctn 0x082 (SIPI)
                 dq          ipi_SendIpi                                                 ;; .. target address
-                dq          0                                                           ;; .. stack
 

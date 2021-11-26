@@ -35,15 +35,12 @@ header:
                 db          'P','M','M',0,0,0,0,0,0,0,0,0,0,0,0,0                       ;; Name
                 dq          PmmInitEarly                                                ;; Early Init
                 dq          pmm_LateInit                                                ;; Late Init
-                dq          0xffffaf4000000000                                          ;; Stack Locations
                 dq          0                                                           ;; interrupts
                 dq          2                                                           ;; internal Services
                 dq          0                                                           ;; OS services
                 dq          INT_PMM_ALLOC                                               ;; internal function 1
                 dq          pmm_PmmAllocateAligned                                      ;; .. target address
-                dq          0                                                           ;; .. stack
                 dq          INT_PMM_RELEASE                                             ;; internal function 2
                 dq          pmm_PmmReleaseFrame                                         ;; .. target address
-                dq          0                                                           ;; .. stack
 
 

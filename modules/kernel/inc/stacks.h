@@ -28,19 +28,19 @@ extern "C" {
     //
     // -- Allocate a stack
     //    ----------------
-    void StackAlloc(Addr_t stackBase);
+    Return_t krn_StackAlloc(Addr_t stackBase);
 
 
     //
     // -- Release a stack
     //    ---------------
-    void StackRelease(Addr_t stackBase);
+    Return_t krn_StackRelease(Addr_t stackBase);
 
 
     //
     // -- Find an available stack
     //    -----------------------
-    Addr_t StackFind(void);
+    Addr_t krn_StackFind(void);
 }
 
 

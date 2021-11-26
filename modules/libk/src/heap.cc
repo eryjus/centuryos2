@@ -58,7 +58,6 @@
 #include "heap.h"
 
 
-#define DEBUG_HEAP
 
 //
 // -- Get the arch-specific components
@@ -485,26 +484,55 @@ static size_t HeapExpand(void)
         return 0;
     }
 
+#if DEBUG_ENABLED(HeapExpand)
+
     KernelPrintf("Expanding heap...\n");
+
+#endif
 
     size_t rv = 0;
     Byte_t *newEnd = kHeap->endAddr + HEAP_SIZE_INCR;
 
     if (newEnd > kHeap->maxAddr) newEnd = kHeap->maxAddr;
 
+#if DEBUG_ENABLED(HeapExpand)
+
     KernelPrintf(".. new end will be %p (%d additional pages)\n", newEnd, (newEnd - kHeap->endAddr) >> 12);
 
+#endif
+
     while (kHeap->endAddr < newEnd) {
+#if DEBUG_ENABLED(HeapExpand)
+
         KernelPrintf(".. getting a frame...\n");
+
+#endif
+
         Frame_t frame = PmmAlloc();
+
+#if DEBUG_ENABLED(HeapExpand)
+
         KernelPrintf(".. mapping\n");
+
+#endif
+
         MmuMapPage((Addr_t)kHeap->endAddr, frame, PG_WRT);
+
+#if DEBUG_ENABLED(HeapExpand)
+
         KernelPrintf(".. done\n");
+
+#endif
+
         kHeap->endAddr += PAGE_SIZE;
         rv += PAGE_SIZE;
     }
 
+#if DEBUG_ENABLED(HeapExpand)
+
     KernelPrintf("Heap expanded by %d bytes\n", rv);
+
+#endif
 
     return rv;
 }
@@ -812,22 +840,28 @@ void HeapInit(void)
 {
     if (kHeap && kHeap->initialized) return;
 
-#ifdef DEBUG_HEAP
+#if DEBUG_ENABLED(HeapInit)
+
     KernelPrintf("Start heap initialization\n");
+
 #endif
 
     Addr_t vAddr = heapStart;
     Addr_t vLimit = vAddr + INITIAL_HEAP;
 
     for ( ; vAddr < vLimit; vAddr += 0x1000) {
-#ifdef DEBUG_HEAP
+#if DEBUG_ENABLED(HeapInit)
+
         KernelPrintf(".. mapping addr %p (limit %p)\n", vAddr, vLimit);
+
 #endif
         MmuMapPage(vAddr, PmmAlloc(), PG_WRT);
     }
 
-#ifdef DEBUG_HEAP
+#if DEBUG_ENABLED(HeapInit)
+
     KernelPrintf(".. initial pages mapped\n");
+
 #endif
 
     // -- Set up the heap structure and list of open blocks
@@ -835,13 +869,17 @@ void HeapInit(void)
 
     kMemSetB(fixedList, 0, sizeof(fixedList));  // this line causes a problem
 
-#ifdef DEBUG_HEAP
+#if DEBUG_ENABLED(HeapInit)
+
     KernelPrintf(".. fixedList cleared\n");
+
 #endif
 
     // -- Build the first free block which is all allocated
-#ifdef DEBUG_HEAP
+#if DEBUG_ENABLED(HeapInit)
+
     KernelPrintf(".. building the first block at address %p\n", heapStart);
+
 #endif
 
     fixedList[0].block = (KHeapHeader_t *)heapStart;
@@ -856,8 +894,10 @@ void HeapInit(void)
     _heap.heapMemory = _heap.heap512 = _heap.heap1K =
             _heap.heap4K = _heap.heap16K = &fixedList[0];
 
-#ifdef DEBUG_HEAP
+#if DEBUG_ENABLED(HeapInit)
+
     KernelPrintf(".. initializing the first header at %p\n", fixedList[0].block);
+
 #endif
 
     fixedList[0].block->_magicUnion.magicHole = HEAP_MAGIC;
@@ -865,8 +905,10 @@ void HeapInit(void)
     fixedList[0].block->size = fixedList[0].size;
     fixedList[0].block->entry = &fixedList[0];
 
-#ifdef DEBUG_HEAP
+#if DEBUG_ENABLED(HeapInit)
+
     KernelPrintf(".. initializing the first footer\n");
+
 #endif
 
     tmpFtr = (KHeapFooter_t *)(((char *)fixedList[0].block) +
@@ -879,11 +921,13 @@ void HeapInit(void)
 
     kHeap->initialized = true;
 
-#ifdef DEBUG_HEAP
+#if DEBUG_ENABLED(HeapInit)
+
     KernelPrintf("Heap Created\n");
     KernelPrintf("  Heap Start Location: %p\n", kHeap->strAddr);
     KernelPrintf("  Current Heap Size..: %p\n", fixedList[0].size);
     KernelPrintf("  Heap End Location..: %p\n", kHeap->endAddr);
+
 #endif
 }
 
